@@ -9,7 +9,6 @@ metadata:
     - references/pricing-and-licensing.md
     - references/api-reference.md
     - references/troubleshooting.md
-    - references/custom-landing-pages.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
@@ -221,8 +220,6 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 
 Every Yard product has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page. The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
 
-Before authoring a custom page, read [references/custom-landing-pages.md](references/custom-landing-pages.md). It documents the required `yard:ready` handshake, the full `postMessage` contract, the `PublicProduct` data the iframe receives, and how to trigger checkout/trial/navigation. A page that skips the handshake silently falls back to the built-in template after 10 seconds.
-
 **Limits** (enforced server-side; also validated client-side before upload):
 - 20 files max per bundle
 - 1 MB max per file
@@ -331,5 +328,4 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Detailed CLI command reference | [references/cli-commands.md](references/cli-commands.md) |
 | Pricing, licensing, coupons, trials | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions) | [references/api-reference.md](references/api-reference.md) |
-| Custom landing pages (postMessage contract, `PublicProduct` shape, example `index.html`) | [references/custom-landing-pages.md](references/custom-landing-pages.md) |
 | Troubleshooting common issues | [references/troubleshooting.md](references/troubleshooting.md) |
