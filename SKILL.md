@@ -8,6 +8,7 @@ metadata:
     - references/cli-commands.md
     - references/pricing-and-licensing.md
     - references/api-reference.md
+    - references/landing-pages.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
@@ -220,6 +221,8 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 
 Every Yard product has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page. The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
 
+For everything an agent needs to **author** the page itself — how to read product data at runtime (`window.yard.product`), the `data-yard` / `data-action` attribute conventions, the `window.yard.checkout(...)` / `trial()` helpers, and the full `PublicProduct` field reference — see [references/landing-pages.md](references/landing-pages.md). The remainder of this section covers the **management** flow (scaffolding, pushing, publishing).
+
 **Limits** (enforced server-side; also validated client-side before upload):
 - 20 files max per bundle
 - 1 MB max per file
@@ -328,4 +331,5 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Detailed CLI command reference | [references/cli-commands.md](references/cli-commands.md) |
 | Pricing, licensing, coupons, trials | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions) | [references/api-reference.md](references/api-reference.md) |
+| Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md) |
 | Troubleshooting common issues | [references/troubleshooting.md](references/troubleshooting.md) |
