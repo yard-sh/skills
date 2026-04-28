@@ -53,6 +53,41 @@ Clear stored credentials.
 
 ---
 
+## yard me
+
+Print the currently logged-in user and their subscription level. Useful for agents that need to gate Pro-only feature suggestions before proposing them.
+
+**Usage:** `yard me [--json]`
+
+**Auth:** required. If not logged in, exits with `not logged in. Run 'yard login' first`.
+
+**Human output:**
+```
+Username:     alice
+GitHub:       alice
+Email:        alice@example.com
+Subscription: Pro
+```
+
+The `GitHub` and `Email` lines are omitted when not set.
+
+**JSON output (`--json`):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "alice",
+  "github_username": "alice",
+  "email": "alice@example.com",
+  "is_pro": true
+}
+```
+
+`username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `is_pro` is the authoritative subscription check — it reflects the `pro` role on `GET /v1/me`, which the platform automatically grants/revokes when the user's subscription tier changes.
+
+**Agent usage:** before suggesting any Pro-only feature (license keys, device activations, free trials, multiple pricing tiers, seat-based pricing, coupons, gift purchases, custom landing pages), run `yard me --json` and read `.is_pro`. If false, either pick a free-tier-compatible alternative or surface the upgrade link `https://yard.sh/upgrade`.
+
+---
+
 ## yard init
 
 Set up a Yard project in the current directory. Interactive flow that links the folder to a Yard product (new or existing) and optionally scaffolds a custom landing page.
@@ -84,7 +119,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
    - Runs the same source-pick logic as `yard page init` (draft → published → starter) and pulls or scaffolds accordingly.
    - Calls `POST /v1/products/{id}/custom-page/publish`. On a Pro-required 403, prints the `https://yard.sh/upgrade` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
 
-8. **Optional product-settings prompts (Pro only)** — After landing-page setup, the wizard asks Pro accounts (in order):
+8. **Optional product-settings prompts (Pro only — check with `yard me --json` → `.is_pro`)** — After landing-page setup, the wizard asks Pro accounts (in order):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
    - "Enable a free trial? [y/N]" → on yes, "Free trial days (1-365) [7]:".

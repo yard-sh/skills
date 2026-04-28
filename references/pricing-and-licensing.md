@@ -18,7 +18,7 @@
 
 ## Pricing Tiers
 
-Each product has 1 to 5 pricing tiers. Free-tier sellers can create 1 tier per product; Pro sellers can create up to 5.
+Each product has 1 to 5 pricing tiers. Free-tier sellers can create 1 tier per product; Pro sellers can create up to 5 (check with `yard me --json` → `.is_pro`).
 
 **Tier fields:**
 - `name` — Display name for the tier
@@ -101,7 +101,7 @@ State discounts are applied before coupon discounts during checkout.
 
 ## Coupons
 
-Coupons are a **Pro-only** feature.
+Coupons are a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
 
 **Coupon types:**
 - `percentage` — 1-100% discount off the price
@@ -126,7 +126,7 @@ Coupons are a **Pro-only** feature.
 
 ## Free Trials
 
-Free trials are a **Pro-only** feature. Configure via `yard init --spec` (at creation) or `yard products edit` (later).
+Free trials are a **Pro-only** feature (check with `yard me --json` → `.is_pro`). Configure via `yard init --spec` (at creation) or `yard products edit` (later).
 
 Products can offer free trials:
 
@@ -140,7 +140,7 @@ Products can offer free trials:
 
 ## Gift Purchases
 
-Gift purchasing is a **Pro-only** feature.
+Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
 
 - `gift_enabled` — Toggle on the product
 - Buyer provides a recipient email at checkout
@@ -152,7 +152,7 @@ Gift purchasing is a **Pro-only** feature.
 
 ## License Keys
 
-License keys are a **Pro-only** feature. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
+License keys are a **Pro-only** feature (check with `yard me --json` → `.is_pro`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
 
 Yard automatically generates license keys for each purchase.
 
@@ -171,7 +171,7 @@ Yard automatically generates license keys for each purchase.
 
 ## Device Activations
 
-Device activations are a **Pro-only** feature and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
+Device activations are a **Pro-only** feature (check with `yard me --json` → `.is_pro`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
 
 License keys can track device activations:
 
