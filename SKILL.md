@@ -8,14 +8,15 @@ metadata:
     - references/pricing-and-licensing.md
     - references/api-reference.md
     - references/landing-pages.md
+    - references/releases-and-updates.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
-  yard init, yard install, yard products, yard help, installing the yard CLI, pricing, trials, device activations, affiliate
-  links, referral codes, update server, file updates. Also use this skill when users are working inside
-  a Yard codebase and need to understand how Yard works, its CLI commands, API, pricing model
-  or troubleshooting common issues.
+  yard init, yard install, yard products, yard releases, yard keys, yard help, installing the yard CLI, pricing, trials,
+  device activations, affiliate links, referral codes, update server, file updates, publishing a release, downloading
+  updates, creating API keys. Also use this skill when users are working inside a Yard codebase and need to understand
+  how Yard works, its CLI commands, API, pricing model or troubleshooting common issues.
 ---
 
 # Yard
@@ -31,7 +32,9 @@ Yard has two surfaces. Pick by intent:
 - **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing products, linking repos, scaffolding and publishing landing pages, viewing products, etc. An LLM/agent working on a seller's codebase should drive all management through the CLI.
 - **REST API** — for **integrating** Yard into shipped software: validating a buyer's license at runtime, deactivating a device, fetching the latest release, reading product metadata, managing a buyer's subscription. The API does **not** replace the CLI for catalog management — an agent that wants to "create a product" runs `yard init`, not an HTTP call.
 
-API access uses an **API key with scoped permissions**, created in the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md).
+API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
+
+For shipped end-user software, use the **license-key update server** rather than API keys — each buyer gets a unique license, so you can revoke or rate-limit per customer. See [references/releases-and-updates.md](references/releases-and-updates.md).
 
 ## Onboarding / new product setup — agent workflow
 
@@ -204,6 +207,9 @@ The interactive flow:
 | `yard logout` | Clear local credentials (`~/.yard/config.json`) |
 | `yard init` | Set up a Yard project in the current directory — create or select a product, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--product <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use. |
 | `yard products [--json]` | List your published products with stats |
+| `yard releases publish [tag] [flags]` | Create a new release with optional file assets. Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md). |
+| `yard keys list [--json]` | List your API keys (name, prefix, scopes, last-used, created). The full secret is never shown. |
+| `yard keys create [name] [flags]` | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation. |
 | `yard page init` | Create a `.yard/` project directory linked to a product and scaffold a hello-world landing page |
 | `yard page status` | Diff local landing-page files vs the remote draft (no writes) |
 | `yard page ls [--source draft\|published]` | List files in the remote draft or published bundle |
@@ -341,4 +347,5 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Pricing, licensing, coupons, trials | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions) | [references/api-reference.md](references/api-reference.md) |
 | Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md) |
+| Publishing releases, downloading updates, API keys | [references/releases-and-updates.md](references/releases-and-updates.md) |
 | Troubleshooting common issues | [references/troubleshooting.md](references/troubleshooting.md) |

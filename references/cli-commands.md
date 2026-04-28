@@ -167,6 +167,145 @@ EOF
 
 ---
 
+## yard releases
+
+Manage releases for a product. Today the CLI exposes `publish` only — list/edit/delete still happen in the dashboard.
+
+### yard releases publish [tag]
+
+Create a new release with optional file assets. The release is created first, then each file is uploaded one at a time so a single failed asset doesn't lose the release.
+
+**Flags:**
+- `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode.
+- `--product <slug-or-uuid>` — target product. Required only if you have multiple products.
+- `--name <string>` — optional human-readable release name.
+- `--notes <string>` — short release notes (markdown).
+- `--notes-file <path|->` — read notes from a file or stdin.
+- `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
+- `--spec <path|->` — JSON spec, alternative to flags.
+- `--json` — emit a single JSON result on stdout; logs go to stderr.
+
+**Spec JSON shape:**
+```jsonc
+{
+  "product":        "my-slug",          // optional if user has only one product
+  "tag_name":       "v1.4.0",           // required
+  "release_name":   "Late April fixes", // optional, ≤255 chars
+  "release_notes":  "## Highlights\n…", // optional, markdown, ≤125,000 chars
+  "files": [                             // optional; absolute or relative paths
+    "./dist/yard-darwin-arm64.tar.gz",
+    "./dist/yard-linux-amd64.tar.gz"
+  ]
+}
+```
+
+Unknown fields are rejected. Each file path must exist and be a regular file.
+
+**Two-step publish flow:**
+1. `POST /v1/products/{id}/releases` (JSON body) creates the release with metadata only.
+2. For each `files[]` entry, `POST /v1/products/{id}/releases/{releaseId}/files` streams the file as `multipart/form-data`.
+3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
+4. Exit code is non-zero if any uploads failed; the release still exists in the dashboard so you can re-upload via the UI.
+
+**`--json` output:**
+```json
+{
+  "release":  { "id":"…", "tag_name":"v1.4.0", "files":[...], ... },
+  "files": [
+    {"path":"./dist/a.tar.gz", "status":"uploaded", "size_bytes":12345678},
+    {"path":"./dist/b.tar.gz", "status":"failed",   "error":"open …: no such file"}
+  ],
+  "uploaded": 1,
+  "failed":   1
+}
+```
+
+**Typical agent flow:**
+```sh
+# Build artifacts, then ship.
+go build -o dist/cli-darwin ./cmd/cli
+go build -o dist/cli-linux  ./cmd/cli
+
+yard releases publish --spec - --json <<EOF
+{
+  "tag_name": "v1.4.0",
+  "release_name": "Late April fixes",
+  "release_notes": $(jq -Rs . < CHANGELOG.md),
+  "files": ["./dist/cli-darwin", "./dist/cli-linux"]
+}
+EOF
+```
+
+For full download server schemas (license-key path and API-key path), see [references/releases-and-updates.md](releases-and-updates.md).
+
+---
+
+## yard keys
+
+Manage API keys for programmatic access. Without a subcommand, runs `keys list`.
+
+### yard keys list
+
+Lists your API keys with the same columns the dashboard shows (name, prefix, scopes, last-used, created). The full secret is never displayed — only the prefix `yard_xxxxxxx`.
+
+**Flags:**
+- `--json` — emit the raw `APIKeyListResponse` JSON on stdout. The `key` (full secret) is **never** present here.
+- `--sort <col>` — `created_at` (default), `name`, or `last_used_at`.
+- `--direction <asc|desc>` — sort direction.
+
+**Table output:**
+```
+NAME                     PREFIX             SCOPES                                   LAST USED      CREATED
+--------------------------------------------------------------------------------------------------------------
+ci-runner                yard_a1b2c3d       releases:read, releases:download         2 hours ago    2026-04-12
+local-dev                yard_e5f6789       products:read                            never          2026-03-30
+
+Total: 2 / 100 keys
+```
+
+### yard keys create [name]
+
+Mints a new API key. **The full secret is shown only once at creation time.** After that, only the prefix is recoverable.
+
+**Flags:**
+- `[name]` positional — key name (e.g. `ci-runner`). Required in `--spec` mode; prompted in interactive mode.
+- `--scopes <csv>` — comma-separated scope list (e.g. `releases:read,releases:download`).
+- `--spec <path|->` — JSON spec.
+- `--json` — emit `APIKeyCreateResponse` (including `key`) on stdout; logs go to stderr.
+
+**Spec JSON shape:**
+```jsonc
+{
+  "name":   "ci-runner",
+  "scopes": ["releases:read", "releases:download"]
+}
+```
+
+**Available scopes:**
+
+| Scope | Description |
+|---|---|
+| `products:read` | Read product metadata |
+| `releases:read` | Read release metadata for owned products |
+| `releases:download` | Download release files for owned products |
+| `licenses:validate` | Validate license keys (called from your own software) |
+| `licenses:activate` | Activate / deactivate license keys |
+| `subscriptions:read` | Read product subscription status |
+| `subscriptions:write` | Create / cancel / reactivate product subscriptions |
+
+Backend caps each user at 100 API keys; on `403` from the create endpoint the CLI prints the reached-limit message.
+
+**Typical agent flow:**
+```sh
+# Mint a key for a CI job, capture the secret out of the JSON output.
+KEY=$(echo '{"name":"ci-runner","scopes":["releases:read","releases:download"]}' \
+  | yard keys create --spec - --json | jq -r .key)
+```
+
+For end-user-shipped software, prefer the **license-key update server** over an API key — see [references/releases-and-updates.md](releases-and-updates.md) for details on both download paths.
+
+---
+
 ## yard version
 
 Display version and build information.
