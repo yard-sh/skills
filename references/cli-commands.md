@@ -345,7 +345,7 @@ For end-user-shipped software, the license-key update server (`/v1/updates/lates
 
 Test license-key validation and inspect test device activations. All three subcommands accept `--product <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only product if you have one. All three accept `--json`.
 
-Every product with `license_key_enabled: true` has a sandbox **test license key** that authenticates against the same `POST /v1/licenses/validate` endpoint as real customer keys. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
+Every product with `license_key_enabled: true` has a sandbox **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
 
 ### yard licenses test-key
 
@@ -359,7 +359,11 @@ Print the test license key for a product. Plain output is the bare key (one line
 ```sh
 # Capture the test key for use in a curl/integration test.
 KEY=$(yard licenses test-key --product my-app)
+
+# POST /v1/licenses/validate requires an API key with licenses:validate scope —
+# the license key being validated goes in the body, the API key goes in the header.
 curl -X POST https://api.yard.sh/v1/licenses/validate \
+  -H "Authorization: Bearer $YARD_API_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"license_key\":\"$KEY\",\"device_id\":\"laptop-42\"}"
 ```

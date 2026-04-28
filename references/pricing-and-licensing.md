@@ -173,7 +173,7 @@ Yard automatically generates license keys for each purchase.
 **Validation endpoint:** `POST /v1/licenses/validate`
 - Input: license key + optional device ID
 - Output: validation result with product/tier info
-- Can be called without authentication (designed for use inside the seller's software)
+- **Requires an API key** with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). Embed it in the seller's software the same way you would for releases — see [api-reference.md](api-reference.md) for the endpoint definition and [releases-and-updates.md](releases-and-updates.md) for the embedded-API-key tradeoffs.
 
 **Test license key:** Every product with `license_key_enabled: true` has a sandbox key the seller can use to exercise validation/activation logic without buying their own product. The test key behaves identically to a real one against `POST /v1/licenses/validate`, but its activations live in a separate `test_activations` table and never collide with real buyers. Retrieve it with `yard licenses test-key`; manage its activations with `yard licenses test-activations list` and `yard licenses test-activations clear`. See [cli-commands.md](cli-commands.md#yard-licenses) for full flag reference.
 

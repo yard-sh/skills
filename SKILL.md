@@ -176,7 +176,9 @@ For SaaS, web apps, content products, or anything the buyer does not install loc
 
 ### Testing license-key validation
 
-Every product with `license_key_enabled: true` has a sandbox **test license key** that hits exactly the same `POST /v1/licenses/validate` endpoint as a real one — use it to verify your in-app validation/activation flow without buying your own product. Test activations live in a separate `test_activations` table, so they never collide with real customers.
+Every product with `license_key_enabled: true` has a sandbox **test license key** — a real license key value the seller can pass to `POST /v1/licenses/validate` and have the API treat it like a paid customer's key. Test activations live in a separate `test_activations` table, so they never collide with real customers.
+
+**Auth:** `POST /v1/licenses/validate` is **not unauthenticated**. It requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). The test license key goes in the **request body**, not the header — it's the data being validated, not the credential.
 
 Three CLI commands cover the loop:
 
@@ -193,12 +195,13 @@ yard licenses test-activations clear --yes
 
 Typical agent flow when wiring license validation into a seller's app:
 
-1. `yard licenses test-key --json` to grab the key.
-2. Hit `POST /v1/licenses/validate` from the app under test, with the test key plus a `device_id` of your choice. Verify the response shape matches what your app expects.
-3. `yard licenses test-activations list` to confirm the device showed up.
-4. After enough iterations to hit `max_activations`, `yard licenses test-activations clear` resets the slate.
+1. `yard keys create --spec - --json <<<'{"name":"local-validate","scopes":["licenses:validate"]}'` to mint an API key (capture `key` from the JSON output).
+2. `yard licenses test-key --json` to grab the test license key.
+3. From the app under test, `POST /v1/licenses/validate` with the API key in the `Authorization` header and `{"license_key": "<test-key>", "device_id": "<your-choice>"}` in the body. Verify the response shape matches what your app expects.
+4. `yard licenses test-activations list` to confirm the device showed up.
+5. After enough iterations to hit `max_activations`, `yard licenses test-activations clear` resets the slate.
 
-All three commands accept `--product <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
+All three `yard licenses` commands accept `--product <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
 
 ## Quick Start
 
