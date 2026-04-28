@@ -337,7 +337,62 @@ KEY=$(echo '{"name":"ci-runner","scopes":["releases:read","releases:download"]}'
   | yard keys create --spec - --json | jq -r .key)
 ```
 
-For end-user-shipped software, prefer the **license-key update server** over an API key — see [references/releases-and-updates.md](releases-and-updates.md) for details on both download paths.
+For end-user-shipped software, the license-key update server (`/v1/updates/latest`) and an embedded API key (`/v1/products/{id}/releases/latest`) are both valid auth paths — see [references/releases-and-updates.md](releases-and-updates.md) for the tradeoffs.
+
+---
+
+## yard licenses
+
+Test license-key validation and inspect test device activations. All three subcommands accept `--product <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only product if you have one. All three accept `--json`.
+
+Every product with `license_key_enabled: true` has a sandbox **test license key** that authenticates against the same `POST /v1/licenses/validate` endpoint as real customer keys. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
+
+### yard licenses test-key
+
+Print the test license key for a product. Plain output is the bare key (one line, suitable for `$(...)` capture); `--json` emits an object with `product_id`, `product_slug`, and `test_license_key`.
+
+**Errors:**
+- Product doesn't have license keys enabled — surfaces a hint to run `yard products edit <slug>` (Pro only).
+- Product has no test key recorded — rare; usually means license keys were never toggled on.
+
+**Typical use:**
+```sh
+# Capture the test key for use in a curl/integration test.
+KEY=$(yard licenses test-key --product my-app)
+curl -X POST https://api.yard.sh/v1/licenses/validate \
+  -H 'Content-Type: application/json' \
+  -d "{\"license_key\":\"$KEY\",\"device_id\":\"laptop-42\"}"
+```
+
+### yard licenses test-activations list
+
+List active test device activations attached to the product's test license key.
+
+**Output (table):**
+```
+ID                                   DEVICE ID                      DEVICE NAME          ACTIVATED    LAST SEEN
+--------------------------------------------------------------------------------------------------------------------
+9f3e1c2a-...                         laptop-42                      Alice's MBP          2026-04-28   2026-04-28
+
+2 active / 5 max (3 slots remaining)
+```
+
+`--json` emits the raw `ActivationsListResponse` (`{ "activations": [...], "settings": { "enabled", "max_activations", "current_count", "remaining_slots" } }`). When `activations_enabled` is false on the product, the list is empty and the table form prints a one-liner explaining why.
+
+### yard licenses test-activations clear
+
+Deactivate every test device on the product's test license key. **Real customer activations are not touched** — the call only resets `test_activations` rows.
+
+**Flags:**
+- `--yes` — skip the confirmation prompt (required when running non-interactively / piped). Implied by `--json`.
+
+**Typical use:**
+```sh
+# Reset between test runs that hit max_activations.
+yard licenses test-activations clear --yes
+```
+
+`--json` emits `{ "product_id", "product_slug", "cleared": true }`.
 
 ---
 

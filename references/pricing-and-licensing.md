@@ -175,6 +175,8 @@ Yard automatically generates license keys for each purchase.
 - Output: validation result with product/tier info
 - Can be called without authentication (designed for use inside the seller's software)
 
+**Test license key:** Every product with `license_key_enabled: true` has a sandbox key the seller can use to exercise validation/activation logic without buying their own product. The test key behaves identically to a real one against `POST /v1/licenses/validate`, but its activations live in a separate `test_activations` table and never collide with real buyers. Retrieve it with `yard licenses test-key`; manage its activations with `yard licenses test-activations list` and `yard licenses test-activations clear`. See [cli-commands.md](cli-commands.md#yard-licenses) for full flag reference.
+
 ---
 
 ## Device Activations
@@ -187,6 +189,7 @@ License keys can track device activations:
 - Sellers can configure a maximum activation limit per license key
 - Activations are tracked in the `license_activations` table
 - Buyers can view and manage their activations from the buyer dashboard
+- Test activations (created via the product's test license key) are isolated in a parallel `test_activations` table, count against `max_activations` independently, and can be wiped with `yard licenses test-activations clear`
 
 ---
 

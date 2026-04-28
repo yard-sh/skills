@@ -13,9 +13,10 @@ metadata:
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
-  yard init, yard install, yard products, yard releases, yard keys, yard help, installing the yard CLI, pricing, trials,
-  device activations, affiliate links, referral codes, update server, file updates, publishing a release, downloading
-  updates, creating API keys. Also use this skill when users are working inside a Yard codebase and need to understand
+  yard init, yard install, yard products, yard releases, yard keys, yard licenses, yard help, installing the yard CLI,
+  pricing, trials, device activations, affiliate links, referral codes, update server, file updates, publishing a
+  release, downloading updates, creating API keys, testing license-key validation, the test license key, or clearing
+  test device activations. Also use this skill when users are working inside a Yard codebase and need to understand
   how Yard works, its CLI commands, API, pricing model or troubleshooting common issues.
 ---
 
@@ -34,7 +35,12 @@ Yard has two surfaces. Pick by intent:
 
 API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
 
-For shipped end-user software, use the **license-key update server** rather than API keys — each buyer gets a unique license, so you can revoke or rate-limit per customer. See [references/releases-and-updates.md](references/releases-and-updates.md).
+For shipped end-user software, the API supports two auth approaches and either works — pick by what fits the product:
+
+- **License key** (per-buyer) hitting `GET /v1/updates/latest`. Easiest if the product issues license keys: each buyer's key is unique, so revocation, activation limits, and per-customer rate limits work for free, and there's no shared secret to embed in the binary.
+- **Embedded API key** (one shared key) hitting `GET /v1/products/{id}/releases/latest` with the `releases:download` scope. Simpler app UX (no key entry), at the cost of per-buyer revocation — every install carries the same key.
+
+See [references/releases-and-updates.md](references/releases-and-updates.md).
 
 ## Onboarding / new product setup — agent workflow
 
@@ -158,11 +164,41 @@ yard init --product simple-note --json
 If the product is **locally-installed software** — a desktop app, CLI tool, native binary, anything the buyer downloads and runs on their own machine — `yard init` alone is **not** a complete sales surface. The buy page has nothing to download until a release is published, and the installed app has no built-in update path. Whenever you detect this product type during the autopilot flow, the plan you present in step 3 must cover both halves:
 
 1. **Publish releases.** After `yard init`, the seller publishes each shipped version with `yard releases publish` (spec mode is the agent-friendly form). This is what populates the buy page's download. See [references/releases-and-updates.md](references/releases-and-updates.md) — *Publishing a release with the CLI*.
-2. **Wire the license-key update endpoint.** The installed app should call `GET https://api.yard.sh/v1/updates/latest?license_key=<key>` to discover the latest version and download URLs (one license key per buyer; revocable per customer). Tell the user this needs to be wired into their app's auto-updater. See [references/releases-and-updates.md](references/releases-and-updates.md) — *Downloading releases — license-key path*.
+2. **Wire the update endpoint.** The installed app needs an auto-updater that pulls the latest release from Yard. Two auth options — pick whichever fits:
+   - **License key** → `GET https://api.yard.sh/v1/updates/latest?license_key=<key>`. One key per buyer (revocable per customer). Easiest if the product already issues license keys.
+   - **Embedded API key** → `GET https://api.yard.sh/v1/products/{productId}/releases/latest` with `Authorization: Bearer yard_<key>` and the `releases:download` scope. One key shared across all installs (no per-buyer revocation), but no key-entry UX in the app.
+
+   Tell the user this needs to be wired into their app's auto-updater. See [references/releases-and-updates.md](references/releases-and-updates.md) — *Downloading releases*.
 
 Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.is_pro` before suggesting any of those).
 
 For SaaS, web apps, content products, or anything the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient.
+
+### Testing license-key validation
+
+Every product with `license_key_enabled: true` has a sandbox **test license key** that hits exactly the same `POST /v1/licenses/validate` endpoint as a real one — use it to verify your in-app validation/activation flow without buying your own product. Test activations live in a separate `test_activations` table, so they never collide with real customers.
+
+Three CLI commands cover the loop:
+
+```sh
+# Print the test key for the current product (or pass --product <slug>).
+yard licenses test-key
+
+# See what's currently activated against the test key.
+yard licenses test-activations list
+
+# Wipe every test device when you've hit max_activations during testing.
+yard licenses test-activations clear --yes
+```
+
+Typical agent flow when wiring license validation into a seller's app:
+
+1. `yard licenses test-key --json` to grab the key.
+2. Hit `POST /v1/licenses/validate` from the app under test, with the test key plus a `device_id` of your choice. Verify the response shape matches what your app expects.
+3. `yard licenses test-activations list` to confirm the device showed up.
+4. After enough iterations to hit `max_activations`, `yard licenses test-activations clear` resets the slate.
+
+All three commands accept `--product <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
 
 ## Quick Start
 
@@ -225,6 +261,9 @@ The interactive flow:
 | `yard releases publish [tag] [flags]` | Create a new release with optional file assets. Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md). |
 | `yard keys list [--json]` | List your API keys (name, prefix, scopes, last-used, created). The full secret is never shown. |
 | `yard keys create [name] [flags]` | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation. |
+| `yard licenses test-key [--product <slug>] [--json]` | Print the product's sandbox **test license key** — usable with `POST /v1/licenses/validate` to exercise license-validation logic without buying your own product. |
+| `yard licenses test-activations list [--product <slug>] [--json]` | List active test device activations attached to the product's test license key. |
+| `yard licenses test-activations clear [--product <slug>] [--yes] [--json]` | Deactivate every test device on the product's test key (real customer activations are untouched). |
 | `yard page init` | Create a `.yard/` project directory linked to a product and scaffold a hello-world landing page |
 | `yard page status` | Diff local landing-page files vs the remote draft (no writes) |
 | `yard page ls [--source draft\|published]` | List files in the remote draft or published bundle |

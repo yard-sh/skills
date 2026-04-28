@@ -1,16 +1,18 @@
 # Releases and the Update Server
 
 This reference covers how to publish a release for a Yard product (with file
-assets) and how shipped software downloads those releases. Two download paths
-exist — one for end-user-shipped software (license keys) and one for
-trusted/programmatic access (API keys).
+assets) and how shipped software downloads those releases. Two auth approaches
+work for downloading: **license keys** (per-buyer, hit `/v1/updates/latest`)
+and **API keys** (per-seller, hit `/v1/products/{id}/releases/...`). Either
+fits shipped software — pick by what suits the product. API keys are also the
+only option for first-party automation (CI, internal tooling).
 
 ## Table of Contents
 
 - [What a release is](#what-a-release-is)
 - [Publishing a release with the CLI](#publishing-a-release-with-the-cli)
-- [Downloading releases — license-key path (recommended for shipped software)](#downloading-releases--license-key-path-recommended-for-shipped-software)
-- [Downloading releases — API-key path (trusted programmatic access)](#downloading-releases--api-key-path-trusted-programmatic-access)
+- [Downloading releases — license-key path](#downloading-releases--license-key-path)
+- [Downloading releases — API-key path](#downloading-releases--api-key-path)
 - [Creating an API key](#creating-an-api-key)
 - [Listing API keys](#listing-api-keys)
 - [Troubleshooting](#troubleshooting)
@@ -113,13 +115,15 @@ Exit codes:
 
 ---
 
-## Downloading releases — license-key path (recommended for shipped software)
+## Downloading releases — license-key path
 
-This is the path your **distributed software** should use. Each buyer gets a
-unique license key on purchase, so revocation, activation limits, and per-user
-analytics all work out of the box. **Don't embed an API key in distributed
-software** — every customer would share the same key and you couldn't tell
-them apart.
+Use this path when your software issues a license key per buyer (i.e.
+`license_key_enabled: true` on the product). It's the easiest auth for shipped
+software — each buyer's key is unique, so revocation, activation limits, and
+per-user analytics work out of the box, and there's no shared secret to embed
+in the binary. If the product doesn't issue license keys, or you'd rather skip
+the per-buyer-key UX, the API-key path below works equally well — it just
+hits a different endpoint.
 
 ### Get latest release metadata
 
@@ -185,11 +189,15 @@ presigned URL expires after 5 minutes.
 
 ---
 
-## Downloading releases — API-key path (trusted programmatic access)
+## Downloading releases — API-key path
 
-Use API keys for **first-party automation** (CI scripts, internal tooling,
-integration tests) — anywhere the same person controls both the key and the
-software using it. **Do not** ship an API key inside software you sell.
+API keys work in two scenarios: **first-party automation** (CI scripts,
+internal tooling, integration tests) and **shipped software** where you'd
+rather embed a single key than have each buyer authenticate with a license
+key. Tradeoff for shipped software: every install carries the same key, so
+you can't revoke or rate-limit per customer the way you can with license
+keys — pick this path when that tradeoff is acceptable, or when the product
+doesn't issue license keys at all.
 
 All endpoints are under the seller's product:
 
