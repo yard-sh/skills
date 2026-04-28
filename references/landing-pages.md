@@ -26,7 +26,7 @@ The object matches the same shape returned by `GET /v1/products/{slug}/public`. 
 | `readme_html` | `string?` | Server-rendered HTML of the linked repo's README, if any |
 | `price_cents` | `number` | Default tier price, in cents |
 | `discounted_price_cents` | `number?` | Effective price after any state discount |
-| `state` | `string` | `draft`, `pre_order`, `early_access`, or `released` |
+| `state` | `string` | `draft`, `early_access`, or `released` |
 | `state_discount_percent` | `number?` | Active state-discount percent, if any |
 | `tiers` | `PricingTier[]` | All pricing tiers — see below |
 | `images` | `ProductImage[]` | Uploaded screenshots/icons; each has a `url` |
