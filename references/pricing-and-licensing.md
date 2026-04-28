@@ -126,10 +126,12 @@ Coupons are a **Pro-only** feature.
 
 ## Free Trials
 
+Free trials are a **Pro-only** feature. Configure via `yard init --spec` (at creation) or `yard products edit` (later).
+
 Products can offer free trials:
 
 - `free_trial_enabled` — Toggle on the product
-- `free_trial_days` — Duration (1-365 days)
+- `free_trial_days` — Duration (1-365 days; defaults to 7 if enabled without an explicit value)
 - Creates a purchase with `is_trial = true` and `trial_expires_at` timestamp
 - Buyers can activate trials as guests (no account required)
 - After trial expires, buyer must purchase to continue access
@@ -150,6 +152,8 @@ Gift purchasing is a **Pro-only** feature.
 
 ## License Keys
 
+License keys are a **Pro-only** feature. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
+
 Yard automatically generates license keys for each purchase.
 
 **Key characteristics:**
@@ -166,6 +170,8 @@ Yard automatically generates license keys for each purchase.
 ---
 
 ## Device Activations
+
+Device activations are a **Pro-only** feature and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
 
 License keys can track device activations:
 

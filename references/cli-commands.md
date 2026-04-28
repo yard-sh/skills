@@ -84,7 +84,14 @@ Set up a Yard project in the current directory. Interactive flow that links the 
    - Runs the same source-pick logic as `yard page init` (draft → published → starter) and pulls or scaffolds accordingly.
    - Calls `POST /v1/products/{id}/custom-page/publish`. On a Pro-required 403, prints the `https://yard.sh/upgrade` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
 
-8. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
+8. **Optional product-settings prompts (Pro only)** — After landing-page setup, the wizard asks Pro accounts (in order):
+   - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
+   - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
+   - "Enable a free trial? [y/N]" → on yes, "Free trial days (1-365) [7]:".
+
+   Changes are applied via `PUT /v1/products/{id}` — server-side enforcement of the Pro requirement remains authoritative. Free accounts see a single block describing these as Pro features with the `https://yard.sh/upgrade` link, and the wizard skips the prompts. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema).
+
+9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
 **JSON output:** the current implementation is interactive-only; there's no `--json` variant yet.
 
@@ -92,7 +99,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 ## yard products
 
-List all your published products.
+List all your published products. With no subcommand, shows the same table as before; the `edit` subcommand modifies seller settings.
 
 **Output format:**
 ```
@@ -107,6 +114,56 @@ Total: 2 product(s)
 - `✓` = public visibility, `✗` = not public
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
+- `--json` emits the underlying `ProductListItem` array (now including `license_key_enabled`, `activations_enabled`, `max_activations`, `free_trial_enabled`, `free_trial_days`).
+
+### yard products edit [slug-or-id]
+
+Modify the Pro-only seller settings on an existing product: license keys, device activations (and the per-key limit), and free trials (and the trial duration).
+
+**Resolution:**
+- Pass a slug or UUID as the first argument to target a specific product.
+- Without an argument, auto-selects when the user has only one product, prompts to pick from a numbered list otherwise.
+- In `--spec` mode with multiple products and no argument, errors out with the list of slugs.
+
+**Interactive flow (Pro accounts):**
+1. Prints `Editing settings for <title> (<slug>)`.
+2. Same prompt sequence as `yard init`'s settings step. Each prompt's default reflects the *current* value, so pressing Enter is always a no-op.
+3. Calls `PUT /v1/products/{id}` with only the fields that changed.
+
+**Free-account behavior:** prints the upgrade message and the `https://yard.sh/upgrade` link, then exits cleanly (exit 0 in interactive mode, exit 1 with `pro_required` in `--spec` mode).
+
+**Spec mode:**
+- `--spec <file|->` — read JSON from a file or stdin. The JSON shape is `UpdateProductRequest`:
+  ```json
+  {
+    "license_key_enabled": true,
+    "activations_enabled": true,
+    "max_activations": 5,
+    "free_trial_enabled": true,
+    "free_trial_days": 14
+  }
+  ```
+  Unknown fields are rejected. Missing fields are left untouched (the request is sparse).
+- `--json` — emit `{ "product": {...}, "settings": {...} }` on stdout; logs go to stderr.
+- The CLI pre-checks the activations-needs-license-keys rule against the *effective* state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
+- A 403 with `error_code: "pro_required"` is rendered as a clean upgrade message rather than the raw HTTP error.
+
+**Typical agent flow:**
+```sh
+# Discover what exists.
+yard products --json
+
+# Apply settings to a known product.
+yard products edit my-awesome-tool --spec - --json <<'EOF'
+{
+  "license_key_enabled": true,
+  "activations_enabled": true,
+  "max_activations": 5,
+  "free_trial_enabled": true,
+  "free_trial_days": 14
+}
+EOF
+```
 
 ---
 

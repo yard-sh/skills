@@ -2,7 +2,6 @@
 name: yard
 metadata:
   author: yard.sh
-  version: dev
   files:
     - SKILL.md
     - references/cli-commands.md
@@ -47,7 +46,8 @@ When a user asks to get onboarded to Yard, set up a new product, run `yard init`
       - **Multiple pricing tiers** (up to 5 — e.g., Starter / Pro / Team) — **requires Yard Pro**. Good when the product has clearly differentiated feature sets.
       - **Seat-based pricing** (`fixed_pack` packs like "Team 5-Pack", or `per_seat` with min/max and volume discounts) — **requires Yard Pro**. Good for B2B / team software.
       - **"Enterprise" / contact-sales** — Yard has no first-class enterprise tier; model it as a high-priced `per_seat` tier (Pro) or a separate high-end tier in a multi-tier product (Pro), and let the seller handle custom contracts off-platform.
-      - Also flag, where relevant, that **coupons, gift purchases, and custom landing pages are Pro-only**.
+      - Also flag, where relevant, that **coupons, gift purchases, custom landing pages, license keys, device activations, and free trials are Pro-only**.
+      - If license-key features are appropriate for the product (anything users install locally and where the seller needs to validate ownership at runtime), suggest enabling **license keys**, optionally **device activations** with a per-key limit, and/or a **free trial** of N days. These can be set in the same `yard init --spec` payload (Pro only) or configured later via `yard products edit`.
    3. Present the recommendation as a short plan (title, pricing model, tier(s), seat type, price(s), any Pro requirements) and ask the user to **accept**, **edit**, or **switch to guided mode**.
    4. On accept: run `yard products --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt), then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
    5. On edit: adjust the plan and re-confirm before running anything.
@@ -92,7 +92,14 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
       "yearly_discount_percent": null,// subscription only, 1..100
       "volume_brackets": []           // per_seat only; contiguous, increasing discount
     }
-  ]
+  ],
+  // Optional seller settings — all Pro-only when set to true.
+  // Applied via a follow-up PUT /v1/products/{id} after creation.
+  "license_key_enabled": false,    // Pro-only when true
+  "activations_enabled": false,    // Pro-only when true; requires license_key_enabled=true
+  "max_activations": null,         // 1..10000; only meaningful when activations_enabled
+  "free_trial_enabled": false,     // Pro-only when true
+  "free_trial_days": null          // 1..365; defaults to 7 if trial enabled without value
 }
 ```
 
@@ -135,8 +142,10 @@ yard init --product simple-note --json
 
 - **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new product) or `--product <slug>` (for an existing one).
 - **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
-- **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`) or ask the user to upgrade.
+- **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`, no license/activation/trial settings) or ask the user to upgrade at https://yard.sh/upgrade.
+- **License/activation/trial settings rejected with 403 (`pro_required`).** Same root cause: free account. Drop those fields from the spec or upgrade.
 - **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
+- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body (the same five settings fields above).
 
 ## Quick Start
 
