@@ -181,6 +181,21 @@ const url = window.yard.checkoutURL({ tier: defaultTier.id, quantity: 3 });
 
 ---
 
+## Asset paths in your HTML
+
+Pages serve under `<handle>.yard.sh/<slug>/`, so any CSS, JS, image, or font your `index.html` references needs to resolve inside that directory. The simplest rule: **use relative URLs**.
+
+```html
+<!-- Good — resolves to <handle>.yard.sh/<slug>/styles.css -->
+<link rel="stylesheet" href="styles.css" />
+<script type="module" src="app.js"></script>
+<img src="screenshot.png" alt="" />
+```
+
+Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<handle>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard page init` scaffolds.
+
+---
+
 ## Bundle constraints (recap)
 
 The same limits apply whether you upload via `yard page push` or the dashboard editor:
