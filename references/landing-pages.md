@@ -144,6 +144,9 @@ window.yard = {
   checkoutURL(opts),       // build the checkout URL without redirecting
   trialURL(),              // build the trial URL without redirecting
 
+  ownership(),             // Promise<OwnershipState | null> — buyer state
+                           // (signed-in, owned, tier). See "Buyer state" below.
+
   refresh(),               // re-run data-yard binding (after dynamic DOM updates)
 }
 ```
@@ -178,6 +181,116 @@ if (window.yard.product.free_trial_enabled) {
 // Build a shareable checkout URL (e.g. for a copy-to-clipboard button)
 const url = window.yard.checkoutURL({ tier: defaultTier.id, quantity: 3 });
 ```
+
+---
+
+## Buyer state: `window.yard.ownership()`
+
+`window.yard.product` is **product** data — same for every visitor.
+`window.yard.ownership()` is **buyer** data — specific to the visitor:
+are they signed in to yard, and do they own this product? Useful for
+swapping a "Buy" button for "Open in Library", showing the buyer's
+avatar, gating gated content, or branching on which tier they hold.
+
+It returns a `Promise` (memoized — call it as many times as you like):
+
+```js
+const state = await window.yard.ownership();
+// state may be null on a yard.sh-direct page where no bridge is needed,
+// or in browsers that block third-party cookies on a custom merchant
+// domain. Always null-check.
+if (state?.owned) { /* … */ }
+```
+
+Resolved shape:
+
+| Field | Type | Notes |
+|---|---|---|
+| `signed_in` | `boolean` | Is the visitor signed in to yard at all? |
+| `user` | `{ id, username, avatar_url } \| null` | Minimal profile; `null` when signed out. |
+| `owned` | `boolean` | Does this user own this product (any tier, paid or free)? Active trials and active subscriptions count. |
+| `is_trial` | `boolean` | True when the active entitlement is a free trial. |
+| `is_subscription` | `boolean` | True when the active entitlement is a subscription. |
+| `transaction_id` | `string \| null` | The transaction or subscription ID. Useful as an opaque entitlement reference. |
+| `tier_id` | `string \| null` | UUID of the tier they hold. Match against `window.yard.product.tiers[i].id` to know **which** tier. |
+| `tier_name` | `string \| null` | Display name of the held tier (e.g. `"Pro"` or `"Monthly"`). Handy for UI copy. |
+
+### Zero-JS shortcuts: `data-yard-when`
+
+For the most common case ("show this when signed in / owned, hide
+otherwise") you don't need to call the API yourself. Add
+`data-yard-when` to any element:
+
+```html
+<!-- Visible only after the bridge resolves with signed_in: true -->
+<a data-yard-when="signed_in" href="https://yard.sh/library">Open library</a>
+
+<!-- Visible only when the visitor is signed out (default until resolved) -->
+<a data-yard-when="signed_out" href="https://yard.sh/login">Sign in</a>
+
+<!-- Show "Open in Library" once we know they own it -->
+<button data-yard-when="owned" data-yard="tier_name">Open Pro</button>
+
+<!-- Hide the Buy button once we know they own it -->
+<button data-yard-when="not_owned" data-action="checkout">Buy</button>
+```
+
+Recognized values: `signed_in`, `signed_out`, `owned`, `not_owned`.
+Until the bridge resolves, `data-yard-when` elements are hidden by
+default — so a non-owner never briefly sees an "Open in Library" CTA
+on first paint.
+
+### Common patterns
+
+```js
+// Show user avatar in the corner
+const state = await window.yard.ownership();
+if (state?.signed_in) {
+  document.querySelector('#avatar').src = state.user.avatar_url;
+  document.querySelector('#username').textContent = state.user.username;
+}
+
+// Branch by tier
+const state = await window.yard.ownership();
+if (state?.owned) {
+  const proTier = window.yard.product.tiers.find((t) => t.name === 'Pro');
+  if (state.tier_id === proTier?.id) {
+    showProFeatures();
+  } else {
+    showStandardFeatures();
+  }
+}
+
+// Subscription self-service link
+const state = await window.yard.ownership();
+if (state?.is_subscription) {
+  document.querySelector('#manage-sub').href =
+    `https://yard.sh/library/${window.yard.product.slug}/subscription`;
+}
+```
+
+### What state is **not** included (and why)
+
+The bridge intentionally returns the minimum needed to render
+buyer-specific UI. It does **not** expose: the visitor's email,
+their other purchases, their roles, payment-method details, or any
+other yard account data — that information stays on yard.sh.
+
+If you need a deeper integration (e.g. you want to call yard's API
+from your own backend on behalf of the user), use API keys and the
+yard REST API — see [api-reference.md](./api-reference.md). The
+ownership bridge is for read-only UI gating.
+
+### Caveat: third-party cookies on custom domains
+
+In browsers with strict third-party cookie blocking (Safari ITP and
+some privacy modes), the cross-origin lookup from a custom merchant
+domain back to yard.sh may not see the visitor's session even when
+they're signed in. The bridge will resolve with `null` or
+`signed_in: false` in that case — your UI should fall back gracefully
+(default to the "Buy" CTA instead of "Open in Library"). Pages on
+`<handle>.yard.sh` subdomains aren't affected — they're same-site
+with yard.sh.
 
 ---
 
@@ -234,12 +347,15 @@ A complete one-file landing page for a single-tier product:
     <article data-yard="description_html" data-yard-html></article>
 
     <section class="cta">
-      <button data-action="checkout">Buy now</button>
-      <button data-action="trial" id="trial-btn" hidden>Start free trial</button>
+      <button data-yard-when="not_owned" data-action="checkout">Buy now</button>
+      <button data-yard-when="not_owned" data-action="trial" id="trial-btn" hidden>Start free trial</button>
+      <a data-yard-when="owned" href="https://yard.sh/library">Open in your library</a>
     </section>
 
     <script>
       // Hide the trial button if trials aren't enabled for this product.
+      // (Independent of ownership — `data-yard-when="not_owned"` already
+      // hides it for buyers.)
       if (window.yard.product?.free_trial_enabled) {
         document.querySelector('#trial-btn').hidden = false;
       }
