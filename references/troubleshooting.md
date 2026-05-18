@@ -113,10 +113,10 @@ If the installer or `yard update` can't write to the binary location:
 **Linux/macOS:**
 ```sh
 # Option 1: Install to a user-writable location
-YARD_INSTALL_DIR=~/.local/bin curl -fsSL install.yard.sh | sh
+YARD_INSTALL_DIR=~/.local/bin curl -fsSL cli.yard.sh | sh
 
 # Option 2: Use sudo for /usr/local/bin
-sudo curl -fsSL install.yard.sh | sh
+sudo curl -fsSL cli.yard.sh | sh
 ```
 
 **Windows:** Run PowerShell as Administrator, or set `$env:YARD_INSTALL_DIR` to a writable location.

@@ -380,7 +380,7 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 |---|---|
 | `https://yard.sh` | Yard website |
 | `https://api.yard.sh` | API base URL |
-| `https://install.yard.sh` | CLI binary downloads and version checks |
+| `https://cli.yard.sh` | CLI binary downloads and version checks |
 | `https://github.com/apps/yard-app-official/installations/new` | Install the Yard GitHub App |
 
 ## Key Features

@@ -431,7 +431,7 @@ Update the CLI to the latest version.
    - Unix: downloads to temp file, sets 0755 permissions, renames over current binary
    - Windows: renames current binary to `.old`, renames new binary into place, deletes `.old`
 
-**Update URL:** `https://install.yard.sh` (production)
+**Update URL:** `https://cli.yard.sh` (production)
 
 ---
 
