@@ -209,12 +209,12 @@ All three `yard licenses` commands accept `--product <slug>` and fall back to th
 
 **macOS / Linux:**
 ```sh
-curl -fsSL https://api.yard.sh/yard-cli/install.sh | sh
+curl -fsSL https://cli.yard.sh | sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://api.yard.sh/yard-cli/install.ps1 | iex
+irm https://cli.yard.sh/install.ps1 | iex
 ```
 
 - Linux/macOS installs to `/usr/local/bin` (if writable) or `~/.local/bin`
@@ -356,11 +356,13 @@ Example `push --publish --json` output:
   "skipped": [],
   "deleted": [],
   "published": true,
-  "preview_url": "https://api.yard.sh/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
   "live_url": "https://yard.sh/@alice/my-slug",
   "errors": []
 }
 ```
+
+When showing the preview link to the user, use the `preview_url` from the command output verbatim — it is a `https://yard.sh/api/v1/...` link. Never rewrite it to or hand the user an `https://api.yard.sh/...` link: the preview endpoint needs the session cookie, which is host-only on `yard.sh` and is never sent to `api.yard.sh`, so an `api.yard.sh` preview link will fail with 401.
 
 Diff is SHA-256 content-addressed against the server's existing hashes, so repeated pushes with no changes upload nothing.
 

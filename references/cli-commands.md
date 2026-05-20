@@ -483,7 +483,7 @@ Create a `.yard/` project directory linked to a product. If the product already 
   "source": "draft",
   "written": ["index.html", "styles.css"],
   "skipped": [],
-  "preview_url": "https://api.yard.sh/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
   "live_url": null
 }
 ```
@@ -562,7 +562,7 @@ Hash-diff the local landing-page directory against the remote draft and upload c
   "deleted": [],
   "remote_only": [],
   "published": false,
-  "preview_url": "https://api.yard.sh/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
   "live_url": null,
   "errors": []
 }
@@ -614,7 +614,7 @@ Promote the current draft bundle to live.
 {
   "product": "my-slug",
   "published": true,
-  "preview_url": "https://api.yard.sh/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
   "live_url": "https://yard.sh/@alice/my-slug"
 }
 ```
@@ -637,7 +637,7 @@ Discard the current draft and restore it from the published bundle.
 {
   "product": "my-slug",
   "reverted": true,
-  "preview_url": "https://api.yard.sh/v1/products/.../custom-page/preview"
+  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview"
 }
 ```
 
