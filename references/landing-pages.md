@@ -33,8 +33,7 @@ The object matches the same shape returned by `GET /v1/products/{slug}/public`. 
 | `category` | `string?` | Optional category label |
 | `faq` | `{ question, answer }[]` | Seller-defined FAQ entries |
 | `metadata` | `{ key, value }[]` | Seller-defined free-form metadata pairs |
-| `free_trial_enabled` | `boolean` | Whether free trials are offered |
-| `free_trial_days` | `number?` | Trial length in days, if enabled |
+| `trial_requires_card` | `boolean` | When true, subscription-tier trials collect a card via checkout |
 | `gift_enabled` | `boolean` | Whether gift purchases are allowed |
 | `license_key_enabled` | `boolean` | Whether license keys are issued |
 | `latest_release` | `PublicReleaseInfo?` | Most recent published release (tag, name, notes, date) |
@@ -57,9 +56,16 @@ Each entry in `tiers` exposes:
   "pricing_model": "one_time",   // "one_time" | "subscription"
   "yearly_discount_percent": null,
   "features": ["…", "…"],
+  "free_trial_enabled": false,   // free trials are configured PER TIER, not per product
+  "free_trial_days": null,       // trial length in days, when free_trial_enabled
   "volume_brackets": []          // per_seat tiers may define quantity discounts
 }
 ```
+
+> **Free trials are per-tier.** There is no product-level trial flag — a product
+> "offers a trial" when at least one of its `tiers` has `free_trial_enabled: true`
+> and `free_trial_days > 0`. Gate your trial CTA on a tier, not on the product (see
+> the [worked example](#worked-example)), and pass that tier's `id` to the trial button.
 
 > **Heads-up:** `window.yard.product` reflects the **saved** product state. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits to product fields — save first, then refresh the preview.
 
@@ -112,8 +118,11 @@ Add `data-action="checkout"` (or `"trial"`) to any clickable element and Yard ha
   Buy 5 seats as a gift
 </button>
 
-<!-- Free trial -->
+<!-- Free trial (default / first trial-enabled tier) -->
 <button data-action="trial">Start free trial</button>
+
+<!-- Free trial for a specific tier -->
+<button data-action="trial" data-tier-id="…uuid…">Start Pro trial</button>
 ```
 
 Recognised attributes on `data-action="checkout"` elements:
@@ -124,6 +133,16 @@ Recognised attributes on `data-action="checkout"` elements:
 | `data-interval` | `monthly` or `yearly` (subscription tiers only). |
 | `data-quantity` | Seat count for `fixed_pack` / `per_seat` tiers. |
 | `data-gift` | Presence of the attribute opens the gift-purchase flow. |
+
+`data-action="trial"` accepts one attribute:
+
+| Attribute | Meaning |
+|---|---|
+| `data-tier-id` (or `data-tier`) | Tier UUID to trial. Since trials are per-tier, set this to the id of a tier whose `free_trial_enabled` is true. Omit it to let yard use the default tier (or the first trial-enabled tier if the default has no trial). |
+
+A trial click redirects to yard's hosted trial flow (`/trial/<handle>/<slug>`): a signed-in
+visitor's trial starts immediately, while a signed-out visitor gets an email-confirmation step.
+Only show the trial button when a tier actually offers a trial — see the worked example.
 
 Clicks on `data-action` elements have their default behaviour prevented automatically — there's no need for the surrounding `<a>` to point anywhere.
 
@@ -139,10 +158,10 @@ window.yard = {
   checkoutBase,            // string, e.g. "https://yard.sh"
 
   checkout(opts),          // top-level redirect to checkout
-  trial(),                 // top-level redirect to the trial flow
+  trial(opts),             // top-level redirect to the trial flow
 
   checkoutURL(opts),       // build the checkout URL without redirecting
-  trialURL(),              // build the trial URL without redirecting
+  trialURL(opts),          // build the trial URL without redirecting
 
   ownership(),             // Promise<OwnershipState | null> — buyer state
                            // (signed-in, owned, tier). See "Buyer state" below.
@@ -162,6 +181,15 @@ window.yard = {
 }
 ```
 
+`opts` for `trial` / `trialURL`:
+
+```ts
+{
+  tier?: string,        // UUID of a trial-enabled tier (or pass tierId).
+                        // Omit to use the default / first trial-enabled tier.
+}
+```
+
 Examples:
 
 ```js
@@ -173,9 +201,14 @@ for (const tier of window.yard.product.tiers) {
   document.querySelector('#tiers').append(btn);
 }
 
-// Conditionally show a "Start free trial" CTA
-if (window.yard.product.free_trial_enabled) {
-  document.querySelector('#trial-cta').hidden = false;
+// Conditionally show a "Start free trial" CTA — trials are per-tier
+const trialTier = window.yard.product.tiers.find(
+  (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
+);
+if (trialTier) {
+  const cta = document.querySelector('#trial-cta');
+  cta.dataset.tierId = trialTier.id; // so data-action="trial" trials the right tier
+  cta.hidden = false;
 }
 
 // Build a shareable checkout URL (e.g. for a copy-to-clipboard button)
@@ -353,11 +386,16 @@ A complete one-file landing page for a single-tier product:
     </section>
 
     <script>
-      // Hide the trial button if trials aren't enabled for this product.
-      // (Independent of ownership — `data-yard-when="not_owned"` already
-      // hides it for buyers.)
-      if (window.yard.product?.free_trial_enabled) {
-        document.querySelector('#trial-btn').hidden = false;
+      // Trials are per-tier: reveal the button only when some tier offers one,
+      // and point it at that tier. (Independent of ownership — the
+      // `data-yard-when="not_owned"` already hides it for buyers.)
+      const trialTier = window.yard.product?.tiers.find(
+        (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
+      );
+      if (trialTier) {
+        const btn = document.querySelector('#trial-btn');
+        btn.dataset.tierId = trialTier.id;
+        btn.hidden = false;
       }
     </script>
   </body>
