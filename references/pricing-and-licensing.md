@@ -134,15 +134,19 @@ Coupons are a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
 
 ## Free Trials
 
-Free trials are a **Pro-only** feature (check with `yard me --json` → `.is_pro`). Configure via `yard init --spec` (at creation) or `yard products edit` (later).
+Free trials are a **Pro-only** feature (check with `yard me --json` → `.is_pro`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
 
-Products can offer free trials:
+Tier-level trial fields:
 
-- `free_trial_enabled` — Toggle on the product
-- `free_trial_days` — Duration (1-365 days; defaults to 7 if enabled without an explicit value)
+- `free_trial_enabled` (boolean) — Toggle on a specific tier
+- `free_trial_days` (1-365) — Duration in days; required when `free_trial_enabled` is true
 - Creates a purchase with `is_trial = true` and `trial_expires_at` timestamp
-- Buyers can activate trials as guests (no account required)
-- After trial expires, buyer must purchase to continue access
+- Buyers can activate trials as guests (no account required) for one-time tiers; subscription tiers may also require a card up-front via the product-level `trial_requires_card` setting
+- After trial expires, buyer must purchase the tier to continue access
+
+There is no product-level trial toggle anymore — putting `free_trial_enabled` outside a tier in a spec is rejected with `unknown field`. The product *does* carry one trial-related setting:
+
+- `trial_requires_card` (product-level) — When true, subscription-tier trials route through Stripe Checkout so the buyer enters a payment method up-front. False (the default) lets subscription-tier trials start without a card and convert silently when the trial ends. Has no effect on one-time tiers. Toggle via `yard products edit --spec -` or the interactive prompt.
 
 ---
 

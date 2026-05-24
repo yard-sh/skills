@@ -151,6 +151,24 @@ Total: 2 product(s)
 - Requires login; prompts to run `yard login` if not authenticated
 - `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). **Tiers are not included** — free trials are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].free_trial_days`.
 
+**Discovering a product's slug.** The default table shows the *display name* (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
+
+```sh
+# All slugs the current account owns
+yard products --json | jq -r '.[].slug'
+
+# Slug + title, tab-separated (handy when titles aren't unique)
+yard products --json | jq -r '.[] | "\(.slug)\t\(.title)"'
+
+# Find a slug by partial title match (case-insensitive)
+yard products --json | jq -r '.[] | select(.title | ascii_downcase | contains("simple")) | .slug'
+
+# Slug for the project you're sitting in (set by `yard init` / `yard page init`)
+jq -r .product_slug .yard/settings.json
+```
+
+If you only have the UUID, `yard products show <uuid> --json | jq -r .slug` resolves it. Slugs and UUIDs are interchangeable everywhere `<slug-or-id>` is accepted.
+
 ### yard products show <slug-or-id>
 
 Prints one product's full detail — the same shape the seller dashboard fetches via `GET /v1/products/{id}`, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets`, and per-tier `free_trial_enabled` / `free_trial_days`.
@@ -194,11 +212,11 @@ Modify the Pro-only seller settings on an existing product: license keys, device
     "license_key_enabled": true,
     "activations_enabled": true,
     "max_activations": 5,
-    "free_trial_enabled": true,
-    "free_trial_days": 14
+    "trial_requires_card": true
   }
   ```
-  Unknown fields are rejected. Missing fields are left untouched (the request is sparse).
+  Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials are per-tier** — they're not a product-level setting; use `yard products tiers edit` (below) instead.
+- A `tiers` array MAY be included to replace the full tier list in one shot — every existing tier with a matching `id` is updated in place, new tiers (no `id`) are inserted, and tiers omitted from the array are deleted (or marked non-default if they have transactions/active subscriptions). Always read the current tiers first (`yard products show <slug> --json | jq '.tiers'`) and mutate before sending back, otherwise you'll accidentally drop tiers.
 - `--json` — emit `{ "product": {...}, "settings": {...} }` on stdout; logs go to stderr.
 - The CLI pre-checks the activations-needs-license-keys rule against the *effective* state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
 - A 403 with `error_code: "pro_required"` is rendered as a clean upgrade message rather than the raw HTTP error.
@@ -208,17 +226,74 @@ Modify the Pro-only seller settings on an existing product: license keys, device
 # Discover what exists.
 yard products --json
 
-# Apply settings to a known product.
+# Apply product-level settings to a known product.
 yard products edit my-awesome-tool --spec - --json <<'EOF'
 {
   "license_key_enabled": true,
   "activations_enabled": true,
   "max_activations": 5,
-  "free_trial_enabled": true,
-  "free_trial_days": 14
+  "trial_requires_card": true
 }
 EOF
+
+# Enable a 14-day free trial on the Base tier (per-tier setting).
+yard products tiers edit my-awesome-tool Base --spec - <<'EOF'
+{ "free_trial_enabled": true, "free_trial_days": 14 }
+EOF
 ```
+
+### yard products tiers
+
+Manage pricing tiers (add, change, remove) without rebuilding the whole tier array yourself. The backend exposes tier mutations only through `PUT /v1/products/{id}` with a full-replace `tiers[]`; these subcommands do the read-modify-write for you so you don't accidentally drop tiers.
+
+For wholesale changes (multiple tiers at once, reorder, etc.) use `yard products edit <slug> --spec -` with the full `tiers[]` array directly.
+
+#### yard products tiers add <product-slug> --spec <file|->
+
+Append a new tier. Spec shape:
+
+```jsonc
+{
+  "name": "Pro",                       // required, must contain a letter/digit
+  "price_cents": 4900,                 // required; 0 (free) or 300..1000000
+  "description": "All the things",     // optional
+  "seat_type": "single",               // single | fixed_pack (Pro) | per_seat (Pro)
+  "seat_count": 5,                     // required when seat_type=fixed_pack
+  "min_seats": 1,                      // per_seat only
+  "max_seats": 25,                     // per_seat only; null = unlimited
+  "features": ["a", "b"],
+  "pricing_model": "one_time",         // one_time | subscription
+  "yearly_discount_percent": 20,       // subscription only; 1..100
+  "free_trial_enabled": true,          // Pro-only when true
+  "free_trial_days": 14,               // 1..365; required when free_trial_enabled
+  "is_default": false                  // when true, the current default is demoted
+}
+```
+
+Adding a second tier requires Pro.
+
+#### yard products tiers edit <product-slug> <tier-id-or-name> --spec <file|->
+
+Apply a partial spec to one tier. Any field present in the spec replaces the current value; absent fields are left untouched. Match by UUID or case-insensitive name (UUID required when two tiers share a name).
+
+```sh
+# Enable a 14-day trial on the Base tier
+echo '{"free_trial_enabled": true, "free_trial_days": 14}' \
+  | yard products tiers edit simple-note Base --spec -
+
+# Drop a tier's price
+echo '{"price_cents": 1500}' \
+  | yard products tiers edit simple-note Base --spec -
+```
+
+#### yard products tiers rm <product-slug> <tier-id-or-name> [--yes] [--promote-default]
+
+Remove a tier. Tiers with paid transactions or active subscriptions cannot be hard-deleted server-side — they are kept but marked non-default so new buyers won't see them. Refuses to remove the only remaining tier.
+
+- `--yes` — skip the confirmation prompt (required in scripts / non-TTY).
+- `--promote-default` — when removing the current default tier, auto-promote the first surviving tier to default. Without this flag, the command refuses to leave the product without a default.
+
+All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 ---
 

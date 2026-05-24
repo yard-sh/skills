@@ -61,7 +61,7 @@ When a user asks to get onboarded to Yard, set up a new product, run `yard init`
         - **Straight to `released`** — for finished products with no soft-launch period. Skip `early_access` entirely.
         - **`early_access` first, then `released` later** — for products the seller wants to ship but signal as still being polished. Optionally pair with `early_access_discount_percent` (1–100) so early adopters get a launch discount that disappears when the product moves to `released`. The discount field is set in the dashboard; `yard init`/`yard products edit` don't surface it today.
    3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.is_pro` before suggesting Pro-only items), and the recommended launch state (and any early-access discount). **If the product is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). Then ask the user to **accept**, **edit**, or **switch to guided mode**.
-   4. On accept: run `yard products --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt), then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
+   4. On accept: run `yard products --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt) — each entry's `.slug` is what the rest of the CLI takes as `<slug-or-id>` or `--product`; see [references/cli-commands.md#yard-products](references/cli-commands.md#yard-products) ("Discovering a product's slug") for the common `jq` recipes. Then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
    5. On edit: adjust the plan and re-confirm before running anything.
 
 Keep the CLI as the single source of truth for product creation — **never** try to create a product via the REST API (see "API vs CLI" above).
@@ -102,18 +102,22 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
       "min_seats": null,              // per_seat; defaults to 1
       "max_seats": null,              // per_seat; optional
       "yearly_discount_percent": null,// subscription only, 1..100
-      "volume_brackets": []           // per_seat only; contiguous, increasing discount
+      "volume_brackets": [],          // per_seat only; contiguous, increasing discount
+      "free_trial_enabled": false,    // Pro-only when true — per-tier flag, not product-level
+      "free_trial_days": null         // 1..365; required when free_trial_enabled is true
     }
   ],
-  // Optional seller settings — all Pro-only when set to true. (check with `yard me --json` → `.is_pro`)
+  // Optional product-level seller settings.
+  // License keys + activations are Pro-only when set to true (check with `yard me --json` → `.is_pro`).
   // Applied via a follow-up PUT /v1/products/{id} after creation.
   "license_key_enabled": false,    // Pro-only when true
   "activations_enabled": false,    // Pro-only when true; requires license_key_enabled=true
   "max_activations": null,         // 1..10000; only meaningful when activations_enabled
-  "free_trial_enabled": false,     // Pro-only when true
-  "free_trial_days": null          // 1..365; defaults to 7 if trial enabled without value
+  "trial_requires_card": false     // when true, subscription-tier trials collect a card via checkout
 }
 ```
+
+> **Heads up — per-tier trials.** `free_trial_enabled` / `free_trial_days` live on each tier, not on the product. A product "offers a trial" when at least one of its tiers has them set. To enable a trial on an existing product later, use `yard products tiers edit <slug> <tier-id-or-name> --spec -` (see [references/cli-commands.md](references/cli-commands.md#yard-products-tiers)). Putting `free_trial_enabled` at the product level in a spec will be rejected with `unknown field`.
 
 #### Typical agent flow
 
@@ -157,7 +161,7 @@ yard init --product simple-note --json
 - **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`, no license/activation/trial settings) or ask the user to upgrade at https://yard.sh/upgrade.
 - **License/activation/trial settings rejected with 403 (`pro_required`).** Same root cause: free account. Drop those fields from the spec or upgrade.
 - **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
-- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body (the same five settings fields above).
+- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). For tier mutations — including **enabling a free trial on a specific tier**, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` fields no longer exist; they were moved per-tier.
 
 ### Desktop / CLI app integration scope
 
@@ -262,6 +266,10 @@ The interactive flow:
 | `yard init` | Set up a Yard project in the current directory — create or select a product, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--product <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use. |
 | `yard products [--json]` | List your published products with stats |
 | `yard products show <slug-or-id> [--json]` | Print one product's full detail, including `tiers[]` with per-tier `free_trial_enabled` / `free_trial_days`. Use this (not `yard products`) when you need to check whether a tier offers a trial. This command is used to retrieve any sort of metadata about a product |
+| `yard products edit [slug-or-id] [--spec <file\|->] [--json]` | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`) and optionally the full `tiers[]` array (full-replace). Pro-only for license/activation flags. |
+| `yard products tiers add <slug> --spec <file\|->` | Append one tier without rebuilding the full tier list. |
+| `yard products tiers edit <slug> <tier-id-or-name> --spec <file\|->` | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`). |
+| `yard products tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default. |
 | `yard releases publish [tag] [flags]` | Create a new release with optional file assets. Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md). |
 | `yard keys list [--json]` | List your API keys (name, prefix, scopes, last-used, created). The full secret is never shown. |
 | `yard keys create [name] [flags]` | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation. |
@@ -362,8 +370,6 @@ Example `push --publish --json` output:
   "errors": []
 }
 ```
-
-When showing the preview link to the user, use the `preview_url` from the command output verbatim — it is a `https://yard.sh/api/v1/...` link. Never rewrite it to or hand the user an `https://api.yard.sh/...` link: the preview endpoint needs the session cookie, which is host-only on `yard.sh` and is never sent to `api.yard.sh`, so an `api.yard.sh` preview link will fail with 401.
 
 Diff is SHA-256 content-addressed against the server's existing hashes, so repeated pushes with no changes upload nothing.
 
