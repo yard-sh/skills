@@ -56,7 +56,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/products/{slug}/metadata` | `products:read` | Read product metadata (title, state, tiers, pricing) |
+| `GET` | `/v1/products/{username}/{slug}/metadata` | `products:read` | Read product metadata (title, state, tiers, pricing) |
 
 ### Licenses
 
@@ -80,9 +80,9 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | Method | Path | Scope | Description |
 |---|---|---|---|
 | `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
-| `GET` | `/v1/products/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a product |
-| `POST` | `/v1/products/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
-| `POST` | `/v1/products/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
+| `GET` | `/v1/products/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a product |
+| `POST` | `/v1/products/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
+| `POST` | `/v1/products/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
 
 ---
 
@@ -105,7 +105,7 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/ready` | Readiness check |
 | `GET` | `/version` | API version info |
 | `GET` | `/v1/products/public` | List all public products |
-| `GET` | `/v1/products/{slug}/public` | Get a public product |
+| `GET` | `/v1/products/{username}/{slug}/public` | Get a public product (scoped under the seller's handle — this is the shape `window.yard.product` exposes) |
 | `GET` | `/v1/authors/{username}` | Get author profile and products |
 | `GET` | `/v1/search?q={query}` | Search products |
 | `POST` | `/v1/coupons/validate` | Validate a coupon code |

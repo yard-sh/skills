@@ -149,7 +149,27 @@ Total: 2 product(s)
 - `✓` = public visibility, `✗` = not public
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
-- `--json` emits the underlying `ProductListItem` array (now including `license_key_enabled`, `activations_enabled`, `max_activations`, `free_trial_enabled`, `free_trial_days`).
+- `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). **Tiers are not included** — free trials are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].free_trial_days`.
+
+### yard products show <slug-or-id>
+
+Prints one product's full detail — the same shape the seller dashboard fetches via `GET /v1/products/{id}`, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets`, and per-tier `free_trial_enabled` / `free_trial_days`.
+
+**Usage:**
+```sh
+yard products show my-awesome-tool             # human-readable summary
+yard products show my-awesome-tool --json      # full ProductDetailResponse on stdout
+```
+
+**Typical agent flow** — gating a landing-page trial CTA on whether *any* tier offers a trial:
+
+```sh
+yard products show my-awesome-tool --json | jq '.tiers[] | select(.free_trial_enabled) | {id, name, free_trial_days}'
+```
+
+If the output is empty, no tier offers a trial — the trial button on the landing page should stay hidden.
+
+**Resolution:** same as `yard products edit` — accepts either a slug or a UUID; resolves slugs through the seller's product list.
 
 ### yard products edit [slug-or-id]
 

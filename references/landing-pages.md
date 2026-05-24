@@ -14,7 +14,7 @@ When a custom landing page is rendered, Yard makes the product's data available 
 window.yard.product   // the product (or null if data couldn't be loaded)
 ```
 
-The object matches the same shape returned by `GET /v1/products/{slug}/public`. The most useful fields:
+The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -66,6 +66,8 @@ Each entry in `tiers` exposes:
 > "offers a trial" when at least one of its `tiers` has `free_trial_enabled: true`
 > and `free_trial_days > 0`. Gate your trial CTA on a tier, not on the product (see
 > the [worked example](#worked-example)), and pass that tier's `id` to the trial button.
+> To inspect this from the CLI before wiring the page, run `yard products show <slug> --json`
+> and read `.tiers[]` — `yard products --json` only returns product-level fields.
 
 > **Heads-up:** `window.yard.product` reflects the **saved** product state. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits to product fields — save first, then refresh the preview.
 
@@ -143,6 +145,8 @@ Recognised attributes on `data-action="checkout"` elements:
 A trial click redirects to yard's hosted trial flow (`/trial/<handle>/<slug>`): a signed-in
 visitor's trial starts immediately, while a signed-out visitor gets an email-confirmation step.
 Only show the trial button when a tier actually offers a trial — see the worked example.
+
+**Hooking up an existing scaffold:** if your HTML already has `data-action="trial"` (or `"checkout"`) on a button, the click is already wired by `embed.js` — there is no JS handler to attach. The only work left is **visibility**: hide the trial button when no tier has `free_trial_enabled: true`, and (when revealing it) set `data-tier-id` to the trial-enabled tier's id so the redirect targets the right tier.
 
 Clicks on `data-action` elements have their default behaviour prevented automatically — there's no need for the surrounding `<a>` to point anywhere.
 
