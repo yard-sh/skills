@@ -159,7 +159,7 @@ yard init --product simple-note --json
 
 - **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new product) or `--product <slug>` (for an existing one).
 - **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
-- **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`, no license/activation/trial settings) or ask the user to upgrade at https://yard.sh/upgrade.
+- **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`, no license/activation/trial settings) or ask the user to upgrade at https://yard.sh/pricing.
 - **License/activation/trial settings rejected with 403 (`pro_required`).** Same root cause: free account. Drop those fields from the spec or upgrade.
 - **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
 - **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). For tier mutations — including **enabling a free trial on a specific tier**, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` fields no longer exist; they were moved per-tier.

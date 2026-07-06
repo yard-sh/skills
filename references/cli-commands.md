@@ -84,7 +84,7 @@ The `GitHub` and `Email` lines are omitted when not set.
 
 `username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `is_pro` is the authoritative subscription check — it reflects the `pro` role on `GET /v1/me`, which the platform automatically grants/revokes when the user's subscription tier changes.
 
-**Agent usage:** before suggesting any Pro-only feature (license keys, device activations, free trials, multiple pricing tiers, seat-based pricing, coupons, gift purchases, custom landing pages), run `yard me --json` and read `.is_pro`. If false, either pick a free-tier-compatible alternative or surface the upgrade link `https://yard.sh/upgrade`.
+**Agent usage:** before suggesting any Pro-only feature (license keys, device activations, free trials, multiple pricing tiers, seat-based pricing, coupons, gift purchases, custom landing pages), run `yard me --json` and read `.is_pro`. If false, either pick a free-tier-compatible alternative or surface the upgrade link `https://yard.sh/pricing`.
 
 ---
 
@@ -117,14 +117,14 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
    - Runs the same source-pick logic as `yard page init` (draft → published → starter) and pulls or scaffolds accordingly.
-   - Calls `POST /v1/products/{id}/custom-page/publish`. On a Pro-required 403, prints the `https://yard.sh/upgrade` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
+   - Calls `POST /v1/products/{id}/custom-page/publish`. On a Pro-required 403, prints the `https://yard.sh/pricing` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
 
 8. **Optional product-settings prompts (Pro only — check with `yard me --json` → `.is_pro`)** — After landing-page setup, the wizard asks Pro accounts (in order):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
    - "Enable a free trial? [y/N]" → on yes, "Free trial days (1-365) [7]:".
 
-   Changes are applied via `PUT /v1/products/{id}` — server-side enforcement of the Pro requirement remains authoritative. Free accounts see a single block describing these as Pro features with the `https://yard.sh/upgrade` link, and the wizard skips the prompts. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema).
+   Changes are applied via `PUT /v1/products/{id}` — server-side enforcement of the Pro requirement remains authoritative. Free accounts see a single block describing these as Pro features with the `https://yard.sh/pricing` link, and the wizard skips the prompts. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema).
 
 9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
@@ -203,7 +203,7 @@ Modify the Pro-only seller settings on an existing product: license keys, device
 2. Same prompt sequence as `yard init`'s settings step. Each prompt's default reflects the *current* value, so pressing Enter is always a no-op.
 3. Calls `PUT /v1/products/{id}` with only the fields that changed.
 
-**Free-account behavior:** prints the upgrade message and the `https://yard.sh/upgrade` link, then exits cleanly (exit 0 in interactive mode, exit 1 with `pro_required` in `--spec` mode).
+**Free-account behavior:** prints the upgrade message and the `https://yard.sh/pricing` link, then exits cleanly (exit 0 in interactive mode, exit 1 with `pro_required` in `--spec` mode).
 
 **Spec mode:**
 - `--spec <file|->` — read JSON from a file or stdin. The JSON shape is `UpdateProductRequest`:
