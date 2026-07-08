@@ -47,18 +47,18 @@ When a user asks to get onboarded to Yard, set up a new product, run `yard init`
 1. **Guided (step by step).** The user drives; you explain each step and wait for their input. Start by asking which directory to run `yard init` in, then walk through `yard login` (if needed) and the `yard init` prompts one at a time, pausing for confirmation between commands.
 2. **Autopilot (the agent handles it).** You drive the CLI on the user's behalf. In this mode:
    1. Ask the user for a **brief description of the product** (what it is, who it's for, and — if they already have one in mind — a rough price point).
-   2. Based on the description, formulate a **pricing recommendation** using the options the CLI actually supports, and note which pieces require **Yard Pro** (check with `yard me --json` → `.is_pro`):
+   2. Based on the description, formulate a **pricing recommendation** using the options the CLI actually supports, and note which pieces require **Yard Pro** (check with `yard me --json` → `.permissions`):
       - **One-time purchase, single tier** — simple products, one price, lifetime access. Works on the free plan.
       - **Subscription, single tier** — recurring billing (monthly, with optional yearly discount). Works on the free plan.
-      - **Multiple pricing tiers** (up to 5 — e.g., Starter / Pro / Team) — **requires Yard Pro** (check with `yard me --json` → `.is_pro`). Good when the product has clearly differentiated feature sets.
-      - **Seat-based pricing** (`fixed_pack` packs like "Team 5-Pack", or `per_seat` with min/max and volume discounts) — **requires Yard Pro** (check with `yard me --json` → `.is_pro`). Good for B2B / team software.
-      - **"Enterprise" / contact-sales** — Yard has no first-class enterprise tier; model it as a high-priced `per_seat` tier (Pro) or a separate high-end tier in a multi-tier product (Pro), and let the seller handle custom contracts off-platform (check with `yard me --json` → `.is_pro`).
-      - Also flag, where relevant, that **coupons, gift purchases, custom landing pages, license keys, device activations, and free trials are Pro-only** (check with `yard me --json` → `.is_pro`).
-      - If license-key features are appropriate for the product (anything users install locally and where the seller needs to validate ownership at runtime), suggest enabling **license keys**, optionally **device activations** with a per-key limit, and/or a **free trial** of N days. These can be set in the same `yard init --spec` payload (Pro only — check with `yard me --json` → `.is_pro`) or configured later via `yard products edit`.
+      - **Multiple pricing tiers** (e.g., Starter / Pro / Team) — the number allowed depends on the plan and is server-enforced via `max_pricing_tiers` (currently Basic: 2, Pro: 10; check `yard me --json` → `.permissions.max_pricing_tiers`). Good when the product has clearly differentiated feature sets.
+      - **Seat-based pricing** (`fixed_pack` packs like "Team 5-Pack", or `per_seat` with min/max and volume discounts) — **requires Yard Pro** (check with `yard me --json` → `.permissions`). Good for B2B / team software.
+      - **"Enterprise" / contact-sales** — Yard has no first-class enterprise tier; model it as a high-priced `per_seat` tier (Pro) or a separate high-end tier in a multi-tier product (Pro), and let the seller handle custom contracts off-platform (check with `yard me --json` → `.permissions`).
+      - Also flag, where relevant, that **coupons, gift purchases, custom landing pages, license keys, device activations, and free trials are Pro-only** (check with `yard me --json` → `.permissions`).
+      - If license-key features are appropriate for the product (anything users install locally and where the seller needs to validate ownership at runtime), suggest enabling **license keys**, optionally **device activations** with a per-key limit, and/or a **free trial** of N days. These can be set in the same `yard init --spec` payload (Pro only — check with `yard me --json` → `.permissions`) or configured later via `yard products edit`.
       - Recommend a **launch state**. Every new product is created in `draft` (not visible to buyers). After setup, the seller advances state from the Yard dashboard — state transitions are **forward-only** (`draft` → `early_access` → `released`) and `released` is final. Two reasonable launch paths:
         - **Straight to `released`** — for finished products with no soft-launch period. Skip `early_access` entirely.
         - **`early_access` first, then `released` later** — for products the seller wants to ship but signal as still being polished. Optionally pair with `early_access_discount_percent` (1–100) so early adopters get a launch discount that disappears when the product moves to `released`. The discount field is set in the dashboard; `yard init`/`yard products edit` don't surface it today.
-   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.is_pro` before suggesting Pro-only items), and the recommended launch state (and any early-access discount). **If the product is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). Then ask the user to **accept**, **edit**, or **switch to guided mode**.
+   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.permissions` before suggesting Pro-only items), and the recommended launch state (and any early-access discount). **If the product is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). Then ask the user to **accept**, **edit**, or **switch to guided mode**.
    4. On accept: run `yard products --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt) — each entry's `.slug` is what the rest of the CLI takes as `<slug-or-id>` or `--product`; see [references/cli-commands.md#yard-products](references/cli-commands.md#yard-products) ("Discovering a product's slug") for the common `jq` recipes. Then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
    5. On edit: adjust the plan and re-confirm before running anything.
 
@@ -91,26 +91,27 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
   "title": "My Product", // required, 1–60 chars, must contain a letter/digit
   "pricing_model": "one_time", // "one_time" | "subscription"
   "tiers": [
-    // 1..10 tiers; multiple tiers require Pro
+    // one or more tiers; how many depends on the plan (server-enforced via max_pricing_tiers — Basic: 2, Pro: 10)
     {
       "name": "Base", // required; for single-tier just use "Base"
       "price_cents": 1900, // 0 for free, else 300..1000000
       "is_default": true, // exactly one tier must be the default
-      "seat_type": "single", // "single" | "fixed_pack" (Pro) | "per_seat" (Pro)
+      "seat_type": "single", // "single" | "fixed_pack" | "per_seat" (seat-based needs seat_based_pricing; server-enforced)
       "seat_count": null, // required for fixed_pack (2..1000)
       "min_seats": null, // per_seat; defaults to 1
       "max_seats": null, // per_seat; optional
       "yearly_discount_percent": null, // subscription only, 1..100
       "volume_brackets": [], // per_seat only; contiguous, increasing discount
-      "free_trial_enabled": false, // Pro-only when true — per-tier flag, not product-level
+      "free_trial_enabled": false, // needs free_trials permission when true — per-tier flag, not product-level
       "free_trial_days": null, // 1..365; required when free_trial_enabled is true
     },
   ],
   // Optional product-level seller settings.
-  // License keys + activations are Pro-only when set to true (check with `yard me --json` → `.is_pro`).
+  // license keys + activations depend on the plan (server-enforced); the CLI sends the
+  // request either way and the server returns upgrade_required if not included.
   // Applied via a follow-up PUT /v1/products/{id} after creation.
-  "license_key_enabled": false, // Pro-only when true
-  "activations_enabled": false, // Pro-only when true; requires license_key_enabled=true
+  "license_key_enabled": false, // needs license_keys permission when true
+  "activations_enabled": false, // needs device_activations permission when true; requires license_key_enabled=true
   "max_activations": null, // 1..10000; only meaningful when activations_enabled
   "trial_requires_card": false, // when true, subscription-tier trials collect a card via checkout
 }
@@ -159,8 +160,7 @@ yard init --product simple-note --json
 
 - **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new product) or `--product <slug>` (for an existing one).
 - **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
-- **Pro-gated feature error.** The user's account isn't on Pro. Either pick a spec shape that works on the free plan (single-tier, `seat_type=single`, no license/activation/trial settings) or ask the user to upgrade at https://yard.sh/pricing.
-- **License/activation/trial settings rejected with 403 (`pro_required`).** Same root cause: free account. Drop those fields from the spec or upgrade.
+- **`upgrade_required` error (403).** The account's plan doesn't include the feature you used (an extra tier, seat-based pricing, license keys, device activations, a free trial, custom pages, coupons, …). The CLI doesn't gate this client-side — the server decides. Either send a spec the plan supports, or ask the user to upgrade at https://yard.sh/pricing. To see what the plan includes, read `yard me --json` → `.permissions`.
 - **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
 - **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). For tier mutations — including **enabling a free trial on a specific tier**, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` fields no longer exist; they were moved per-tier.
 
@@ -175,7 +175,7 @@ If the product is **locally-installed software** — a desktop app, CLI tool, na
 
    Tell the user this needs to be wired into their app's auto-updater. See [references/releases-and-updates.md](references/releases-and-updates.md) — _Downloading releases_.
 
-Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.is_pro` before suggesting any of those).
+Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.permissions` before suggesting any of those).
 
 For SaaS, web apps, content products, or anything the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient.
 
@@ -256,7 +256,7 @@ The interactive flow:
 3. **Best-effort** git context: if inside a git repo with a GitHub remote, prompts to install the Yard GitHub App and verifies the repo. Any step failing here is non-fatal — the product will simply be created without a linked repo.
 4. Lets you select an existing product or create a new one (prompts for title + price on create)
 5. Writes `.yard/settings.json` in the current directory
-6. Offers to scaffold a custom landing page. If accepted, pulls or scaffolds starter files into `.yard/landing-page/` and attempts to publish. Non-Pro accounts see a friendly upgrade link and keep the saved draft.
+6. Offers to scaffold a custom landing page. If accepted, pulls or scaffolds starter files into `.yard/landing-page/` and attempts to publish. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI shows a friendly upgrade link and keeps the saved draft.
 
 **No git repo required.** `yard init` works inside any directory — it will just create the product without a GitHub link. Only GitHub repositories are supported for linking.
 
@@ -266,11 +266,11 @@ The interactive flow:
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `yard login`                                                                  | Authenticate via GitHub OAuth                                                                                                                                                                                                                                           |
 | `yard logout`                                                                 | Clear local credentials (`~/.yard/config.json`)                                                                                                                                                                                                                         |
-| `yard me [--json]`                                                            | Show the current user (id, username, GitHub, email) and subscription level. Use `--json` and read `is_pro` to gate Pro-only suggestions.                                                                                                                                |
+| `yard me [--json]`                                                            | Show the current user (id, username, GitHub, email), plan, and the `permissions` map. Read `--json` → `.permissions` to see what the account can do; feature limits are server-enforced, so you can also just attempt an action and handle `upgrade_required`.          |
 | `yard init`                                                                   | Set up a Yard project in the current directory — create or select a product, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--product <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use.   |
 | `yard products [--json]`                                                      | List your published products with stats                                                                                                                                                                                                                                 |
 | `yard products show <slug-or-id> [--json]`                                    | Print one product's full detail, including `tiers[]` with per-tier `free_trial_enabled` / `free_trial_days`. Use this (not `yard products`) when you need to check whether a tier offers a trial. This command is used to retrieve any sort of metadata about a product |
-| `yard products edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`) and optionally the full `tiers[]` array (full-replace). Pro-only for license/activation flags.                                            |
+| `yard products edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`) and optionally the full `tiers[]` array (full-replace). No client-side plan gate — the server returns `upgrade_required` if the plan doesn't include a setting.       |
 | `yard products tiers add <slug> --spec <file\|->`                             | Append one tier without rebuilding the full tier list.                                                                                                                                                                                                                  |
 | `yard products tiers edit <slug> <tier-id-or-name> --spec <file\|->`          | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`).                                                                                                                                             |
 | `yard products tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default.                                                                                                                                                                      |
@@ -304,7 +304,7 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 
 ## Custom Landing Pages
 
-Every Yard product has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page (check with `yard me --json` → `.is_pro`). The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
+Every Yard product has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page (check with `yard me --json` → `.permissions`). The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
 
 For everything an agent needs to **author** the page itself — how to read product data at runtime (`window.yard.product`), the `data-yard` / `data-action` attribute conventions, the `window.yard.checkout(...)` / `trial()` helpers, and the full `PublicProduct` field reference — see [references/landing-pages.md](references/landing-pages.md). The remainder of this section covers the **management** flow (scaffolding, pushing, publishing).
 
@@ -400,7 +400,7 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 
 ## Key Features
 
-- **Pricing tiers** — Up to 5 tiers per product (Pro), with single, fixed-pack, or per-seat licensing
+- **Pricing tiers** — Multiple tiers per product (how many depends on the plan; Basic: 2, Pro: 10), with single, fixed-pack, or per-seat licensing
 - **Volume discounts** — Percentage discounts at quantity thresholds for per-seat tiers
 - **Product states** — Draft → Early Access → Released, forward-only (Early Access supports a launch discount; Released is final)
 - **Free trials** — Configurable trial periods (1-365 days)

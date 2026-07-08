@@ -14,6 +14,7 @@
 Authenticate with your GitHub account.
 
 **Flow:**
+
 1. Binds a local HTTP server on **port 9876** (fails immediately if port is in use)
 2. Builds the login URL:
    - Standard: `{apiURL}/v1/auth/login?cli=true`
@@ -55,13 +56,14 @@ Clear stored credentials.
 
 ## yard me
 
-Print the currently logged-in user and their subscription level. Useful for agents that need to gate Pro-only feature suggestions before proposing them.
+Print the currently logged-in user, their plan, and the permissions their plan grants. Useful for agents deciding which features to suggest before proposing them.
 
 **Usage:** `yard me [--json]`
 
 **Auth:** required. If not logged in, exits with `not logged in. Run 'yard login' first`.
 
 **Human output:**
+
 ```
 Username:     alice
 GitHub:       alice
@@ -72,19 +74,33 @@ Subscription: Pro
 The `GitHub` and `Email` lines are omitted when not set.
 
 **JSON output (`--json`):**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "username": "alice",
   "github_username": "alice",
   "email": "alice@example.com",
-  "is_pro": true
+  "plan": "Pro",
+  "permissions": {
+    "sell_products": { "granted": true, "value_type": "boolean" },
+    "license_keys": { "granted": true, "value_type": "boolean" },
+    "coupons": { "granted": true, "value_type": "boolean" },
+    "max_pricing_tiers": {
+      "granted": true,
+      "limit": 10,
+      "value_type": "limit"
+    },
+    "max_products": {
+      "granted": true,
+      "unlimited": true,
+      "value_type": "limit"
+    }
+  }
 }
 ```
 
-`username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `is_pro` is the authoritative subscription check — it reflects the `pro` role on `GET /v1/me`, which the platform automatically grants/revokes when the user's subscription tier changes.
-
-**Agent usage:** before suggesting any Pro-only feature (license keys, device activations, free trials, multiple pricing tiers, seat-based pricing, coupons, gift purchases, custom landing pages), run `yard me --json` and read `.is_pro`. If false, either pick a free-tier-compatible alternative or surface the upgrade link `https://yard.sh/pricing`.
+`username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `plan` is a human label (`Free` / `Basic` / `Pro`) for display only. **`permissions` is the source of truth** for what the account can do: each entry is a merged grant — booleans carry `granted`; limits also carry `limit` (a number) or `unlimited: true`. Feature gating is entirely permission-based, so a feature isn't tied to a plan _name_ — a custom role could grant any subset. (The old `is_pro` field was removed; use `permissions` or `plan`.)
 
 ---
 
@@ -111,20 +127,21 @@ Set up a Yard project in the current directory. Interactive flow that links the 
    - Title prompt (max 60 chars). Defaults to repo name if a git repo was detected.
    - Price prompt in dollars. Minimum $3.00, or $0 for free.
    - `POST /v1/products`. If git context was fully collected and the repo isn't already listed, the request includes `github_repo_id` + `github_repo_name`; otherwise those fields are omitted (the backend accepts products with no linked repo).
+   - The wizard never blocks a choice by plan. If the assembled product uses something the account's plan doesn't include (e.g. multiple tiers or seat-based pricing), the create call returns `upgrade_required`; the CLI shows the generic upgrade link and then prompts _"Once you've upgraded, press Enter to retry"_ — pressing Enter resubmits the **same** request, so the user upgrades in the browser and retries without re-answering the wizard.
 
 6. **Scaffold `.yard/`** — Writes `./.yard/settings.json` via `EnsureYardProject`. Existing settings are preserved.
 
 7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
    - Runs the same source-pick logic as `yard page init` (draft → published → starter) and pulls or scaffolds accordingly.
-   - Calls `POST /v1/products/{id}/custom-page/publish`. On a Pro-required 403, prints the `https://yard.sh/pricing` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
+   - Calls `POST /v1/products/{id}/custom-page/publish`. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
 
-8. **Optional product-settings prompts (Pro only — check with `yard me --json` → `.is_pro`)** — After landing-page setup, the wizard asks Pro accounts (in order):
+8. **Optional product-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
-   - "Enable a free trial? [y/N]" → on yes, "Free trial days (1-365) [7]:".
+   - "Require a card for subscription-tier trials? [y/N]" — toggles `trial_requires_card`.
 
-   Changes are applied via `PUT /v1/products/{id}` — server-side enforcement of the Pro requirement remains authoritative. Free accounts see a single block describing these as Pro features with the `https://yard.sh/pricing` link, and the wizard skips the prompts. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema).
+   Changes are applied via `PUT /v1/products/{id}`. If the account's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials are configured **per tier**, not here — see `yard products tiers`.)
 
 9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
@@ -137,6 +154,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 List all your published products. With no subcommand, shows the same table as before; the `edit` subcommand modifies seller settings.
 
 **Output format:**
+
 ```
 NAME                                PRICE      RELEASES   SALES
 ----------------------------------------------------------------------
@@ -151,7 +169,7 @@ Total: 2 product(s)
 - Requires login; prompts to run `yard login` if not authenticated
 - `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). **Tiers are not included** — free trials are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].free_trial_days`.
 
-**Discovering a product's slug.** The default table shows the *display name* (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
+**Discovering a product's slug.** The default table shows the _display name_ (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
 
 ```sh
 # All slugs the current account owns
@@ -174,12 +192,13 @@ If you only have the UUID, `yard products show <uuid> --json | jq -r .slug` reso
 Prints one product's full detail — the same shape the seller dashboard fetches via `GET /v1/products/{id}`, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets`, and per-tier `free_trial_enabled` / `free_trial_days`.
 
 **Usage:**
+
 ```sh
 yard products show my-awesome-tool             # human-readable summary
 yard products show my-awesome-tool --json      # full ProductDetailResponse on stdout
 ```
 
-**Typical agent flow** — gating a landing-page trial CTA on whether *any* tier offers a trial:
+**Typical agent flow** — gating a landing-page trial CTA on whether _any_ tier offers a trial:
 
 ```sh
 yard products show my-awesome-tool --json | jq '.tiers[] | select(.free_trial_enabled) | {id, name, free_trial_days}'
@@ -191,21 +210,24 @@ If the output is empty, no tier offers a trial — the trial button on the landi
 
 ### yard products edit [slug-or-id]
 
-Modify the Pro-only seller settings on an existing product: license keys, device activations (and the per-key limit), and free trials (and the trial duration).
+Modify seller settings on an existing product: license keys, device activations (and the per-key limit), and `trial_requires_card`. Whether the account's plan includes these is enforced by the server, not the CLI.
 
 **Resolution:**
+
 - Pass a slug or UUID as the first argument to target a specific product.
 - Without an argument, auto-selects when the user has only one product, prompts to pick from a numbered list otherwise.
 - In `--spec` mode with multiple products and no argument, errors out with the list of slugs.
 
-**Interactive flow (Pro accounts):**
+**Interactive flow:**
+
 1. Prints `Editing settings for <title> (<slug>)`.
-2. Same prompt sequence as `yard init`'s settings step. Each prompt's default reflects the *current* value, so pressing Enter is always a no-op.
+2. Same prompt sequence as `yard init`'s settings step (no plan gate — every prompt is shown). Each prompt's default reflects the _current_ value, so pressing Enter is always a no-op.
 3. Calls `PUT /v1/products/{id}` with only the fields that changed.
 
-**Free-account behavior:** prints the upgrade message and the `https://yard.sh/pricing` link, then exits cleanly (exit 0 in interactive mode, exit 1 with `pro_required` in `--spec` mode).
+**When the plan doesn't include a setting:** the CLI still attempts the update; the server returns `upgrade_required` and the CLI prints the server's reason plus the `https://yard.sh/pricing` link. Interactive mode exits 0 (nothing changed); `--spec` mode exits non-zero.
 
 **Spec mode:**
+
 - `--spec <file|->` — read JSON from a file or stdin. The JSON shape is `UpdateProductRequest`:
   ```json
   {
@@ -218,10 +240,11 @@ Modify the Pro-only seller settings on an existing product: license keys, device
   Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials are per-tier** — they're not a product-level setting; use `yard products tiers edit` (below) instead.
 - A `tiers` array MAY be included to replace the full tier list in one shot — every existing tier with a matching `id` is updated in place, new tiers (no `id`) are inserted, and tiers omitted from the array are deleted (or marked non-default if they have transactions/active subscriptions). Always read the current tiers first (`yard products show <slug> --json | jq '.tiers'`) and mutate before sending back, otherwise you'll accidentally drop tiers.
 - `--json` — emit `{ "product": {...}, "settings": {...} }` on stdout; logs go to stderr.
-- The CLI pre-checks the activations-needs-license-keys rule against the *effective* state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
-- A 403 with `error_code: "pro_required"` is rendered as a clean upgrade message rather than the raw HTTP error.
+- The CLI pre-checks the activations-needs-license-keys rule against the _effective_ state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
+- A 403 with `error_code: "upgrade_required"` is rendered as a clean upgrade message rather than the raw HTTP error.
 
 **Typical agent flow:**
+
 ```sh
 # Discover what exists.
 yard products --json
@@ -254,23 +277,23 @@ Append a new tier. Spec shape:
 
 ```jsonc
 {
-  "name": "Pro",                       // required, must contain a letter/digit
-  "price_cents": 4900,                 // required; 0 (free) or 300..1000000
-  "description": "All the things",     // optional
-  "seat_type": "single",               // single | fixed_pack (Pro) | per_seat (Pro)
-  "seat_count": 5,                     // required when seat_type=fixed_pack
-  "min_seats": 1,                      // per_seat only
-  "max_seats": 25,                     // per_seat only; null = unlimited
+  "name": "Pro", // required, must contain a letter/digit
+  "price_cents": 4900, // required; 0 (free) or 300..1000000
+  "description": "All the things", // optional
+  "seat_type": "single", // single | fixed_pack | per_seat (seat-based needs the seat_based_pricing permission; server-enforced)
+  "seat_count": 5, // required when seat_type=fixed_pack
+  "min_seats": 1, // per_seat only
+  "max_seats": 25, // per_seat only; null = unlimited
   "features": ["a", "b"],
-  "pricing_model": "one_time",         // one_time | subscription
-  "yearly_discount_percent": 20,       // subscription only; 1..100
-  "free_trial_enabled": true,          // Pro-only when true
-  "free_trial_days": 14,               // 1..365; required when free_trial_enabled
-  "is_default": false                  // when true, the current default is demoted
+  "pricing_model": "one_time", // one_time | subscription
+  "yearly_discount_percent": 20, // subscription only; 1..100
+  "free_trial_enabled": true, // needs the free_trials permission (server-enforced)
+  "free_trial_days": 14, // 1..365; required when free_trial_enabled
+  "is_default": false, // when true, the current default is demoted
 }
 ```
 
-Adding a second tier requires Pro.
+How many tiers a product may have depends on the account's plan (server-enforced via the `max_pricing_tiers` permission — currently Basic: 2, Pro: 10). The CLI doesn't pre-check; if you exceed the plan's limit the add is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.permissions.max_pricing_tiers`.
 
 #### yard products tiers edit <product-slug> <tier-id-or-name> --spec <file|->
 
@@ -306,6 +329,7 @@ Manage releases for a product. Today the CLI exposes `publish` only — list/edi
 Create a new release with optional file assets. The release is created first, then each file is uploaded one at a time so a single failed asset doesn't lose the release.
 
 **Flags:**
+
 - `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode.
 - `--product <slug-or-uuid>` — target product. Required only if you have multiple products.
 - `--name <string>` — optional human-readable release name.
@@ -316,28 +340,32 @@ Create a new release with optional file assets. The release is created first, th
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
 
 **Spec JSON shape:**
+
 ```jsonc
 {
-  "product":        "my-slug",          // optional if user has only one product
-  "tag_name":       "v1.4.0",           // required
-  "release_name":   "Late April fixes", // optional, ≤255 chars
-  "release_notes":  "## Highlights\n…", // optional, markdown, ≤125,000 chars
-  "files": [                             // optional; absolute or relative paths
+  "product": "my-slug", // optional if user has only one product
+  "tag_name": "v1.4.0", // required
+  "release_name": "Late April fixes", // optional, ≤255 chars
+  "release_notes": "## Highlights\n…", // optional, markdown, ≤125,000 chars
+  "files": [
+    // optional; absolute or relative paths
     "./dist/yard-darwin-arm64.tar.gz",
-    "./dist/yard-linux-amd64.tar.gz"
-  ]
+    "./dist/yard-linux-amd64.tar.gz",
+  ],
 }
 ```
 
 Unknown fields are rejected. Each file path must exist and be a regular file.
 
 **Two-step publish flow:**
+
 1. `POST /v1/products/{id}/releases` (JSON body) creates the release with metadata only.
 2. For each `files[]` entry, `POST /v1/products/{id}/releases/{releaseId}/files` streams the file as `multipart/form-data`.
 3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
 4. Exit code is non-zero if any uploads failed; the release still exists in the dashboard so you can re-upload via the UI.
 
 **`--json` output:**
+
 ```json
 {
   "release":  { "id":"…", "tag_name":"v1.4.0", "files":[...], ... },
@@ -351,6 +379,7 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 ```
 
 **Typical agent flow:**
+
 ```sh
 # Build artifacts, then ship.
 go build -o dist/cli-darwin ./cmd/cli
@@ -379,11 +408,13 @@ Manage API keys for programmatic access. Without a subcommand, runs `keys list`.
 Lists your API keys with the same columns the dashboard shows (name, prefix, scopes, last-used, created). The full secret is never displayed — only the prefix `yard_xxxxxxx`.
 
 **Flags:**
+
 - `--json` — emit the raw `APIKeyListResponse` JSON on stdout. The `key` (full secret) is **never** present here.
 - `--sort <col>` — `created_at` (default), `name`, or `last_used_at`.
 - `--direction <asc|desc>` — sort direction.
 
 **Table output:**
+
 ```
 NAME                     PREFIX             SCOPES                                   LAST USED      CREATED
 --------------------------------------------------------------------------------------------------------------
@@ -398,34 +429,37 @@ Total: 2 / 100 keys
 Mints a new API key. **The full secret is shown only once at creation time.** After that, only the prefix is recoverable.
 
 **Flags:**
+
 - `[name]` positional — key name (e.g. `ci-runner`). Required in `--spec` mode; prompted in interactive mode.
 - `--scopes <csv>` — comma-separated scope list (e.g. `releases:read,releases:download`).
 - `--spec <path|->` — JSON spec.
 - `--json` — emit `APIKeyCreateResponse` (including `key`) on stdout; logs go to stderr.
 
 **Spec JSON shape:**
+
 ```jsonc
 {
-  "name":   "ci-runner",
-  "scopes": ["releases:read", "releases:download"]
+  "name": "ci-runner",
+  "scopes": ["releases:read", "releases:download"],
 }
 ```
 
 **Available scopes:**
 
-| Scope | Description |
-|---|---|
-| `products:read` | Read product metadata |
-| `releases:read` | Read release metadata for owned products |
-| `releases:download` | Download release files for owned products |
-| `licenses:validate` | Validate license keys (called from your own software) |
-| `licenses:activate` | Activate / deactivate license keys |
-| `subscriptions:read` | Read product subscription status |
-| `subscriptions:write` | Create / cancel / reactivate product subscriptions |
+| Scope                 | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `products:read`       | Read product metadata                                 |
+| `releases:read`       | Read release metadata for owned products              |
+| `releases:download`   | Download release files for owned products             |
+| `licenses:validate`   | Validate license keys (called from your own software) |
+| `licenses:activate`   | Activate / deactivate license keys                    |
+| `subscriptions:read`  | Read product subscription status                      |
+| `subscriptions:write` | Create / cancel / reactivate product subscriptions    |
 
 Backend caps each user at 100 API keys; on `403` from the create endpoint the CLI prints the reached-limit message.
 
 **Typical agent flow:**
+
 ```sh
 # Mint a key for a CI job, capture the secret out of the JSON output.
 KEY=$(echo '{"name":"ci-runner","scopes":["releases:read","releases:download"]}' \
@@ -447,10 +481,12 @@ Every product with `license_key_enabled: true` has a sandbox **test license key*
 Print the test license key for a product. Plain output is the bare key (one line, suitable for `$(...)` capture); `--json` emits an object with `product_id`, `product_slug`, and `test_license_key`.
 
 **Errors:**
-- Product doesn't have license keys enabled — surfaces a hint to run `yard products edit <slug>` (Pro only).
+
+- Product doesn't have license keys enabled — surfaces a hint to run `yard products edit <slug>` (needs the license_keys permission).
 - Product has no test key recorded — rare; usually means license keys were never toggled on.
 
 **Typical use:**
+
 ```sh
 # Capture the test key for use in a curl/integration test.
 KEY=$(yard licenses test-key --product my-app)
@@ -468,6 +504,7 @@ curl -X POST https://api.yard.sh/v1/licenses/validate \
 List active test device activations attached to the product's test license key.
 
 **Output (table):**
+
 ```
 ID                                   DEVICE ID                      DEVICE NAME          ACTIVATED    LAST SEEN
 --------------------------------------------------------------------------------------------------------------------
@@ -483,9 +520,11 @@ ID                                   DEVICE ID                      DEVICE NAME 
 Deactivate every test device on the product's test license key. **Real customer activations are not touched** — the call only resets `test_activations` rows.
 
 **Flags:**
+
 - `--yes` — skip the confirmation prompt (required when running non-interactively / piped). Implied by `--json`.
 
 **Typical use:**
+
 ```sh
 # Reset between test runs that hit max_activations.
 yard licenses test-activations clear --yes
@@ -500,6 +539,7 @@ yard licenses test-activations clear --yes
 Display version and build information.
 
 **Output format:**
+
 ```
 yard v0.1.0+abc1234
   Commit:    abc1234
@@ -515,9 +555,11 @@ yard v0.1.0+abc1234
 Update the CLI to the latest version.
 
 **Flags:**
+
 - `--check`, `-c` — Only check for updates without installing
 
 **How it works:**
+
 1. Fetches remote version from `{UpdateURL}/current_version.txt`
 2. Compares with local version
 3. If `--check`, prints the available version and exits
@@ -540,6 +582,7 @@ Manage a product's custom landing page. All subcommands accept the following com
 - `--yes`, `-y` — skip confirmation prompts (only applies to destructive commands)
 
 **Exit codes:**
+
 - `0` — success
 - `1` — fatal error (auth, network, validation, API error)
 - `2` — partial success (only produced by `push` when some files uploaded and others failed)
@@ -547,6 +590,7 @@ Manage a product's custom landing page. All subcommands accept the following com
 **Project discovery:** any `yard page` subcommand walks upward from cwd looking for `.yard/settings.json` (same mechanism as `git`'s `.git` lookup). The directory containing it is the project root. The CLI's own config dir at `~/.yard/` is not matched because it only holds `config.json`, never `settings.json`. `--project <path>` overrides this.
 
 **Constraints enforced client-side before any HTTP:**
+
 - Extension must be in `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`
 - Path must match `^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9][a-zA-Z0-9._-]*)?$` — at most one subdirectory level, no dotfiles, no leading slash, no `..`
 - Per-file ≤ 1 MB
@@ -561,6 +605,7 @@ Manage a product's custom landing page. All subcommands accept the following com
 Create a `.yard/` project directory linked to a product. If the product already has remote files, they are pulled into `.yard/landing-page/`; otherwise a hello-world `index.html` + `styles.css` is scaffolded.
 
 **Behavior:**
+
 1. Resolves the product (flag → existing settings → sole product → error).
 2. Creates `<project>/.yard/` with perm 0750.
 3. Writes `<project>/.yard/settings.json` if absent: `{"version": 1, "product_slug": "<slug>", "ignore_files": []}`.
@@ -571,6 +616,7 @@ Create a `.yard/` project directory linked to a product. If the product already 
 **Idempotent:** running `init` twice is safe. Existing files are preserved.
 
 **JSON output (`--json`):**
+
 ```json
 {
   "project_root": "/home/alice/my-landing",
@@ -592,12 +638,14 @@ Create a `.yard/` project directory linked to a product. If the product already 
 Print the diff between local files and the remote draft without writing anything.
 
 **Output categories:**
+
 - `to_upload` — files changed or missing on remote
 - `unchanged` — local and remote hashes match
 - `remote_only` — files on remote draft but not locally
 - `to_delete` — always empty (prune is only done via `push --prune`)
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
@@ -615,15 +663,23 @@ Print the diff between local files and the remote draft without writing anything
 List files in the remote bundle.
 
 **Flags:**
+
 - `--source draft|published` — which bundle to list (default: `draft`)
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
   "source": "draft",
   "files": [
-    {"path": "index.html", "content_type": "text/html", "size_bytes": 412, "content_hash": "…", "updated_at": "2026-04-20T10:00:00Z"}
+    {
+      "path": "index.html",
+      "content_type": "text/html",
+      "size_bytes": 412,
+      "content_hash": "…",
+      "updated_at": "2026-04-20T10:00:00Z"
+    }
   ]
 }
 ```
@@ -635,11 +691,13 @@ List files in the remote bundle.
 Hash-diff the local landing-page directory against the remote draft and upload changed files.
 
 **Flags:**
+
 - `--prune` — delete remote files that are not present locally (opt-in for safety)
 - `--publish` — promote the draft to live after uploading (requires `index.html`)
 - `--yes`, `-y` — skip prune confirmation prompt
 
 **Behavior:**
+
 1. Walk `<project>/.yard/landing-page/`, skip dotfiles and files matching `ignore_files` patterns from `settings.json`.
 2. Validate extensions, paths, per-file size, bundle size, and file count client-side.
 3. `GET /v1/products/{id}/custom-page` to fetch remote hashes.
@@ -649,6 +707,7 @@ Hash-diff the local landing-page directory against the remote draft and upload c
 7. Re-fetch metadata and print `Preview:` (and `Live:` if published).
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
@@ -674,16 +733,19 @@ When `--prune` is not passed, `remote_only` lists paths on the server that don't
 Download remote bundle files to the local landing-page directory.
 
 **Flags:**
+
 - `--source draft|published` — which bundle to pull (default: `draft`)
 - `--force` — overwrite local files even if their hash matches the remote
 - `--dir <path>` — output directory override (defaults to `<project>/.yard/landing-page/`)
 
 **Behavior:**
+
 1. Resolves project root (with `.yard/` discovery allowed to be missing — `pull` is useful for bootstrapping a fresh checkout).
 2. Walks the chosen remote bundle; for each file, downloads and writes to disk unless the local file already has the same SHA-256 (skipped).
 3. Subdirectories are created as needed.
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
@@ -701,10 +763,12 @@ Download remote bundle files to the local landing-page directory.
 Promote the current draft bundle to live.
 
 **Behavior:**
+
 1. `POST /v1/products/{id}/custom-page/publish` — server validates that `index.html` exists.
 2. Re-fetches metadata and prints `Live:` and `Preview:` URLs.
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
@@ -721,13 +785,16 @@ Promote the current draft bundle to live.
 Discard the current draft and restore it from the published bundle.
 
 **Flags:**
+
 - `--yes`, `-y` — skip confirmation prompt
 
 **Behavior:**
+
 1. Confirms with the user unless `--yes` or `--json` is passed.
 2. `POST /v1/products/{id}/custom-page/revert`.
 
 **JSON output:**
+
 ```json
 {
   "product": "my-slug",
@@ -743,9 +810,11 @@ Discard the current draft and restore it from the published bundle.
 Remove the CLI from your system.
 
 **Flags:**
+
 - `--force`, `-f` — Skip the confirmation prompt
 
 **What gets removed:**
+
 1. Config directory (`~/.yard/` — contains `config.json`)
 2. CLI binary (detected via `os.Executable()`)
 

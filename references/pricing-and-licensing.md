@@ -18,7 +18,7 @@
 
 ## Pricing Tiers
 
-Each product has 1 to 5 pricing tiers. Free-tier sellers can create 1 tier per product; Pro sellers can create up to 5 (check with `yard me --json` → `.is_pro`).
+Each product has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.permissions.max_pricing_tiers`.
 
 **Tier fields:**
 - `name` — Display name for the tier
@@ -109,7 +109,7 @@ State discounts are applied before coupon discounts during checkout.
 
 ## Coupons
 
-Coupons are a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
+Coupons are a **Pro-only** feature (check with `yard me --json` → `.permissions`).
 
 **Coupon types:**
 - `percentage` — 1-100% discount off the price
@@ -134,7 +134,7 @@ Coupons are a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
 
 ## Free Trials
 
-Free trials are a **Pro-only** feature (check with `yard me --json` → `.is_pro`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
+Free trials are a **Pro-only** feature (check with `yard me --json` → `.permissions`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
 
 Tier-level trial fields:
 
@@ -152,7 +152,7 @@ There is no product-level trial toggle anymore — putting `free_trial_enabled` 
 
 ## Gift Purchases
 
-Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.is_pro`).
+Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.permissions`).
 
 - `gift_enabled` — Toggle on the product
 - Buyer provides a recipient email at checkout
@@ -164,7 +164,7 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.is_
 
 ## License Keys
 
-License keys are a **Pro-only** feature (check with `yard me --json` → `.is_pro`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
+License keys are a **Pro-only** feature (check with `yard me --json` → `.permissions`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
 
 Yard automatically generates license keys for each purchase.
 
@@ -185,7 +185,7 @@ Yard automatically generates license keys for each purchase.
 
 ## Device Activations
 
-Device activations are a **Pro-only** feature (check with `yard me --json` → `.is_pro`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
+Device activations are a **Pro-only** feature (check with `yard me --json` → `.permissions`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
 
 License keys can track device activations:
 
