@@ -5,7 +5,7 @@
 - [Pricing Tiers](#pricing-tiers)
 - [Seat Types](#seat-types)
 - [Volume Brackets](#volume-brackets)
-- [Product States and Discounts](#product-states-and-discounts)
+- [Product Stages and Discounts](#product-stages-and-discounts)
 - [Coupons](#coupons)
 - [Free Trials](#free-trials)
 - [Gift Purchases](#gift-purchases)
@@ -83,27 +83,27 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 ---
 
-## Product States and Discounts
+## Product Stages and Discounts
 
-Every product has a state that controls visibility and pricing. New products always start in `draft` and progress through states **forward-only** — once advanced, a product can never go back.
+Every product has a stage that controls visibility and pricing. New products always start in `draft` and progress through stages **forward-only** — once advanced, a product can never go back.
 
-| State | Description | Discount field |
+| Stage | Description | Discount field |
 |---|---|---|
-| `draft` | Initial state. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
+| `draft` | Initial stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
 | `early_access` | Public, purchasable, but the seller signals the product is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
-| `released` | General availability. Final state. | — |
+| `released` | General availability. Final stage. | — |
 | `archived` | No longer available for new purchases. (Existing buyers retain access.) | — |
 
 **Transition rules** (enforced server-side):
 
-- Order: `draft` → `early_access` → `released`. Going backwards is rejected with `Cannot move product state backward`.
-- `released` is terminal — once there, the product cannot be moved again. The API returns `Product is already in the final 'released' state and cannot be changed.`
+- Order: `draft` → `early_access` → `released`. Going backwards is rejected with `Cannot move product stage backward`.
+- `released` is terminal — once there, the product cannot be moved again. The API returns `Product is already in the final 'released' stage and cannot be changed.`
 - Skipping `early_access` is allowed — `draft` → `released` directly is valid.
 - Transitioning out of `draft` requires an active Stripe Connect seller account. Backend rejects the change otherwise.
 
-State discounts are applied before coupon discounts during checkout.
+Stage discounts are applied before coupon discounts during checkout.
 
-**How to advance a state:** the CLI does not currently surface state transitions — `yard products edit` accepts settings (license keys, activations, trials) but not `state`. Sellers advance product state from the Yard dashboard at `https://yard.sh/dashboard/products`. Direct REST `PUT /v1/products/{id}` with `{"state": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
+**How to advance a stage:** the CLI does not currently surface stage transitions — `yard products edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance product stage from the Yard dashboard at `https://yard.sh/dashboard/products`. Direct REST `PUT /v1/products/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
 
 ---
 
@@ -221,7 +221,7 @@ The full price calculation during checkout (`CreatePaymentIntent`):
 1. **Resolve tier** — Use the specified tier or fall back to the product's default tier
 2. **Validate quantity** — Check quantity against the tier's seat type constraints
 3. **Calculate base price** — `tier.GetPriceForQuantity(quantity)` (applies volume brackets if applicable)
-4. **Apply state discount** — If product is in early access state, apply `early_access_discount_percent`
+4. **Apply stage discount** — If product is in the early access stage, apply `early_access_discount_percent`
 5. **Apply coupon discount** — If a valid coupon code is provided, apply percentage or fixed-amount discount
 6. **Calculate tax** — Via Stripe Tax API based on buyer's location
 7. **Compute platform fee** — Using the fee resolution chain

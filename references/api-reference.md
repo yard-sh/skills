@@ -56,7 +56,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/products/{username}/{slug}/metadata` | `products:read` | Read product metadata (title, state, tiers, pricing) |
+| `GET` | `/v1/products/{username}/{slug}/metadata` | `products:read` | Read product metadata (title, stage, tiers, pricing) |
 
 ### Licenses
 

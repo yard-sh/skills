@@ -25,9 +25,9 @@ The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` â
 | `description_html` | `string?` | Server-rendered HTML for `description` |
 | `readme_html` | `string?` | Server-rendered HTML of the linked repo's README, if any |
 | `price_cents` | `number` | Default tier price, in cents |
-| `discounted_price_cents` | `number?` | Effective price after any state discount |
-| `state` | `string` | `draft`, `early_access`, or `released` |
-| `state_discount_percent` | `number?` | Active state-discount percent, if any |
+| `discounted_price_cents` | `number?` | Effective price after any stage discount |
+| `stage` | `string` | `draft`, `early_access`, or `released` |
+| `stage_discount_percent` | `number?` | Active stage-discount percent, if any |
 | `tiers` | `PricingTier[]` | All pricing tiers â€” see below |
 | `images` | `ProductImage[]` | Uploaded screenshots/icons; each has a `url` |
 | `category` | `string?` | Optional category label |
