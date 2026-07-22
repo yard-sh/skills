@@ -104,6 +104,8 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
       "volume_brackets": [], // per_seat only; contiguous, increasing discount
       "free_trial_enabled": false, // needs free_trials permission when true — per-tier flag, not product-level
       "free_trial_days": null, // 1..365; required when free_trial_enabled is true
+      "trial_requires_card": true, // per-tier; when true, subscription-tier trials collect a card via checkout (omitted = true)
+      "gift_enabled": false, // per-tier; whether this tier can be bought as a gift (one-time tiers only)
     },
   ],
   // Optional product-level seller settings.
@@ -113,7 +115,6 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
   "license_key_enabled": false, // needs license_keys permission when true
   "activations_enabled": false, // needs device_activations permission when true; requires license_key_enabled=true
   "max_activations": null, // 1..10000; only meaningful when activations_enabled
-  "trial_requires_card": false, // when true, subscription-tier trials collect a card via checkout
 }
 ```
 
@@ -162,7 +163,7 @@ yard init --product simple-note --json
 - **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
 - **`upgrade_required` error (403).** The account's plan doesn't include the feature you used (an extra tier, seat-based pricing, license keys, device activations, a free trial, custom pages, coupons, …). The CLI doesn't gate this client-side — the server decides. Either send a spec the plan supports, or ask the user to upgrade at https://yard.sh/pricing. To see what the plan includes, read `yard me --json` → `.permissions`.
 - **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
-- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). For tier mutations — including **enabling a free trial on a specific tier**, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` fields no longer exist; they were moved per-tier.
+- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`). For tier mutations — including **enabling a free trial on a specific tier**, its `trial_requires_card` / `gift_enabled` flags, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` / `trial_requires_card` / `gift_enabled` fields no longer exist; they were all moved per-tier.
 
 ### Desktop / CLI app integration scope
 
@@ -270,7 +271,7 @@ The interactive flow:
 | `yard init`                                                                   | Set up a Yard project in the current directory — create or select a product, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--product <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use.   |
 | `yard products [--json]`                                                      | List your published products with stats                                                                                                                                                                                                                                 |
 | `yard products show <slug-or-id> [--json]`                                    | Print one product's full detail, including `tiers[]` with per-tier `free_trial_enabled` / `free_trial_days`. Use this (not `yard products`) when you need to check whether a tier offers a trial. This command is used to retrieve any sort of metadata about a product |
-| `yard products edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`) and optionally the full `tiers[]` array (full-replace). No client-side plan gate — the server returns `upgrade_required` if the plan doesn't include a setting.       |
+| `yard products edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`) and optionally the full `tiers[]` array (full-replace). No client-side plan gate — the server returns `upgrade_required` if the plan doesn't include a setting.       |
 | `yard products tiers add <slug> --spec <file\|->`                             | Append one tier without rebuilding the full tier list.                                                                                                                                                                                                                  |
 | `yard products tiers edit <slug> <tier-id-or-name> --spec <file\|->`          | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`).                                                                                                                                             |
 | `yard products tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default.                                                                                                                                                                      |

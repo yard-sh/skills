@@ -139,9 +139,8 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 8. **Optional product-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
-   - "Require a card for subscription-tier trials? [y/N]" — toggles `trial_requires_card`.
 
-   Changes are applied via `PUT /v1/products/{id}`. If the account's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials are configured **per tier**, not here — see `yard products tiers`.)
+   Changes are applied via `PUT /v1/products/{id}`. If the account's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard products tiers`.)
 
 9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
@@ -167,7 +166,7 @@ Total: 2 product(s)
 - `✓` = public visibility, `✗` = not public
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
-- `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`, `trial_requires_card`). **Tiers are not included** — free trials are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].free_trial_days`.
+- `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`). **Tiers are not included** — free trials, `trial_requires_card`, and `gift_enabled` are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].trial_requires_card` / `tiers[].gift_enabled`.
 
 **Discovering a product's slug.** The default table shows the _display name_ (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
 
@@ -210,7 +209,7 @@ If the output is empty, no tier offers a trial — the trial button on the landi
 
 ### yard products edit [slug-or-id]
 
-Modify seller settings on an existing product: license keys, device activations (and the per-key limit), and `trial_requires_card`. Whether the account's plan includes these is enforced by the server, not the CLI.
+Modify seller settings on an existing product: license keys and device activations (and the per-key limit). Whether the account's plan includes these is enforced by the server, not the CLI.
 
 **Resolution:**
 
@@ -233,11 +232,10 @@ Modify seller settings on an existing product: license keys, device activations 
   {
     "license_key_enabled": true,
     "activations_enabled": true,
-    "max_activations": 5,
-    "trial_requires_card": true
+    "max_activations": 5
   }
   ```
-  Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials are per-tier** — they're not a product-level setting; use `yard products tiers edit` (below) instead.
+  Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials, `trial_requires_card`, and `gift_enabled` are per-tier** — they're not product-level settings; use `yard products tiers edit` (below) instead.
 - A `tiers` array MAY be included to replace the full tier list in one shot — every existing tier with a matching `id` is updated in place, new tiers (no `id`) are inserted, and tiers omitted from the array are deleted (or marked non-default if they have transactions/active subscriptions). Always read the current tiers first (`yard products show <slug> --json | jq '.tiers'`) and mutate before sending back, otherwise you'll accidentally drop tiers.
 - `--json` — emit `{ "product": {...}, "settings": {...} }` on stdout; logs go to stderr.
 - The CLI pre-checks the activations-needs-license-keys rule against the _effective_ state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
@@ -254,14 +252,13 @@ yard products edit my-awesome-tool --spec - --json <<'EOF'
 {
   "license_key_enabled": true,
   "activations_enabled": true,
-  "max_activations": 5,
-  "trial_requires_card": true
+  "max_activations": 5
 }
 EOF
 
-# Enable a 14-day free trial on the Base tier (per-tier setting).
+# Enable a 14-day card-required free trial on the Base tier (per-tier settings).
 yard products tiers edit my-awesome-tool Base --spec - <<'EOF'
-{ "free_trial_enabled": true, "free_trial_days": 14 }
+{ "free_trial_enabled": true, "free_trial_days": 14, "trial_requires_card": true }
 EOF
 ```
 

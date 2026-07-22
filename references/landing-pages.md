@@ -33,8 +33,6 @@ The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` �
 | `category` | `string?` | Optional category label |
 | `faq` | `{ question, answer }[]` | Seller-defined FAQ entries |
 | `metadata` | `{ key, value }[]` | Seller-defined free-form metadata pairs |
-| `trial_requires_card` | `boolean` | When true, subscription-tier trials collect a card via checkout |
-| `gift_enabled` | `boolean` | Whether gift purchases are allowed |
 | `license_key_enabled` | `boolean` | Whether license keys are issued |
 | `latest_release` | `PublicReleaseInfo?` | Most recent published release (tag, name, notes, date) |
 | `release_count` | `number` | Total published releases |
@@ -58,6 +56,8 @@ Each entry in `tiers` exposes:
   "features": ["…", "…"],
   "free_trial_enabled": false,   // free trials are configured PER TIER, not per product
   "free_trial_days": null,       // trial length in days, when free_trial_enabled
+  "trial_requires_card": true,   // per-tier: subscription-tier trials collect a card via checkout
+  "gift_enabled": false,         // per-tier: whether this tier can be bought as a gift
   "volume_brackets": []          // per_seat tiers may define quantity discounts
 }
 ```

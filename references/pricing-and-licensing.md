@@ -141,12 +141,12 @@ Tier-level trial fields:
 - `free_trial_enabled` (boolean) — Toggle on a specific tier
 - `free_trial_days` (1-365) — Duration in days; required when `free_trial_enabled` is true
 - Creates a purchase with `is_trial = true` and `trial_expires_at` timestamp
-- Buyers can activate trials as guests (no account required) for one-time tiers; subscription tiers may also require a card up-front via the product-level `trial_requires_card` setting
+- Buyers can activate trials as guests (no account required) for one-time tiers; subscription tiers may also require a card up-front via the per-tier `trial_requires_card` setting
 - After trial expires, buyer must purchase the tier to continue access
 
-There is no product-level trial toggle anymore — putting `free_trial_enabled` outside a tier in a spec is rejected with `unknown field`. The product *does* carry one trial-related setting:
+There is no product-level trial setting anymore — putting `free_trial_enabled` (or `trial_requires_card`) outside a tier in a spec is rejected with `unknown field`. Card collection is also configured per tier:
 
-- `trial_requires_card` (product-level) — When true, subscription-tier trials route through Stripe Checkout so the buyer enters a payment method up-front. False (the default) lets subscription-tier trials start without a card and convert silently when the trial ends. Has no effect on one-time tiers. Toggle via `yard products edit --spec -` or the interactive prompt.
+- `trial_requires_card` (per-tier, defaults to true) — When true, trials on that subscription tier route through Stripe Checkout so the buyer enters a payment method up-front. When false, trials on the tier start without a card and convert silently when the trial ends. Has no effect on one-time tiers. Toggle via `yard products tiers edit <slug> <tier> --spec -`.
 
 ---
 
@@ -154,7 +154,7 @@ There is no product-level trial toggle anymore — putting `free_trial_enabled` 
 
 Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.permissions`).
 
-- `gift_enabled` — Toggle on the product
+- `gift_enabled` — Toggle on each pricing tier (one-time tiers only; checkout hides gifting for subscriptions)
 - Buyer provides a recipient email at checkout
 - Recipient receives activation instructions via email
 - Tracked via `gift_activations` table
