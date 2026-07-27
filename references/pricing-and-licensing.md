@@ -11,7 +11,6 @@
 - [Gift Purchases](#gift-purchases)
 - [License Keys](#license-keys)
 - [Device Activations](#device-activations)
-- [Platform Fee](#platform-fee)
 - [Checkout Calculation Flow](#checkout-calculation-flow)
 
 ---
@@ -197,23 +196,6 @@ License keys can track device activations:
 
 ---
 
-## Platform Fee
-
-**Formula:** `platform_fee_cents = (amount_cents * fee_percent / 100) + fee_fixed_cents`
-
-**Default:** 5% + $0.50 (50 cents)
-
-**Resolution chain** (checked in order):
-1. Per-user fee override (`user_fee_overrides` table)
-2. Global platform settings (`platform_settings` table)
-3. Hardcoded fallback (5% + $0.50)
-
-**Seller earnings:** `seller_earnings_cents = amount_cents - platform_fee_cents`
-
-Each transaction stores a snapshot of the fee percentage and fixed amount for historical auditability.
-
----
-
 ## Checkout Calculation Flow
 
 The full price calculation during checkout (`CreatePaymentIntent`):
@@ -224,7 +206,6 @@ The full price calculation during checkout (`CreatePaymentIntent`):
 4. **Apply stage discount** — If product is in the early access stage, apply `early_access_discount_percent`
 5. **Apply coupon discount** — If a valid coupon code is provided, apply percentage or fixed-amount discount
 6. **Calculate tax** — Via Stripe Tax API based on buyer's location
-7. **Compute platform fee** — Using the fee resolution chain
-8. **Calculate seller earnings** — `amount - platform_fee`
-9. **Create Stripe PaymentIntent** — With metadata for tracking
-10. **Create purchase record** — In the database with all pricing details
+7. **Calculate seller earnings**
+8. **Create Stripe PaymentIntent** — With metadata for tracking
+9. **Create purchase record** — In the database with all pricing details

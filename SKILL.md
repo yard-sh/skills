@@ -301,7 +301,7 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 2. **Seller** runs `yard init` to create a product with pricing (and optionally a custom landing page)
 3. When the seller publishes a **GitHub release**, Yard automatically captures the release assets via webhook and hosts them
 4. **Buyers** visit the product page, pay via Stripe, and get instant download access
-5. Yard takes a **5% + $0.50 platform fee**; seller earnings are tracked and paid out by admin
+5. Seller earnings are tracked and paid out by admin
 
 ## Custom Landing Pages
 
