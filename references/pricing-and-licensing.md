@@ -108,7 +108,9 @@ Stage discounts are applied before coupon discounts during checkout.
 
 ## Coupons
 
-Coupons are a **Pro-only** feature (check with `yard me --json` → `.permissions`).
+Coupons depend on the plan's `coupons` permission — check with `yard me --json` → `.permissions.coupons` rather than assuming a tier. There is no client-side gate: the server answers `403` if the plan doesn't include them.
+
+**Manage them from the CLI** — `yard coupons` covers list / show / create / generate / update / rm / transactions / validate, all with `--json` and `--spec`. See [cli-commands.md](./cli-commands.md#yard-coupons) for the full surface.
 
 **Coupon types:**
 - `percentage` — 1-100% discount off the price
@@ -119,15 +121,21 @@ Coupons are a **Pro-only** feature (check with `yard me --json` → `.permission
 - `specific_products` — Applies only to selected products (via `coupon_products` junction table)
 
 **Coupon fields:**
-- `code` — The coupon code string
+- `code` — The coupon code string (upper-cased, 4-50 alphanumeric characters)
 - `discount_type` — `percentage` or `fixed_amount`
-- `discount_value` — Percentage (1-100) or amount in cents
-- `max_uses` — Usage limit (nil = unlimited)
+- `discount_value` — Percentage (1-100) or amount in **cents**
+- `max_uses` — Usage limit across all buyers (null = unlimited). There is no per-buyer limit.
 - `current_uses` — Current usage count
+- `valid_from` — Optional start date; before it, the code is rejected as not yet valid
 - `expires_at` — Optional expiration date
-- `is_active` — Can be deactivated by seller
+- `subscription_duration` — For subscription products: `once` (first payment only, the default) or `forever` (every renewal). Ignored for one-time purchases.
+- `is_active` — Seller's on/off toggle
 
-**Bulk generation:** Sellers can generate multiple unique coupon codes at once with the same discount settings.
+A coupon is only usable when it is active, started, unexpired, and under its limit — `is_active: true` alone doesn't mean redeemable.
+
+**Bulk generation:** Sellers can generate up to 100 unique codes at once with the same discount settings (`yard coupons generate --count N`). Generated codes are returned exactly once, at creation.
+
+**Editing limits:** the discount can't be changed once a coupon has been redeemed, and a redeemed coupon can't be deleted — deactivate it instead. Sending `null` for `max_uses`, `expires_at`, or `valid_from` clears that field; omitting the key leaves it unchanged.
 
 ---
 

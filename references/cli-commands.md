@@ -5,7 +5,7 @@
 - The CLI binary name is `yard` (production) or `yard-staging` (staging builds)
 - API URL defaults to `https://api.yard.sh` but can be overridden at build time
 - Config is stored at `~/.yard/config.json` (or `~/.yard-staging/` for staging)
-- All authenticated commands send `Authorization: Session {token}` header
+- All authenticated commands send an `Authorization: Client {token}` header (the token `yard login` saved)
 
 ---
 
@@ -528,6 +528,126 @@ yard licenses test-activations clear --yes
 ```
 
 `--json` emits `{ "product_id", "product_slug", "cleared": true }`.
+
+---
+
+## yard coupons
+
+Manage the discount codes buyers redeem at checkout. Without a subcommand, runs `coupons list`.
+
+Coupons need the `coupons` permission on the seller's plan — check `yard me --json` → `.permissions.coupons`. There is no client-side gate: the server answers `403` and the CLI prints what the plan is missing plus the pricing link.
+
+**Two ways to describe a coupon.** Flags cover the common path; `--spec <file|->` takes the API's own JSON shape for full control. When both are given, **flags win** field by field, so a spec can supply the base and a flag can override one value.
+
+**Units differ between the two**, and this is the single most common mistake:
+
+- `--percent 20` → 20% off. `--amount 5` → **dollars** ($5.00 off).
+- In a spec, `discount_value` is a percentage for `percentage`, and **cents** for `fixed_amount` (`"discount_value": 500` is $5.00).
+
+Dates accept `YYYY-MM-DD` or full RFC3339. A bare `--expires` date covers the whole day (23:59:59 UTC); a bare `--valid-from` date starts at midnight UTC.
+
+Every subcommand takes a coupon **code or UUID** — codes are resolved server-side, so `yard coupons show LAUNCH20` is one request, not a scan.
+
+### yard coupons list
+
+**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
+
+Sort columns: `createdAt` (default), `lastModified`, `code`, `discountValue`, `scopeDisplay`, `currentUses`, `status`, `savingsCents`.
+
+```
+CODE                   DISCOUNT   SCOPE              USES             STATUS     EXPIRES
+--------------------------------------------------------------------------------------------
+LAUNCH20               20%        all products       3 / 100          active     2026-12-31
+INFL7K2M               15%        2 product(s)       0 / unlimited    scheduled  —
+
+2 coupons (1 active), 3 redemptions, $15.00 saved for buyers
+```
+
+`STATUS` is derived, not stored: `inactive` (disabled), `expired`, `scheduled` (`valid_from` in the future), `used up` (hit `max_uses`), or `active`. `--json` emits the raw `CouponListResponse`, where `is_active` is only the on/off toggle — compute the rest from `expires_at`, `valid_from`, and `current_uses` if you need it.
+
+### yard coupons show \<code-or-id\>
+
+Coupon detail plus redemption analytics. `--json` emits one object: `{ "coupon": {...}, "analytics": {...} }`.
+
+### yard coupons create \<code\>
+
+**Flags:** `--percent N` | `--amount D`, `--products <csv>`, `--max-uses N`, `--expires <date>`, `--valid-from <date>`, `--subscription-duration <once|forever>`, `--spec <file|->`, `--json`.
+
+The code is upper-cased and must be 4-50 alphanumeric characters. `--products` takes slugs **or** UUIDs and implies `scope=specific_products`; without it a coupon applies to everything the seller sells, including products created later.
+
+`--subscription-duration` only matters for subscription products: `once` discounts the first payment (default), `forever` discounts every renewal.
+
+**Spec shape:**
+
+```jsonc
+{
+  "discount_type":         "percentage",           // or "fixed_amount"
+  "discount_value":        20,                     // percent, or CENTS for fixed_amount
+  "scope":                 "all_products",         // or "specific_products"
+  "product_ids":           ["<uuid>"],             // required for specific_products
+  "max_uses":              100,                    // omit for unlimited
+  "expires_at":            "2026-12-31T23:59:59Z",
+  "valid_from":            "2026-12-01T00:00:00Z",
+  "subscription_duration": "once"                  // or "forever"
+}
+```
+
+### yard coupons generate
+
+Bulk-generate up to 100 unique codes sharing one set of settings — one code per influencer, reviewer, or beta user.
+
+**Flags:** `--count N` (required, 1-100), `--prefix P`, `--length N` (random part, default 8), plus every `create` flag, `--spec`, `--json`.
+
+Generated codes avoid look-alike characters (no `0`/`O`/`1`/`I`/`L`). **They are returned once** — plain output prints them one per line on stdout (the summary goes to stderr, so a bare redirect captures only codes); `--json` emits the full `CouponListResponse`.
+
+### yard coupons update \<code-or-id\>
+
+Partial update: only the fields passed change. Clearing is explicit, because an omitted flag means "leave it":
+
+- `--no-expiry` — remove the expiry date
+- `--no-valid-from` — remove the start date
+- `--unlimited-uses` — remove the redemption limit
+
+Also accepts `--activate` / `--deactivate`, `--scope <all_products|specific_products>`, and every `create` flag. `--products` alone re-scopes a coupon; no need to resend `--scope`.
+
+In a spec, `null` clears the same three fields — `{"expires_at": null}` — while omitting a key leaves it alone.
+
+The server refuses to change `discount_type` / `discount_value` on a coupon that has already been redeemed. Everything else stays editable.
+
+### yard coupons rm \<code-or-id\>
+
+Deletes a coupon. A coupon that has been redeemed **cannot** be deleted (its redemptions are transaction history) — use `--deactivate` instead. Requires `--yes` when stdin isn't a TTY.
+
+### yard coupons transactions \<code-or-id\>
+
+The purchases a coupon was redeemed on. **Flags:** `--json`, `--page N`, `--limit N`.
+
+### yard coupons validate \<code\>
+
+Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--seller <username>`, `--json`.
+
+The product must be **public**: checkout never sees drafts, so a draft product answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
+
+**Typical agent flows:**
+
+```sh
+# Launch discount, capturing the new coupon's id
+yard coupons create LAUNCH20 --percent 20 --max-uses 100 --expires 2026-12-31 --json | jq -r .id
+
+# 50 influencer codes, saved for a spreadsheet
+yard coupons generate --count 50 --prefix INFL --percent 15 --json | jq -r '.coupons[].code' > codes.txt
+
+# Retire every code that has hit its usage cap
+yard coupons list --json \
+  | jq -r '.coupons[] | select(.max_uses != null and .current_uses >= .max_uses) | .code' \
+  | xargs -r -n1 -I{} yard coupons update {} --deactivate
+
+# Read-modify-write via specs
+echo '{"max_uses": 250, "expires_at": null}' | yard coupons update LAUNCH20 --spec - --json
+
+# Confirm a code works before sending it to customers
+yard coupons validate LAUNCH20 --product my-tool --json | jq '{valid, final_price_cents}'
+```
 
 ---
 

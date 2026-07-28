@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Product, release, and coupon management happen through the **Yard CLI** (`yard init`, `yard products`, `yard page …`) — see [cli-commands.md](./cli-commands.md).
+> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Product, release, and coupon management happen through the **Yard CLI** (`yard init`, `yard products`, `yard coupons`, `yard page …`) — see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://yard.sh/dashboard/api-keys?action=create**.
 
@@ -114,11 +114,11 @@ Built-in updaters in the seller's software can reach these directly with just a 
 
 ## CLI-only operations
 
-The following are **not** exposed over HTTP as integration endpoints — they live on the CLI (session auth) because they manage the seller's own catalog. If an agent needs to do any of these, it must run the CLI, not issue HTTP requests:
+The following are **not** exposed over HTTP as integration endpoints — an API key can't reach them, because they manage the seller's own catalog. If an agent needs to do any of these, it must run the CLI, not issue HTTP requests:
 
 - Create / update / delete a product (`yard init`, product edits in the dashboard)
 - Create / update / delete / sync / archive a release (handled automatically by the GitHub App on release webhook, or via the dashboard)
-- Create / update / delete / bulk-generate coupons
+- Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
 - Stripe Connect onboarding and payout management
 - Custom domains, product images / videos, webhook secrets
 - Custom landing page editing (`yard page init`, `yard page push`, `yard page publish`, …)
