@@ -737,8 +737,10 @@ Lengthen or shorten a live free trial. `--add-days 7` gives a week; `--add-days 
 
 Two behaviours to state plainly before running it:
 
-- **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days leaves it in the past and does *not* restore access — the CLI prints a warning when the result is still expired. Add enough days to land in the future.
+- **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days still leaves it in the past — add enough days to land in the future. When the new expiry *is* in the future, an expired trial is set back to `active` and the buyer has access again; the response reports this as `"reactivated": true`. If the trial stays expired, the CLI says why.
 - **The buyer is emailed** about the change, same as adjusting it from the dashboard.
+
+A revival is refused in one case: the buyer already has another pending or active trial on that product. The expiry still moves, `reactivated` comes back `false`, and the status stays `expired`.
 
 Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard products tiers edit`.
 
