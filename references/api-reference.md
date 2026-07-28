@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Product, release, and coupon management happen through the **Yard CLI** (`yard init`, `yard products`, `yard coupons`, `yard page …`) — see [cli-commands.md](./cli-commands.md).
+> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Product, release, and coupon management — plus reading the seller's customers and sales — happen through the **Yard CLI** (`yard init`, `yard products`, `yard coupons`, `yard customers`, `yard transactions`, `yard page …`) — see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://yard.sh/dashboard/api-keys?action=create**.
 
@@ -119,6 +119,8 @@ The following are **not** exposed over HTTP as integration endpoints — an API 
 - Create / update / delete a product (`yard init`, product edits in the dashboard)
 - Create / update / delete / sync / archive a release (handled automatically by the GitHub App on release webhook, or via the dashboard)
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
+- Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the seller's own account, not an integration surface, so an API key can't reach them
+- Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
 - Stripe Connect onboarding and payout management
 - Custom domains, product images / videos, webhook secrets
 - Custom landing page editing (`yard page init`, `yard page push`, `yard page publish`, …)

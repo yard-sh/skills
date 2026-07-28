@@ -651,6 +651,125 @@ yard coupons validate LAUNCH20 --product my-tool --json | jq '{valid, final_pric
 
 ---
 
+## yard customers
+
+Read-only view of the people who bought the seller's products. Without a subcommand, runs `customers list`.
+
+A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear.
+
+Buyers are identified by an opaque id: `cust_` plus the first 8 characters of their account id. That id is what `customers show` takes; there is no email lookup.
+
+Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is no cents field on these responses — use `yard transactions` when you need to do arithmetic.
+
+### yard customers list
+
+**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
+
+Sort columns: `lastTransaction` (default), `email`, `username`, `orderCount`, `totalSpent`, `buyerId`.
+
+```
+ID               CUSTOMER                       ORDERS   SPENT        FIRST        LAST
+--------------------------------------------------------------------------------------
+cust_deadbeef    @alice                         3        $87.00       2026-01-04   2026-07-20
+cust_c0ffee11    bob@example.com                1        $29.00       2026-07-18   2026-07-18
+
+2 customers (1 new this month), $58.00 avg spend, 50.0% repeat rate
+```
+
+The summary line is account-wide and doesn't move with pagination.
+
+### yard customers show \<customer-id\>
+
+One buyer's totals plus their orders from this seller. **Flags:** `--json`, `--page N`, `--limit N`.
+
+`--json` emits `{ "customer": {...}, "transactions": [...], "total", "page", "limit" }`. Unlike the list, the transactions here **include refunded orders**.
+
+Two customers can share an 8-character id prefix. The server answers `409` rather than guessing; pass the buyer's full UUID in that case.
+
+**Typical agent flows:**
+
+```sh
+# Biggest spenders
+yard customers --json | jq -r '.customers | sort_by(.order_count) | reverse | .[:5] | .[] | "\(.email) \(.total_spent_display)"'
+
+# Everything one buyer owns
+yard customers show cust_deadbeef --json | jq -r '.transactions[] | "\(.product_name) \(.created_at)"'
+
+# Who bought in the last month
+yard customers --json | jq -r --arg since "$(date -u -d '30 days ago' +%Y-%m-%d)" \
+  '.customers[] | select(.last_transaction >= $since) | .email'
+```
+
+---
+
+## yard transactions
+
+The seller's sales, plus the one write in this area: adjusting a buyer's free-trial length. Without a subcommand, runs `transactions list`.
+
+Every sale has a full UUID and a short **order id** — `order_` plus the first 8 characters, which is what the dashboard and receipts show. Both are accepted anywhere a transaction id is taken; an ambiguous short id is answered with `409` rather than a guess.
+
+Refunds are **not** exposed here — issuing one stays in the dashboard.
+
+### yard transactions list
+
+**Flags:** `--json`, `--trials`, `--product <slug-or-id>`, `--start <date>`, `--end <date>`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
+
+Sort columns: `date` (default), `amount`, `sellerEarnings`, `productName`. Dates take `YYYY-MM-DD` or RFC3339; a bare `--end` date covers that whole day.
+
+```
+ORDER            DATE         PRODUCT                    CUSTOMER              TOTAL       EARNINGS    TYPE           STATUS
+-----------------------------------------------------------------------------------------------------------------------------
+order_1a2b3c4d   2026-07-20   My Tool                    @alice                $29.99      $26.99      purchase       completed
+order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com       $0.00       $0.00       trial          completed
+
+2 of 97 transactions · $2699.00 earned, 97 sales, $27.81 avg order, 3 active trials
+```
+
+`--trials` and the date/product filters narrow the rows **and** the total; the summary figures stay account-wide, matching the dashboard. `TYPE` is derived: `gift`, `trial`, `trial upgrade`, `subscription`, or `purchase`. `STATUS` shows the refund state when there is one, because a refunded sale still has `status: "completed"`.
+
+### yard transactions show \<order-id\>
+
+One sale in full: tier, quantity, coupon, refund date, billing period, and — for a trial — when it runs out and how long that is from now. **Flags:** `--json`.
+
+### yard transactions trial \<order-id\> --add-days N
+
+Lengthen or shorten a live free trial. `--add-days 7` gives a week; `--add-days -3` takes three days back. Non-zero, and 365 either way. **Flags:** `--add-days N` (required), `--json`.
+
+Two behaviours to state plainly before running it:
+
+- **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days leaves it in the past and does *not* restore access — the CLI prints a warning when the result is still expired. Add enough days to land in the future.
+- **The buyer is emailed** about the change, same as adjusting it from the dashboard.
+
+Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard products tiers edit`.
+
+Requires a plan that can sell products (`yard me --json` → `.permissions.sell_products`).
+
+**Typical agent flows:**
+
+```sh
+# Trials, and when each one runs out
+yard transactions list --trials --json \
+  | jq -r '.transactions[] | "\(.id) \(.customer_email) \(.trial_expires_at)"'
+
+# Give one buyer another week, and read back the new expiry
+yard transactions trial order_1a2b3c4d --add-days 7 --json | jq -r .trial_expires_at
+
+# Add 3 days to every trial ending in the next 48 hours
+yard transactions list --trials --json \
+  | jq -r --arg cutoff "$(date -u -d '+2 days' +%Y-%m-%dT%H:%M:%SZ)" \
+      '.transactions[] | select(.trial_expires_at != null and .trial_expires_at <= $cutoff) | .id' \
+  | xargs -r -n1 -I{} yard transactions trial {} --add-days 3
+
+# What one product earned this month
+yard transactions list --product my-tool --start 2026-07-01 --json \
+  | jq '[.transactions[].seller_earnings_cents] | add'
+
+# Which sales used a coupon
+yard transactions list --json | jq -r '.transactions[] | select(.coupon_code) | "\(.coupon_code) \(.id)"'
+```
+
+---
+
 ## yard version
 
 Display version and build information.

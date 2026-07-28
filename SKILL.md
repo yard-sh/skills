@@ -15,8 +15,9 @@ description: >-
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
   yard init, yard install, yard products, yard releases, yard keys, yard licenses, yard help, installing the yard CLI,
   pricing, trials, device activations, affiliate links, referral codes, update server, file updates, publishing a
-  release, downloading updates, creating API keys, testing license-key validation, the test license key, or clearing
-  test device activations. Also use this skill when users are working inside a Yard codebase and need to understand
+  release, downloading updates, creating API keys, testing license-key validation, the test license key, clearing
+  test device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, or extending
+  and shortening a buyer's free trial. Also use this skill when users are working inside a Yard codebase and need to understand
   how Yard works, its CLI commands, API, pricing model or troubleshooting common issues.
 ---
 
@@ -28,7 +29,7 @@ Yard lets developers make their software available for sale in just a few clicks
 
 Yard has two surfaces. Pick by intent:
 
-- **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing products, linking repos, scaffolding and publishing landing pages, viewing products, etc. An LLM/agent working on a seller's codebase should drive all management through the CLI.
+- **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing products, linking repos, scaffolding and publishing landing pages, viewing products, running discount codes, and reading who bought what. An LLM/agent working on a seller's codebase should drive all management through the CLI. This includes the seller's own reporting — `yard customers` and `yard transactions` — which an API key cannot reach.
 - **REST API** — for **integrating** Yard into shipped software: validating a buyer's license at runtime, deactivating a device, fetching the latest release, reading product metadata, managing a buyer's subscription. The API does **not** replace the CLI for catalog management — an agent that wants to "create a product" runs `yard init`, not an HTTP call.
 
 API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
@@ -289,6 +290,11 @@ The interactive flow:
 | `yard coupons rm <code-or-id> [--yes]`                                        | Delete an unused coupon. Redeemed coupons can't be deleted — deactivate them instead.                                                                                                                                                                                  |
 | `yard coupons transactions <code-or-id> [--json]`                             | The purchases a coupon was redeemed on.                                                                                                                                                                                                                                |
 | `yard coupons validate <code> --product <slug> [--json]`                      | Dry-run a code through the checkout-time check and see what the buyer would pay. The product must be public.                                                                                                                                                            |
+| `yard customers [--json]`                                                     | List the buyers who completed a purchase, with order count, spend, and activity dates. Amounts are pre-formatted display strings, not cents.                                                                                                                            |
+| `yard customers show <cust-id> [--json]`                                      | One buyer's totals plus their orders (refunded ones included). Takes the opaque `cust_xxxxxxxx` id from the list, not an email.                                                                                                                                         |
+| `yard transactions [--json]`                                                  | List sales. `--trials`, `--product <slug>`, `--start`/`--end` narrow the rows and total; the earnings summary stays account-wide.                                                                                                                                       |
+| `yard transactions show <order-id> [--json]`                                  | One sale in full — tier, coupon, refund state, trial expiry. Takes the short `order_xxxxxxxx` id or the full UUID.                                                                                                                                                      |
+| `yard transactions trial <order-id> --add-days N [--json]`                    | Lengthen (`7`) or shorten (`-3`) a buyer's running free trial, ±365. Days are added to the **current expiry, not today**, and the buyer is emailed. Needs `.permissions.sell_products`.                                                                                 |
 | `yard page init`                                                              | Create a `.yard/` project directory linked to a product and scaffold a hello-world landing page                                                                                                                                                                         |
 | `yard page status`                                                            | Diff local landing-page files vs the remote draft (no writes)                                                                                                                                                                                                           |
 | `yard page ls [--source draft\|published]`                                    | List files in the remote draft or published bundle                                                                                                                                                                                                                      |
