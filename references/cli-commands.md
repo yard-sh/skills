@@ -655,7 +655,7 @@ yard coupons validate LAUNCH20 --product my-tool --json | jq '{valid, final_pric
 
 Read-only view of the people who bought the seller's products. Without a subcommand, runs `customers list`.
 
-A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear.
+A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear. With `--product`, the aggregation narrows to that one product: the rows are its buyers, and each customer's order count and spend cover only their orders of it.
 
 Buyers are identified by an opaque id: `cust_` plus the first 8 characters of their account id. That id is what `customers show` takes; there is no email lookup.
 
@@ -663,7 +663,7 @@ Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is
 
 ### yard customers list
 
-**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
+**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--product <slug-or-uuid>`, `--page N`, `--limit N` (max 100).
 
 Sort columns: `lastTransaction` (default), `email`, `username`, `orderCount`, `totalSpent`, `buyerId`.
 
@@ -676,7 +676,9 @@ cust_c0ffee11    bob@example.com                1        $29.00       2026-07-18
 2 customers (1 new this month), $58.00 avg spend, 50.0% repeat rate
 ```
 
-The summary line is account-wide and doesn't move with pagination.
+The summary line doesn't move with pagination. It is account-wide by default, and product-wide under `--product`.
+
+Unlike `yard transactions --product` — where the filters narrow the rows but the earnings summary stays account-wide — `yard customers --product` narrows the summary too, because "customers of this product" is a different set from "customers", not a filtered view of it.
 
 ### yard customers show \<customer-id\>
 
@@ -694,6 +696,9 @@ yard customers --json | jq -r '.customers | sort_by(.order_count) | reverse | .[
 
 # Everything one buyer owns
 yard customers show cust_deadbeef --json | jq -r '.transactions[] | "\(.product_name) \(.created_at)"'
+
+# Who bought one specific product, biggest spenders first
+yard customers --product my-tool --sort totalSpent --direction desc --json | jq -r '.customers[] | "\(.email) \(.total_spent_display)"'
 
 # Who bought in the last month
 yard customers --json | jq -r --arg since "$(date -u -d '30 days ago' +%Y-%m-%d)" \
