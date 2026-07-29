@@ -1048,6 +1048,138 @@ Discard the current draft and restore it from the published bundle.
 
 ---
 
+## yard env
+
+Manage a product's environments. Every product has two protected
+environments, `development` and `production`; landing-page pushes and app
+deploys land in `development`, and promotion is what goes live. Shared
+flags: `--product <slug-or-uuid>`, `--project <path>`, `--json` (same
+semantics as `yard page`).
+
+### yard env list
+
+Lists the product's environments. JSON: array of
+`{"id": "<uuid>", "slug": "development", "protected": true}`.
+
+### yard env create \<slug\>
+
+Creates a custom environment (Pro; cap of 5 total per product).
+`development` and `production` always exist and cannot be recreated.
+
+### yard env delete \<slug\>
+
+Deletes a custom environment and everything in it: its files, its app
+Worker, and its app database (immediately — no grace window for custom
+environments). `development`/`production` are protected and refuse.
+
+### yard env promote \<from\> \<to\>
+
+Copies the product's artifacts — landing page and web-app bundle — from one
+environment to another. Promoting to `production` deploys the result live.
+Code and assets only: **data and secrets never promote**; each environment
+keeps its own. JSON: `{"from": "...", "to": "...", "artifacts": ["page", "app"]}`
+(`artifacts` names what actually moved). Human output prints the live URL,
+plus the `/app/` URL when the app artifact was promoted.
+
+---
+
+## yard app
+
+Deploy and manage a product's web app (see `webapps.md` for the runtime
+model). Requires the `compute` permission (Pro). Shared flags:
+`--product <slug-or-uuid>`, `--project <path>`, `--env <slug>` (default
+`development`), `--json`.
+
+**Bundle constraints enforced client-side before any HTTP:** ≤200 files,
+≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
+`.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif .woff2 .woff
+.ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`,
+`yard.json`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
+bundle-root `wrangler.toml`/`README.md` are skipped (reported as ignored),
+so old scaffolds that carried them inside the bundle still deploy.
+
+### yard app init
+
+Scaffolds a zero-dependency working app (notes API + vanilla frontend +
+first migration + `yard.json`) into `./app` (`--dir <name>` to change).
+Local-dev files — `wrangler.toml`, `.dev.vars.example`, `README.md` — are
+written at the **project root**, never inside the bundle, and are
+write-if-absent (existing files are skipped and reported). Records the
+bundle dir as `app_dir` in `.yard/settings.json` when the project is
+yard-initialized. JSON:
+`{"dir": "app", "written": [...], "skipped": [...], "app_dir_recorded": true}`.
+
+### yard app deploy
+
+Uploads the bundle (content-addressed — only changed files transfer;
+remote files missing locally are removed) and deploys it to the target
+environment. Bundle dir resolution: `--dir` flag → `app_dir` from
+`.yard/settings.json` → `./dist`. Prints root-absolute-URL lint warnings.
+JSON:
+
+```json
+{
+  "product": "my-slug",
+  "environment": "development",
+  "script_name": "ya-<uuid>-<hex8>",
+  "etag": "…",
+  "access": "authenticated",
+  "url": "https://alice.yard.sh/my-slug/app/?yard_env=development",
+  "uploaded": ["_worker.js"],
+  "deleted": [],
+  "ignored": [],
+  "warnings": []
+}
+```
+
+`url` is the browsable address for the deployed environment (owner-only
+`?yard_env` preview for non-production). A failed migration aborts the
+deploy with a 422 naming the file and the recovery path; the previous
+version keeps serving.
+
+### yard app status
+
+Shows an environment's bundle (files, bytes, worker presence), last
+deployment, and `url`. `--diff` (with optional `--dir`) compares the local
+bundle against the remote one; JSON gains
+`"diff": {"changed": [...], "remote_only": [...]}`.
+
+### yard app open
+
+Prints the environment's URL and opens it in a browser. Non-production URLs
+are owner-only previews (sign-in enforced at the edge). JSON:
+`{"environment": "...", "url": "...", "deployed": true}`.
+
+### yard app check
+
+Validates the local bundle exactly like a deploy would (limits, extensions,
+`_worker.js` presence) plus lint warnings for root-absolute `href`/`src`/
+`fetch("/…")` URLs — no network, no login. JSON:
+`{"dir": "...", "files": 7, "total_bytes": 5494, "ignored": [...], "warnings": [...]}`.
+
+### yard app secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
+
+Per-environment secrets that become `env.<NAME>` bindings on the **next
+deploy**. Names UPPER_SNAKE (≤32 per environment, ≤4 KB each; `DB` and
+`ASSETS` reserved). Write-only: `list` shows names and timestamps, never
+values. Secrets don't promote between environments.
+
+### yard app db query [sql]
+
+Runs SQL against the environment's database and prints rows as JSON. SQL
+from the inline argument, `--file <path>`, or stdin (`-`). Caps: 10 kB SQL,
+1000 rows returned. The `_yard_migrations` table records applied
+migrations.
+
+### yard app logs
+
+Recent Worker output (console lines, uncaught exceptions, abnormal request
+outcomes), newest window ≤24 h. `--limit <n>` (cap 500), `--since <dur>`
+(e.g. `30m`, `2h`). An app that has never logged returns an empty list, not
+an error. Logs appear a few seconds after the request.
+
+---
+
 ## yard uninstall
 
 Remove the CLI from your system.
