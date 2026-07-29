@@ -179,7 +179,18 @@ If the product is **locally-installed software** — a desktop app, CLI tool, na
 
 Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.permissions` before suggesting any of those).
 
-For SaaS, web apps, content products, or anything the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient.
+For content products or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **SaaS / web apps, Yard hosts the app itself** — see the next section.
+
+### Web app / SaaS scope
+
+If the product **is** the web app — the buyer uses it in the browser rather than downloading anything — Yard hosts frontend, backend, database, and buyer sign-in. Requires the `web_apps` permission (Pro; check `yard me --json` → `.permissions`). Whenever you detect this product type, the plan you present must cover:
+
+1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration, `yard.json`). Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/webapps.md](references/webapps.md).
+2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `yard.json`'s `access: customers` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
+3. **Deploy → test → promote.** `yard app deploy` targets the development environment; verify against the deployed dev app (and `npx wrangler dev` locally), then `yard env promote development production` to go live. Data and secrets never promote — set production secrets explicitly.
+4. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any product; the product page remains the sales surface and the app lives under `/app/`.
+
+Releases/`yard releases publish` are **not** part of this flow — web apps deploy, they don't ship files.
 
 ### Testing license-key validation
 
