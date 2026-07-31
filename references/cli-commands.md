@@ -1052,8 +1052,10 @@ Lists the product's environments. JSON: array of
 
 ### yard env create \<slug\>
 
-Creates a custom environment (Pro; cap of 5 total per product).
-`development` and `production` always exist and cannot be recreated.
+Creates a custom environment (Pro; cap of 10 total per product, counting
+the two protected defaults). Slugs are 2-60 characters: lowercase letters,
+digits, and hyphens, starting with a letter. `development` and `production`
+always exist and cannot be recreated.
 
 ### yard env delete \<slug\>
 
