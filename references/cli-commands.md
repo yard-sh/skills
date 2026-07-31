@@ -133,8 +133,8 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
-   - Runs the same source-pick logic as `yard page init` (draft → published → starter) and pulls or scaffolds accordingly.
-   - Calls `POST /v1/products/{id}/custom-page/publish`. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr, keeps the saved draft, and exits 0. On other errors, fails.
+   - Runs the same source-pick logic as `yard page init` (the environment → production → starter) and pulls or scaffolds accordingly.
+   - Calls `POST /v1/products/{id}/landing-page/publish`. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr, keeps the uploaded files, and exits 0. On other errors, fails.
 
 8. **Optional product-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
@@ -821,8 +821,14 @@ Manage a product's custom landing page. All subcommands accept the following com
 
 - `--product <slug-or-uuid>` — identify the product explicitly (otherwise read from `.yard/settings.json`; if that's missing and the user has exactly one product, it's auto-selected)
 - `--project <path>` — project root override (defaults to walking up from cwd for a `.yard/` directory)
+- `--env <slug>` — which environment to act on (default: `development`). `publish` uses `--from` instead
 - `--json` — emit a single machine-readable JSON object on stdout; logs go to stderr
 - `--yes`, `-y` — skip confirmation prompts (only applies to destructive commands)
+
+**Environments:** every command edits exactly one environment and none of them
+touch the live page. `production` is what visitors see, and content reaches it
+only through `yard page publish`. There is no separate draft: the environment
+IS the saved state.
 
 **Exit codes:**
 
@@ -852,7 +858,7 @@ Create a `.yard/` project directory linked to a product. If the product already 
 1. Resolves the product (flag → existing settings → sole product → error).
 2. Creates `<project>/.yard/` with perm 0750.
 3. Writes `<project>/.yard/settings.json` if absent: `{"version": 1, "product_slug": "<slug>", "ignore_files": []}`.
-4. Fetches remote metadata. If `draft_files` is non-empty, pulls those. Else if `published_files` is non-empty, pulls those. Else writes the hello-world starter (`index.html` + `styles.css`).
+4. Fetches remote metadata for `--env`. If that environment has files, pulls those. Else if production has files, pulls those. Else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped; files never overwrite an existing local file with different contents.
 6. Prints the next steps and the preview URL.
 
@@ -864,7 +870,7 @@ Create a `.yard/` project directory linked to a product. If the product already 
 {
   "project_root": "/home/alice/my-landing",
   "product": "my-slug",
-  "source": "draft",
+  "source": "development",
   "written": ["index.html", "styles.css"],
   "skipped": [],
   "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
@@ -872,19 +878,19 @@ Create a `.yard/` project directory linked to a product. If the product already 
 }
 ```
 
-`source` is `"starter"` when the remote bundle was empty and the starter was written; `"draft"` or `"published"` otherwise.
+`source` is `"starter"` when both bundles were empty and the starter was written; otherwise the environment slug it pulled from (`"production"` when the requested environment was empty).
 
 ---
 
 ### yard page status
 
-Print the diff between local files and the remote draft without writing anything.
+Print the diff between local files and one environment without writing anything.
 
 **Output categories:**
 
 - `to_upload` — files changed or missing on remote
 - `unchanged` — local and remote hashes match
-- `remote_only` — files on remote draft but not locally
+- `remote_only` — files in the environment but not locally
 - `to_delete` — always empty (prune is only done via `push --prune`)
 
 **JSON output:**
@@ -892,6 +898,7 @@ Print the diff between local files and the remote draft without writing anything
 ```json
 {
   "product": "my-slug",
+  "environment": "development",
   "to_upload": ["index.html"],
   "to_delete": [],
   "unchanged": ["styles.css"],
@@ -903,18 +910,15 @@ Print the diff between local files and the remote draft without writing anything
 
 ### yard page ls
 
-List files in the remote bundle.
-
-**Flags:**
-
-- `--source draft|published` — which bundle to list (default: `draft`)
+List files in one environment's bundle. Pass `--env production` to list what
+is currently live.
 
 **JSON output:**
 
 ```json
 {
   "product": "my-slug",
-  "source": "draft",
+  "environment": "development",
   "files": [
     {
       "path": "index.html",
@@ -931,22 +935,22 @@ List files in the remote bundle.
 
 ### yard page push
 
-Hash-diff the local landing-page directory against the remote draft and upload changed files.
+Hash-diff the local landing-page directory against one environment and upload changed files.
 
 **Flags:**
 
 - `--prune` — delete remote files that are not present locally (opt-in for safety)
-- `--publish` — promote the draft to live after uploading (requires `index.html`)
+- `--publish` — publish the environment to production after uploading (requires `index.html`)
 - `--yes`, `-y` — skip prune confirmation prompt
 
 **Behavior:**
 
 1. Walk `<project>/.yard/landing-page/`, skip dotfiles and files matching `ignore_files` patterns from `settings.json`.
 2. Validate extensions, paths, per-file size, bundle size, and file count client-side.
-3. `GET /v1/products/{id}/custom-page` to fetch remote hashes.
-4. For each local file whose SHA-256 doesn't match the remote hash, `PUT /v1/products/{id}/custom-page/files/{path}` with the raw bytes.
+3. `GET /v1/products/{id}/custom-page?environment=<env>` to fetch remote hashes.
+4. For each local file whose SHA-256 doesn't match the remote hash, `PUT /v1/products/{id}/custom-page/files/{path}?environment=<env>` with the raw bytes.
 5. If `--prune`, `DELETE` remote files that are not present locally (prompts unless `--yes` or `--json`).
-6. If `--publish`, `POST .../publish`.
+6. If `--publish`, `POST /v1/products/{id}/landing-page/publish` with `{"environment": "<env>"}`.
 7. Re-fetch metadata and print `Preview:` (and `Live:` if published).
 
 **JSON output:**
@@ -954,6 +958,7 @@ Hash-diff the local landing-page directory against the remote draft and upload c
 ```json
 {
   "product": "my-slug",
+  "environment": "development",
   "uploaded": ["index.html", "styles.css"],
   "skipped": ["logo.png"],
   "deleted": [],
@@ -973,18 +978,17 @@ When `--prune` is not passed, `remote_only` lists paths on the server that don't
 
 ### yard page pull
 
-Download remote bundle files to the local landing-page directory.
+Download one environment's bundle files to the local landing-page directory.
 
 **Flags:**
 
-- `--source draft|published` — which bundle to pull (default: `draft`)
 - `--force` — overwrite local files even if their hash matches the remote
 - `--dir <path>` — output directory override (defaults to `<project>/.yard/landing-page/`)
 
 **Behavior:**
 
 1. Resolves project root (with `.yard/` discovery allowed to be missing — `pull` is useful for bootstrapping a fresh checkout).
-2. Walks the chosen remote bundle; for each file, downloads and writes to disk unless the local file already has the same SHA-256 (skipped).
+2. Walks the chosen environment's bundle; for each file, downloads and writes to disk unless the local file already has the same SHA-256 (skipped).
 3. Subdirectories are created as needed.
 
 **JSON output:**
@@ -992,7 +996,7 @@ Download remote bundle files to the local landing-page directory.
 ```json
 {
   "product": "my-slug",
-  "source": "draft",
+  "environment": "development",
   "destination": "/home/alice/my-landing/.yard/landing-page",
   "written": ["index.html"],
   "skipped": ["styles.css"]
@@ -1003,11 +1007,16 @@ Download remote bundle files to the local landing-page directory.
 
 ### yard page publish
 
-Promote the current draft bundle to live.
+Overwrite production's landing page with an environment's and make it live. The
+whole page moves together: pre-built content, gallery, and the custom bundle.
+
+**Flags:**
+
+- `--from <slug>` — environment to publish from (default: `development`). Pass `--from production` to redeploy production as it already stands, after editing it directly.
 
 **Behavior:**
 
-1. `POST /v1/products/{id}/custom-page/publish` — server validates that `index.html` exists.
+1. `POST /v1/products/{id}/landing-page/publish` with `{"environment": "<from>"}` — the server validates that `index.html` exists when the page type is custom.
 2. Re-fetches metadata and prints `Live:` and `Preview:` URLs.
 
 **JSON output:**
@@ -1015,36 +1024,16 @@ Promote the current draft bundle to live.
 ```json
 {
   "product": "my-slug",
+  "environment": "development",
   "published": true,
   "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
   "live_url": "https://yard.sh/@alice/my-slug"
 }
 ```
 
----
-
-### yard page revert
-
-Discard the current draft and restore it from the published bundle.
-
-**Flags:**
-
-- `--yes`, `-y` — skip confirmation prompt
-
-**Behavior:**
-
-1. Confirms with the user unless `--yes` or `--json` is passed.
-2. `POST /v1/products/{id}/custom-page/revert`.
-
-**JSON output:**
-
-```json
-{
-  "product": "my-slug",
-  "reverted": true,
-  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview"
-}
-```
+There is no `yard page revert`: with no draft layer there is nothing to revert
+*to*. Use `yard page pull --env production` to overwrite your working copy with
+what is live.
 
 ---
 
@@ -1052,7 +1041,7 @@ Discard the current draft and restore it from the published bundle.
 
 Manage a product's environments. Every product has two protected
 environments, `development` and `production`; landing-page pushes and app
-deploys land in `development`, and promotion is what goes live. Shared
+deploys default to `development`, and publishing is what goes live. Shared
 flags: `--product <slug-or-uuid>`, `--project <path>`, `--json` (same
 semantics as `yard page`).
 

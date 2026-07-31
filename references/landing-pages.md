@@ -358,6 +358,7 @@ The same limits apply whether you upload via `yard page push` or the dashboard e
 | Allowed extensions | `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2` |
 | Path rules | letters/digits/`._-` only, at most one subdirectory level, no dotfiles |
 | Required file | `index.html` (must exist before you can publish) |
+| Scope | Per environment — the caps apply to each environment's bundle separately |
 
 Anything outside these constraints is rejected client-side by `yard page push` before any upload happens.
 
@@ -410,6 +411,6 @@ A complete one-file landing page for a single-tier product:
 
 ## Cross-references
 
-- [cli-commands.md → `yard page`](./cli-commands.md#yard-page) — the commands to scaffold, push, publish, and revert the bundle
+- [cli-commands.md → `yard page`](./cli-commands.md#yard-page) — the commands to scaffold, push, and publish the bundle
 - [pricing-and-licensing.md](./pricing-and-licensing.md) — what the tier shapes (`one_time` / `subscription`, `single` / `fixed_pack` / `per_seat`, volume brackets) actually mean
 - [api-reference.md](./api-reference.md) — the public product endpoint that backs `window.yard.product`
