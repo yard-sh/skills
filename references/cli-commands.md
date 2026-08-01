@@ -319,7 +319,7 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 ## yard releases
 
-Manage releases for a product. Today the CLI exposes `publish` only — list/edit/delete still happen in the dashboard.
+Manage releases for a product. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
 ### yard releases publish [tag]
 
@@ -333,6 +333,7 @@ Create a new release with optional file assets. The release is created first, th
 - `--notes <string>` — short release notes (markdown).
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
+- `--env <slug>` — target environment. Defaults to **development**, so a release published without this flag is private until promoted. Pass `--env production` to ship straight to customers. (Note this differs from the read endpoints, which default to production.)
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
 
@@ -344,6 +345,7 @@ Create a new release with optional file assets. The release is created first, th
   "tag_name": "v1.4.0", // required
   "release_name": "Late April fixes", // optional, ≤255 chars
   "release_notes": "## Highlights\n…", // optional, markdown, ≤125,000 chars
+  "environment": "production", // optional; defaults to development
   "files": [
     // optional; absolute or relative paths
     "./dist/yard-darwin-arm64.tar.gz",
@@ -391,6 +393,28 @@ yard releases publish --spec - --json <<EOF
 }
 EOF
 ```
+
+### yard releases promote <tag>
+
+Copy a release and its files into another environment. The source release is left untouched.
+
+**Flags:**
+
+- `<tag>` positional — the tag to promote (case-insensitive), e.g. `v1.4.0`.
+- `--to <slug>` — target environment. Required.
+- `--from <slug>` — source environment. Defaults to `development`, which is where `publish` puts a release when no `--env` is given.
+- `--product <slug-or-uuid>` — target product.
+- `--json` — emit a single JSON result on stdout.
+
+```sh
+yard releases publish v1.4.0 --file dist/app.zip   # lands in development
+# …verify the download works…
+yard releases promote v1.4.0 --to production       # ships it
+```
+
+The files are **duplicated** in storage, so a promoted release counts against your storage quota in both environments, and the copy's download counts start at zero. Promoting fails with 409 if the target already has that tag, and with 403 if the copy wouldn't fit in your quota.
+
+`yard env promote <from> <to>` also carries releases the target is missing, alongside the app, landing page, and pricing.
 
 For full download server schemas (license-key path and API-key path), see [references/releases-and-updates.md](releases-and-updates.md).
 

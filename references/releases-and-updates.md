@@ -139,6 +139,19 @@ query parameter:
 GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>
 ```
 
+**Environments.** Both update endpoints accept an optional `environment`
+parameter and default to `production`, so an updater that omits it always gets
+the live build:
+
+```
+GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&environment=beta
+```
+
+Any valid license key for the product can read any of its environments — that is
+how beta channels work: hand testers the license key they already have and point
+their updater at a beta environment. Keep unreleased work in `development` if you
+don't want license holders reaching it. A slug that doesn't exist returns `404`.
+
 **Response** (shape mirrors the GitHub Releases API for easy adoption of
 existing tooling):
 
@@ -208,6 +221,13 @@ All endpoints are under the seller's product:
 | `GET` | `/v1/products/{productId}/releases/latest` | `releases:download` |
 | `GET` | `/v1/products/{productId}/releases/{releaseId}/files/{fileId}/download` | `releases:download` |
 | `GET` | `/v1/products/{productId}/releases/latest/files/{fileId}/download` | `releases:download` |
+
+`/releases`, `/releases/latest`, and `/releases/latest/files/{fileId}/download`
+accept an optional `?environment=<slug>` and **default to `production`**. This is
+deliberately the opposite of `yard releases publish`, which defaults to
+`development`: authoring surfaces default to your sandbox, distribution surfaces
+default to what's live, so an installer polling `/releases/latest` never receives
+a sandbox build because a parameter was left off.
 
 Auth header on every request:
 
