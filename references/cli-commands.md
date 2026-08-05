@@ -358,10 +358,10 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 
 **Two-step publish flow:**
 
-1. `POST /v1/products/{id}/releases` (JSON body) creates the release with metadata only.
-2. For each `files[]` entry, `POST /v1/products/{id}/releases/{releaseId}/files` streams the file as `multipart/form-data`.
+1. Each `files[]` entry streams into the environment's draft download set as `multipart/form-data`.
+2. The draft is frozen into an immutable product release (`POST /v1/products/{id}/product-releases`), snapshotting whatever the draft holds.
 3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
-4. Exit code is non-zero if any uploads failed; the release still exists in the dashboard so you can re-upload via the UI.
+4. Exit code is non-zero if any uploads failed; if at least one file uploaded the release was still frozen, and missing assets can be added from the dashboard.
 
 **`--json` output:**
 
@@ -439,7 +439,7 @@ Lists your API keys with the same columns the dashboard shows (name, prefix, sco
 ```
 NAME                     PREFIX             SCOPES                                   LAST USED      CREATED
 --------------------------------------------------------------------------------------------------------------
-ci-runner                yard_a1b2c3d       releases:read, releases:download         2 hours ago    2026-04-12
+ci-runner                yard_a1b2c3d       licenses:validate, licenses:activate     2 hours ago    2026-04-12
 local-dev                yard_e5f6789       products:read                            never          2026-03-30
 
 Total: 2 / 100 keys
@@ -452,7 +452,7 @@ Mints a new API key. **The full secret is shown only once at creation time.** Af
 **Flags:**
 
 - `[name]` positional — key name (e.g. `ci-runner`). Required in `--spec` mode; prompted in interactive mode.
-- `--scopes <csv>` — comma-separated scope list (e.g. `releases:read,releases:download`).
+- `--scopes <csv>` — comma-separated scope list (e.g. `licenses:validate,licenses:activate`).
 - `--spec <path|->` — JSON spec.
 - `--json` — emit `APIKeyCreateResponse` (including `key`) on stdout; logs go to stderr.
 
@@ -461,7 +461,7 @@ Mints a new API key. **The full secret is shown only once at creation time.** Af
 ```jsonc
 {
   "name": "ci-runner",
-  "scopes": ["releases:read", "releases:download"],
+  "scopes": ["licenses:validate", "licenses:activate"],
 }
 ```
 
@@ -470,8 +470,6 @@ Mints a new API key. **The full secret is shown only once at creation time.** Af
 | Scope                 | Description                                           |
 | --------------------- | ----------------------------------------------------- |
 | `products:read`       | Read product metadata                                 |
-| `releases:read`       | Read release metadata for owned products              |
-| `releases:download`   | Download release files for owned products             |
 | `licenses:validate`   | Validate license keys (called from your own software) |
 | `licenses:activate`   | Activate / deactivate license keys                    |
 | `subscriptions:read`  | Read product subscription status                      |
@@ -483,11 +481,11 @@ Backend caps each user at 100 API keys; on `403` from the create endpoint the CL
 
 ```sh
 # Mint a key for a CI job, capture the secret out of the JSON output.
-KEY=$(echo '{"name":"ci-runner","scopes":["releases:read","releases:download"]}' \
+KEY=$(echo '{"name":"ci-runner","scopes":["licenses:validate","licenses:activate"]}' \
   | yard keys create --spec - --json | jq -r .key)
 ```
 
-For end-user-shipped software, the license-key update server (`/v1/updates/latest`) and an embedded API key (`/v1/products/{id}/releases/latest`) are both valid auth paths — see [references/releases-and-updates.md](releases-and-updates.md) for the tradeoffs.
+For end-user-shipped software, downloads authenticate with license keys against the update server (`/v1/updates/latest`) — see [references/releases-and-updates.md](releases-and-updates.md).
 
 ---
 

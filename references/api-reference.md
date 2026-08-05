@@ -31,8 +31,6 @@ API keys start with the `yard_` prefix and are issued per seller in the dashboar
 | `products:read` | Read a product's metadata |
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
-| `releases:read` | List / read release metadata for the seller's products |
-| `releases:download` | Download release files (latest or by id) |
 | `subscriptions:read` | Read a buyer's product subscription status |
 | `subscriptions:write` | Create, cancel, or reactivate a buyer's product subscription |
 
@@ -64,16 +62,6 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 |---|---|---|---|
 | `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key (optionally bind to a device) |
 | `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license |
-
-### Releases
-
-| Method | Path | Scope | Description |
-|---|---|---|---|
-| `GET` | `/v1/products/{id}/releases` | `releases:read` | List releases for a product |
-| `GET` | `/v1/products/{id}/releases/{releaseId}` | `releases:read` | Get a single release |
-| `GET` | `/v1/products/{id}/releases/latest` | `releases:download` | Fetch metadata for the latest release |
-| `GET` | `/v1/products/{id}/releases/{releaseId}/files/{fileId}/download` | `releases:download` | Download a file from a specific release |
-| `GET` | `/v1/products/{id}/releases/latest/files/{fileId}/download` | `releases:download` | Download a file from the latest release |
 
 ### Subscriptions (buyer-facing)
 

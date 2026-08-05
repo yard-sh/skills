@@ -1,18 +1,16 @@
 # Releases and the Update Server
 
 This reference covers how to publish a release for a Yard product (with file
-assets) and how shipped software downloads those releases. Two auth approaches
-work for downloading: **license keys** (per-buyer, hit `/v1/updates/latest`)
-and **API keys** (per-seller, hit `/v1/products/{id}/releases/...`). Either
-fits shipped software — pick by what suits the product. API keys are also the
-only option for first-party automation (CI, internal tooling).
+assets) and how shipped software downloads those releases. Downloads
+authenticate with **license keys** (per-buyer, hit `/v1/updates/latest`).
+API keys cover first-party automation for licenses and subscriptions; they do
+not grant release access.
 
 ## Table of Contents
 
 - [What a release is](#what-a-release-is)
 - [Publishing a release with the CLI](#publishing-a-release-with-the-cli)
 - [Downloading releases — license-key path](#downloading-releases--license-key-path)
-- [Downloading releases — API-key path](#downloading-releases--api-key-path)
 - [Creating an API key](#creating-an-api-key)
 - [Listing API keys](#listing-api-keys)
 - [Troubleshooting](#troubleshooting)
@@ -21,16 +19,20 @@ only option for first-party automation (CI, internal tooling).
 
 ## What a release is
 
-A Yard release belongs to a single product and consists of:
+A Yard release is an **immutable, product-wide snapshot** of an environment's
+working state — landing page, pricing, download buttons, and file assets. It
+consists of:
 
 - **`tag_name`** — required, ≤255 chars (e.g. `v1.4.0`)
 - **`release_name`** — optional human title (≤255 chars)
 - **`release_notes`** — optional markdown body (≤125,000 chars)
 - **`files`** — zero or more file assets uploaded to the seller's storage bucket
 
-There is **no draft state** — releases go live immediately on creation. The
-newest non-archived, non-stale, "synced" release for a product is automatically
-the "latest" release.
+A release does not belong to any environment; each **environment is a pointer**
+to the release it currently serves. Publishing freezes the target environment's
+draft (development by default) and points that environment at the new release.
+Buyers only ever see releases that have shipped to **production** — promote a
+release there (`yard releases promote <tag> --to production`) to make it live.
 
 Duplicate `tag_name` values are *allowed* on the same product (no unique
 constraint), but it's poor practice — pick distinct tags.
@@ -65,6 +67,7 @@ Spec field rules:
 | `tag_name` | string | Yes | ≤255 chars |
 | `release_name` | string | No | ≤255 chars |
 | `release_notes` | string | No | markdown, ≤125,000 chars |
+| `environment` | string | No | environment to freeze; defaults to `development` |
 | `files` | array of paths | No | absolute or relative; each path must exist and be a regular file |
 
 `--json` prints a single object on stdout (logs go to stderr):
@@ -101,29 +104,29 @@ yard releases publish
 
 ### How upload failures are handled
 
-The CLI runs a **two-step publish**: it creates the release first (JSON), then
-streams each file to `POST /v1/products/{id}/releases/{releaseId}/files` one at
-a time. A single failed upload does **not** delete the release — you'll see a
-per-file summary on stderr and the JSON output marks each file `uploaded` or
-`failed`.
+The CLI runs a **two-step publish**: it streams each file into the
+environment's draft download set first, then freezes the draft into the
+release. A failed upload never leaves a half-described release — the release
+snapshots whatever the draft holds when it is frozen, including files uploaded
+on earlier runs. You'll see a per-file summary on stderr and the JSON output
+marks each file `uploaded` or `failed`.
 
 Exit codes:
 
-- `0` — release created and all files (if any) uploaded.
-- non-zero — release was created but at least one file failed; the release
-  exists in the dashboard and you can re-upload missing assets there.
+- `0` — all files (if any) uploaded and the release was created.
+- non-zero — at least one file failed. If any file uploaded, the release was
+  still frozen (without the failed files); if every file failed, no release
+  was created. Re-run or add the missing assets from the dashboard.
 
 ---
 
 ## Downloading releases — license-key path
 
-Use this path when your software issues a license key per buyer (i.e.
-`license_key_enabled: true` on the product). It's the easiest auth for shipped
-software — each buyer's key is unique, so revocation, activation limits, and
-per-user analytics work out of the box, and there's no shared secret to embed
-in the binary. If the product doesn't issue license keys, or you'd rather skip
-the per-buyer-key UX, the API-key path below works equally well — it just
-hits a different endpoint.
+Use this path for shipped software that downloads updates. It requires the
+product to issue a license key per buyer (i.e. `license_key_enabled: true`).
+Each buyer's key is unique, so revocation, activation limits, and per-user
+analytics work out of the box, and there's no shared secret to embed in the
+binary.
 
 ### Get latest release metadata
 
@@ -202,54 +205,16 @@ presigned URL expires after 5 minutes.
 
 ---
 
-## Downloading releases — API-key path
-
-API keys work in two scenarios: **first-party automation** (CI scripts,
-internal tooling, integration tests) and **shipped software** where you'd
-rather embed a single key than have each buyer authenticate with a license
-key. Tradeoff for shipped software: every install carries the same key, so
-you can't revoke or rate-limit per customer the way you can with license
-keys — pick this path when that tradeoff is acceptable, or when the product
-doesn't issue license keys at all.
-
-All endpoints are under the seller's product:
-
-| Method | Path | Required scope |
-|---|---|---|
-| `GET` | `/v1/products/{productId}/releases` | `releases:read` |
-| `GET` | `/v1/products/{productId}/releases/{releaseId}` | `releases:read` |
-| `GET` | `/v1/products/{productId}/releases/latest` | `releases:download` |
-| `GET` | `/v1/products/{productId}/releases/{releaseId}/files/{fileId}/download` | `releases:download` |
-| `GET` | `/v1/products/{productId}/releases/latest/files/{fileId}/download` | `releases:download` |
-
-`/releases`, `/releases/latest`, and `/releases/latest/files/{fileId}/download`
-accept an optional `?environment=<slug>` and **default to `production`**. This is
-deliberately the opposite of `yard releases publish`, which defaults to
-`development`: authoring surfaces default to your sandbox, distribution surfaces
-default to what's live, so an installer polling `/releases/latest` never receives
-a sandbox build because a parameter was left off.
-
-Auth header on every request:
-
-```
-Authorization: Bearer yard_<full-key>
-```
-
-Download endpoints behave the same as the license-key path — they redirect
-(`302`) to a 5-minute presigned URL.
-
----
-
 ## Creating an API key
 
 ```sh
-yard keys create ci-runner --scopes releases:read,releases:download
+yard keys create ci-runner --scopes licenses:validate,licenses:activate
 ```
 
 Or, non-interactively from a spec:
 
 ```sh
-echo '{"name":"ci-runner","scopes":["releases:read","releases:download"]}' \
+echo '{"name":"ci-runner","scopes":["licenses:validate","licenses:activate"]}' \
   | yard keys create --spec - --json
 ```
 
@@ -263,8 +228,6 @@ the prefix (`yard_a1b2c3d`) and metadata.
 | Scope | Description |
 |---|---|
 | `products:read` | Read product metadata |
-| `releases:read` | Read release metadata for owned products |
-| `releases:download` | Download release files for owned products |
 | `licenses:validate` | Validate license keys (called from your own software) |
 | `licenses:activate` | Activate / deactivate license keys |
 | `subscriptions:read` | Read product subscription status |
@@ -300,7 +263,7 @@ Emits the raw `APIKeyListResponse`:
       "id": "5f8b…",
       "name": "ci-runner",
       "key_prefix": "yard_a1b2c3d",
-      "scopes": ["releases:read", "releases:download"],
+      "scopes": ["licenses:validate", "licenses:activate"],
       "last_used_at": "2026-04-28T16:32:11Z",
       "created_at":   "2026-04-12T09:14:02Z"
     }
@@ -316,7 +279,7 @@ Emits the raw `APIKeyListResponse`:
 
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
-- **`404 No releases found for this product`** — the product has zero non-archived, synced releases. For new products, run `yard releases publish` to ship the first one.
+- **`404 No releases found for this product`** — nothing has shipped to production yet. Run `yard releases publish` and promote the release to production (or publish with `--env production`).
 - **Storage-limit `403` on publish** — the seller's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

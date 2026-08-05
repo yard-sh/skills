@@ -34,10 +34,7 @@ Yard has two surfaces. Pick by intent:
 
 API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
 
-For shipped end-user software, the API supports two auth approaches and either works — pick by what fits the product:
-
-- **License key** (per-buyer) hitting `GET /v1/updates/latest`. Easiest if the product issues license keys: each buyer's key is unique, so revocation, activation limits, and per-customer rate limits work for free, and there's no shared secret to embed in the binary.
-- **Embedded API key** (one shared key) hitting `GET /v1/products/{id}/releases/latest` with the `releases:download` scope. Simpler app UX (no key entry), at the cost of per-buyer revocation — every install carries the same key.
+For shipped end-user software, downloads authenticate with a **license key** (per-buyer) hitting `GET /v1/updates/latest`: each buyer's key is unique, so revocation, activation limits, and per-customer rate limits work for free, and there's no shared secret to embed in the binary.
 
 See [references/releases-and-updates.md](references/releases-and-updates.md).
 
@@ -171,9 +168,7 @@ yard init --product simple-note --json
 If the product is **locally-installed software** — a desktop app, CLI tool, native binary, anything the buyer downloads and runs on their own machine — `yard init` alone is **not** a complete sales surface. The buy page has nothing to download until a release is published, and the installed app has no built-in update path. Whenever you detect this product type during the autopilot flow, the plan you present in step 3 must cover both halves:
 
 1. **Publish releases.** After `yard init`, the seller publishes each shipped version with `yard releases publish` (spec mode is the agent-friendly form). This is what populates the buy page's download. See [references/releases-and-updates.md](references/releases-and-updates.md) — _Publishing a release with the CLI_.
-2. **Wire the update endpoint.** The installed app needs an auto-updater that pulls the latest release from Yard. Two auth options — pick whichever fits:
-   - **License key** → `GET https://api.yard.sh/v1/updates/latest?license_key=<key>`. One key per buyer (revocable per customer). Easiest if the product already issues license keys.
-   - **Embedded API key** → `GET https://api.yard.sh/v1/products/{productId}/releases/latest` with `Authorization: Bearer yard_<key>` and the `releases:download` scope. One key shared across all installs (no per-buyer revocation), but no key-entry UX in the app.
+2. **Wire the update endpoint.** The installed app needs an auto-updater that pulls the latest release from Yard, authenticating with the buyer's **license key** → `GET https://api.yard.sh/v1/updates/latest?license_key=<key>`. One key per buyer (revocable per customer); requires the product to issue license keys.
 
    Tell the user this needs to be wired into their app's auto-updater. See [references/releases-and-updates.md](references/releases-and-updates.md) — _Downloading releases_.
 
