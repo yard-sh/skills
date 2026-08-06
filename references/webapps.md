@@ -207,17 +207,24 @@ scaffold writes `.dev.vars.example`).
 ## The workflow loop
 
 ```
-yard app init                              # scaffold (once)
-npx wrangler dev                           # local: real runtime, local SQLite
-yard app check                             # validate bundle + lint (no network)
-yard app deploy                            # → development, prints the preview URL
-yard app open                              # browse the development preview
-yard app logs --env development            # console output + exceptions
-yard env promote development production    # go live
+yard app init                                  # scaffold (once)
+npx wrangler dev                               # local: real runtime, local SQLite
+yard app check                                 # validate bundle + lint (no network)
+yard app deploy                                # stages the bundle into your draft release + deploys a development preview
+yard app open                                  # browse the development preview
+yard app logs --env development                # console output + exceptions
+yard releases publish v1.0.0                   # publish the draft → development serves it
+yard releases promote v1.0.0 --to production   # go live
 ```
 
-Deploys target **development** by default; production is only reached by an
-explicit promote (which carries the landing page too, if one exists).
+`yard app deploy` uploads the bundle into your **draft release** and deploys
+an owner-only preview of it to development (or another non-production
+environment). Production only ever runs what its serving release froze, so
+going live is always a release operation: publish the draft and promote it (as
+above), publish straight to production (`yard releases publish v1.0.0 --env
+production`), or `yard env promote development production` once development
+serves the published release. The release carries the landing page too, if one
+exists.
 
 ### Local dev differs from hosted Yard
 

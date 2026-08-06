@@ -105,13 +105,13 @@ Built-in updaters in the seller's software can reach these directly with just a 
 The following are **not** exposed over HTTP as integration endpoints — an API key can't reach them, because they manage the seller's own catalog. If an agent needs to do any of these, it must run the CLI, not issue HTTP requests:
 
 - Create / update / delete a product (`yard init`, product edits in the dashboard)
-- Create / update / delete / sync / archive a release (handled automatically by the GitHub App on release webhook, or via the dashboard)
+- Create, publish, or promote a release (`yard releases publish`, `yard releases promote`, the GitHub App on release webhook, or the dashboard)
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
 - Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the seller's own account, not an integration surface, so an API key can't reach them
 - Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
 - Stripe Connect onboarding and payout management
 - Custom domains, product images / videos, webhook secrets
-- Custom landing page editing (`yard page init`, `yard page push`, `yard page publish`, …)
+- Custom landing page editing (`yard page init`, `yard page push`, …)
 
 See [cli-commands.md](./cli-commands.md) for the full CLI surface.
 

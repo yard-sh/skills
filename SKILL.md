@@ -9,6 +9,7 @@ metadata:
     - references/api-reference.md
     - references/landing-pages.md
     - references/releases-and-updates.md
+    - references/webapps.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
@@ -182,11 +183,11 @@ If the product **is** the web app — the buyer uses it in the browser rather th
 
 1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration, `yard.json`). Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/webapps.md](references/webapps.md).
 2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `yard.json`'s `access: customers` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
-3. **Deploy → test → promote.** `yard app deploy` targets the development environment and returns a real, browsable `url` — an owner-only `?yard_env=development` preview (`yard app open` opens it). Verify the deployed dev app there (and `npx wrangler dev` locally), then `yard env promote development production` to go live. Data and secrets never promote — set production secrets explicitly.
+3. **Deploy → test → publish.** `yard app deploy` stages the bundle into a **draft release** and deploys an owner-only preview to development, returning a real, browsable `url` (`yard app open` opens it). Verify the deployed dev app there (and `npx wrangler dev` locally), then go live by publishing the draft: `yard releases publish <tag>` followed by `yard releases promote <tag> --to production` (or `yard releases publish <tag> --env production` in one step). Data and secrets never move between environments — set production secrets explicitly.
 4. **Draft products serve the app to the owner only.** You can deploy, promote, and fully verify `/app/` while the product is still `draft` — the seller signs in and gets through; everyone else sees an explanatory 403. Never advance the product stage just to test (stage changes are one-way).
 5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any product; the product page remains the sales surface and the app lives under `/app/`. The owner always passes the paywall with `X-Yard-Entitlement: owner`.
 
-Releases/`yard releases publish` are **not** part of this flow — web apps deploy, they don't ship files.
+A web-app release carries the app bundle and landing page, not downloadable files — there is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
 
 ### Testing license-key validation
 
@@ -265,7 +266,7 @@ The interactive flow:
 3. **Best-effort** git context: if inside a git repo with a GitHub remote, prompts to install the Yard GitHub App and verifies the repo. Any step failing here is non-fatal — the product will simply be created without a linked repo.
 4. Lets you select an existing product or create a new one (prompts for title + price on create)
 5. Writes `.yard/settings.json` in the current directory
-6. Offers to scaffold a custom landing page. If accepted, pulls or scaffolds starter files into `.yard/landing-page/` and attempts to publish. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI shows a friendly upgrade link and keeps the saved draft.
+6. Offers to scaffold a custom landing page. If accepted, pulls or scaffolds starter files into `.yard/landing-page/` and uploads them into your draft release (going live requires publishing the draft with `yard releases publish`). If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI shows a friendly upgrade link and keeps the draft.
 
 **No git repo required.** `yard init` works inside any directory — it will just create the product without a GitHub link. Only GitHub repositories are supported for linking.
 
@@ -283,7 +284,8 @@ The interactive flow:
 | `yard products tiers add <slug> --spec <file\|->`                             | Append one tier without rebuilding the full tier list.                                                                                                                                                                                                                  |
 | `yard products tiers edit <slug> <tier-id-or-name> --spec <file\|->`          | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`).                                                                                                                                             |
 | `yard products tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default.                                                                                                                                                                      |
-| `yard releases publish [tag] [flags]`                                         | Create a new release with optional file assets. Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md).                                                                         |
+| `yard releases publish [tag] [flags]`                                         | Publish a draft release under a tag, with optional file assets; deploys it to `--env` (default `development`). Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md).          |
+| `yard releases promote <tag> --to <env>`                                      | Attach an already-published release to another environment (e.g. `--to production` to go live). Nothing is copied — the environment serves the release from its set.                                                                                                   |
 | `yard keys list [--json]`                                                     | List your API keys (name, prefix, scopes, last-used, created). The full secret is never shown.                                                                                                                                                                          |
 | `yard keys create [name] [flags]`                                             | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation.                                                                                                                                                           |
 | `yard licenses test-key [--product <slug>] [--json]`                          | Print the product's sandbox **test license key** — usable with `POST /v1/licenses/validate` to exercise license-validation logic without buying your own product.                                                                                                       |
@@ -302,18 +304,16 @@ The interactive flow:
 | `yard transactions [--json]`                                                  | List sales. `--trials`, `--product <slug>`, `--start`/`--end` narrow the rows and total; the earnings summary stays account-wide.                                                                                                                                       |
 | `yard transactions show <order-id> [--json]`                                  | One sale in full — tier, coupon, refund state, trial expiry. Takes the short `order_xxxxxxxx` id or the full UUID.                                                                                                                                                      |
 | `yard transactions trial <order-id> --add-days N [--json]`                    | Lengthen (`7`) or shorten (`-3`) a free trial, ±365. Days are added to the **current expiry, not today**; an expired trial whose new expiry is in the future goes back to active (`reactivated: true`). The buyer is emailed. Needs `.permissions.sell_products`. |
-| `yard page init`                                                              | Create a `.yard/` project directory linked to a product and scaffold a hello-world landing page                                                                                                                                                                         |
-| `yard page status`                                                            | Diff local landing-page files vs the remote draft (no writes)                                                                                                                                                                                                           |
-| `yard page ls [--source draft\|published]`                                    | List files in the remote draft or published bundle                                                                                                                                                                                                                      |
-| `yard page push [--prune] [--publish]`                                        | Upload changed local files to the remote draft; optionally prune + publish                                                                                                                                                                                              |
-| `yard page pull [--source draft\|published] [--dir PATH]`                     | Download remote files to the local landing-page directory                                                                                                                                                                                                               |
-| `yard page publish`                                                           | Promote the current draft bundle to live                                                                                                                                                                                                                                |
-| `yard page revert [--yes]`                                                    | Discard the draft and restore it from the published bundle                                                                                                                                                                                                              |
-| `yard env list [--json]`                                                      | List the product's environments (`development` + `production` always exist; both protected)                                                                                                                                                                             |
-| `yard env create <slug>` / `yard env delete <slug>`                           | Add / remove a custom environment (Pro; 5 max). Deleting removes its files, app Worker, and app database immediately.                                                                                                                                                  |
-| `yard env promote <from> <to>`                                                | Copy the landing page + web-app bundle between environments; promoting to `production` deploys live. Data and secrets never promote.                                                                                                                                    |
+| `yard page init`                                                              | Scaffold `.yard/landing-page/` inside a Yard project, pulling the draft release's page files (or a hello-world starter)                                                                                                                                                 |
+| `yard page status`                                                            | Diff local landing-page files vs your draft release (no writes)                                                                                                                                                                                                         |
+| `yard page ls [--release <id\|tag>]`                                          | List a release's landing-page files (defaults to your open draft; `--env production` for what's live)                                                                                                                                                                  |
+| `yard page push [--prune]`                                                    | Upload changed local files into your draft release; go live with `yard releases publish <tag>`                                                                                                                                                                          |
+| `yard page pull [--release <id\|tag>] [--dir PATH]`                           | Download a release's landing-page files to the local directory                                                                                                                                                                                                          |
+| `yard env list [--json]`                                                      | List the product's environments with what each serves and its attached releases (`development` + `production` always exist; both protected)                                                                                                                             |
+| `yard env create <slug>` / `yard env delete <slug>`                           | Add / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.permissions`). Deleting removes its files, app Worker, and app database immediately.                                                                                 |
+| `yard env promote <from> <to>`                                                | Attach the release `<from>` currently serves to `<to>`; promoting to `production` takes it live. Nothing is copied; data and secrets never promote.                                                                                                                    |
 | `yard app init [--dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the project root and the bundle dir is recorded as `app_dir`                                                                                                        |
-| `yard app deploy [--dir PATH] [--env SLUG]`                                   | Upload the bundle (changed files only) and deploy it; prints/returns the environment's `url` (owner-only `?yard_env` preview for non-production)                                                                                                                        |
+| `yard app deploy [--dir PATH] [--env SLUG]`                                   | Upload the bundle into your draft release (changed files only) and deploy an owner-only preview to a non-production environment; go live via `yard releases publish`/`promote`                                                                                          |
 | `yard app status [--env SLUG] [--diff]`                                       | Bundle contents, last deployment, and `url`; `--diff` compares local vs remote                                                                                                                                                                                          |
 | `yard app open [--env SLUG]`                                                  | Print and open the environment's app URL                                                                                                                                                                                                                                |
 | `yard app check [--dir PATH]`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
@@ -378,11 +378,11 @@ For everything an agent needs to **author** the page itself — how to read prod
 
 ### Typical Flow
 
-1. `cd <project>` and `yard page init` — scaffolds `.yard/` and a hello-world page
+1. `cd <project>` and `yard page init` — scaffolds `.yard/landing-page/`, pulling your draft release's page files (or a hello-world starter)
 2. Edit files in `.yard/landing-page/` (by hand, or prompt an agent to do it)
 3. `yard page status` — preview the diff without writing anything
-4. `yard page push` — upload changed files; prints a `Preview:` URL for the draft
-5. `yard page push --publish` — upload and go live in one step; prints both `Preview:` and `Live:` URLs
+4. `yard page push` — upload changed files into your draft release; prints a `Preview:` URL
+5. `yard releases publish <tag> --env production` — publish the draft and go live (or publish to `development` first, then `yard releases promote <tag> --to production` when ready)
 
 ### Driving It From an Agent
 
@@ -390,25 +390,31 @@ All `yard page` mutating commands accept:
 
 - `--product <slug-or-uuid>` — override the product in `.yard/settings.json`
 - `--project <path>` — project root override (defaults to walking up from cwd for `.yard/`)
+- `--release <id|tag>` — target a specific release (defaults to your open draft; required when several drafts are open)
+- `--env <slug>` — environment a newly opened draft seeds from / read fallback (default `development`)
 - `--json` — emit a single machine-readable JSON object; logs go to stderr
-- `--yes` — skip confirmation prompts (for `revert`, `push --prune`)
+- `--yes` — skip confirmation prompts (for `push --prune`)
 
 Exit codes: `0` = success, `1` = fatal (auth/validation/network), `2` = partial success (`push` only).
 
-Example `push --publish --json` output:
+Example `push --json` output:
 
 ```json
 {
   "product": "my-slug",
+  "release": "9f3e1c2a-…",
+  "version": "",
   "uploaded": ["index.html", "styles.css"],
   "skipped": [],
   "deleted": [],
-  "published": true,
-  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
-  "live_url": "https://yard.sh/@alice/my-slug",
+  "remote_only": [],
+  "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
+  "live_url": null,
   "errors": []
 }
 ```
+
+`live_url` is only non-null once production serves a release.
 
 Diff is SHA-256 content-addressed against the server's existing hashes, so repeated pushes with no changes upload nothing.
 
@@ -452,5 +458,6 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Pricing, licensing, coupons, trials                                                 | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions)    | [references/api-reference.md](references/api-reference.md)                 |
 | Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md)                 |
+| Web apps — runtime contract, `yard app` workflow, auth headers, database            | [references/webapps.md](references/webapps.md)                             |
 | Publishing releases, downloading updates, API keys                                  | [references/releases-and-updates.md](references/releases-and-updates.md)   |
 | Troubleshooting common issues                                                       | [references/troubleshooting.md](references/troubleshooting.md)             |

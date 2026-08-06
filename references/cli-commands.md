@@ -133,8 +133,8 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
-   - Runs the same source-pick logic as `yard page init` (the environment → production → starter) and pulls or scaffolds accordingly.
-   - Calls `POST /v1/products/{id}/landing-page/publish`. If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr, keeps the uploaded files, and exits 0. On other errors, fails.
+   - Resolves the product's draft release (same logic as `yard page init`) and pulls its landing-page files, or scaffolds the hello-world starter when it has none.
+   - Uploads the local files into the draft and prints that the page is staged — going live requires publishing the draft (`yard releases publish <tag>`). If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr and the rest of `init` still succeeds.
 
 8. **Optional product-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
@@ -321,19 +321,22 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 Manage releases for a product. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
+**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet, editable and unreachable by buyers (drafts can never belong to an environment). Every CLI command that writes files — `releases publish`, `page push`, `app deploy` — targets the same draft: your open one, or a new draft seeded from what the target environment currently serves; `--release <id|tag>` names one explicitly (required when multiple drafts are open). Publishing stamps the tag, freezes the release (one-way), and attaches it to an environment — attaching is the deploy moment. Environments hold a **set** of releases and serve the newest member unless pinned.
+
 ### yard releases publish [tag]
 
-Create a new release with optional file assets. The release is created first, then each file is uploaded one at a time so a single failed asset doesn't lose the release.
+Publish a draft release under a tag, with optional file assets. Files upload into the draft first, then the draft is published and deployed — so a single failed asset never leaves a half-described release, and anything `yard page push` or `yard app deploy` already staged in the draft ships with it.
 
 **Flags:**
 
-- `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode.
+- `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode. Tags are unique per product across non-archived releases — a collision is a `409`.
 - `--product <slug-or-uuid>` — target product. Required only if you have multiple products.
 - `--name <string>` — optional human-readable release name.
 - `--notes <string>` — short release notes (markdown).
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
-- `--env <slug>` — target environment. Defaults to **development**, so a release published without this flag is private until promoted. Pass `--env production` to ship straight to customers. (Note this differs from the read endpoints, which default to production.)
+- `--env <slug>` — environment the release deploys to. Defaults to **development**, so a release published without this flag is private until promoted. Pass `--env production` to ship straight to customers. (Note this differs from the read endpoints, which default to production.)
+- `--release <id|tag>` — the draft to publish. Defaults to your open draft (creating one from what `--env` serves if none exists); required when multiple drafts are open. Published releases are refused — they're immutable.
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
 
@@ -358,16 +361,19 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 
 **Two-step publish flow:**
 
-1. Each `files[]` entry streams into the environment's draft download set as `multipart/form-data`.
-2. The draft is frozen into an immutable product release (`POST /v1/products/{id}/product-releases`), snapshotting whatever the draft holds.
+1. The draft is resolved (`--release` → sole open draft → new draft seeded from what `--env` serves), and each `files[]` entry streams into it as `multipart/form-data`.
+2. The draft is published (`POST /v1/products/{id}/product-releases/{rid}/publish`) — the tag is stamped, the release is attached to the target environment, and the environment deploys it.
 3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
-4. Exit code is non-zero if any uploads failed; if at least one file uploaded the release was still frozen, and missing assets can be added from the dashboard.
+4. Exit code is non-zero if any uploads failed; if at least one file uploaded the draft was still published (without the failed files), and missing assets can be added from the dashboard. If every file failed, nothing is published and the draft stays open.
 
 **`--json` output:**
 
 ```json
 {
-  "release":  { "id":"…", "tag_name":"v1.4.0", "files":[...], ... },
+  "release":  { "id":"…", "version":"v1.4.0", "is_draft":false, "published_at":"…", "files":[...], ... },
+  "deployed": [
+    {"release_id":"…", "version":"v1.4.0", "to":"development", "action":"attach", "artifacts":["page","releases"]}
+  ],
   "files": [
     {"path":"./dist/a.tar.gz", "status":"uploaded", "size_bytes":12345678},
     {"path":"./dist/b.tar.gz", "status":"failed",   "error":"open …: no such file"}
@@ -396,25 +402,29 @@ EOF
 
 ### yard releases promote <tag>
 
-Copy a release and its files into another environment. The source release is left untouched.
+Attach an already-published release to another environment, which then serves exactly what that release froze — landing page, pricing, download buttons, app bundle, and downloadable files.
 
 **Flags:**
 
-- `<tag>` positional — the tag to promote (case-insensitive), e.g. `v1.4.0`.
+- `<tag>` positional — the tag to promote, e.g. `v1.4.0`. There is no `--from`: releases belong to the product, so the tag alone identifies one.
 - `--to <slug>` — target environment. Required.
-- `--from <slug>` — source environment. Defaults to `development`, which is where `publish` puts a release when no `--env` is given.
 - `--product <slug-or-uuid>` — target product.
+- `--project <path>` — project root override.
 - `--json` — emit a single JSON result on stdout.
 
 ```sh
-yard releases publish v1.4.0 --file dist/app.zip   # lands in development
+yard releases publish v1.4.0 --file dist/app.zip   # publishes + deploys to development
 # …verify the download works…
 yard releases promote v1.4.0 --to production       # ships it
 ```
 
-The files are **duplicated** in storage, so a promoted release counts against your storage quota in both environments, and the copy's download counts start at zero. Promoting fails with 409 if the target already has that tag, and with 403 if the copy wouldn't fit in your quota.
+**Nothing is copied**: a release is an immutable, product-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op.
 
-`yard env promote <from> <to>` also carries releases the target is missing, alongside the app, landing page, and pricing.
+**`--json` output** (the membership-change result):
+
+```json
+{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["pricing", "identity", "page", "app", "releases"]}
+```
 
 For full download server schemas (license-key path and API-key path), see [references/releases-and-updates.md](releases-and-updates.md).
 
@@ -843,14 +853,19 @@ Manage a product's custom landing page. All subcommands accept the following com
 
 - `--product <slug-or-uuid>` — identify the product explicitly (otherwise read from `.yard/settings.json`; if that's missing and the user has exactly one product, it's auto-selected)
 - `--project <path>` — project root override (defaults to walking up from cwd for a `.yard/` directory)
-- `--env <slug>` — which environment to act on (default: `development`). `publish` uses `--from` instead
+- `--release <id|tag>` — which release to act on (defaults to your open draft)
+- `--env <slug>` — the environment a newly opened draft seeds from, and the read fallback when no draft is open (default: `development`)
 - `--json` — emit a single machine-readable JSON object on stdout; logs go to stderr
 - `--yes`, `-y` — skip confirmation prompts (only applies to destructive commands)
 
-**Environments:** every command edits exactly one environment and none of them
-touch the live page. `production` is what visitors see, and content reaches it
-only through `yard page publish`. There is no separate draft: the environment
-IS the saved state.
+**Draft releases:** every page command works on a **release**, and writes
+always target a draft — your open one, or a new draft seeded from what `--env`
+currently serves when none exists. Reads (`status`, `ls`, `pull`) default to
+that same draft, which keeps `page status` describing exactly what `page push`
+would change; pass `--release <tag>` or (with no draft open) `--env production`
+to inspect something else. With multiple drafts open, `--release` is required.
+Nothing a page command does touches the live page — content goes live when the
+draft is published (`yard releases publish <tag>`).
 
 **Exit codes:**
 
@@ -873,16 +888,16 @@ IS the saved state.
 
 ### yard page init
 
-Create a `.yard/` project directory linked to a product. If the product already has remote files, they are pulled into `.yard/landing-page/`; otherwise a hello-world `index.html` + `styles.css` is scaffolded.
+Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` first). If the resolved draft release already has landing-page files, they are pulled into `.yard/landing-page/`; otherwise a hello-world `index.html` + `styles.css` is scaffolded.
 
 **Behavior:**
 
 1. Resolves the product (flag → existing settings → sole product → error).
-2. Creates `<project>/.yard/` with perm 0750.
-3. Writes `<project>/.yard/settings.json` if absent: `{"version": 1, "product_slug": "<slug>", "ignore_files": []}`.
-4. Fetches remote metadata for `--env`. If that environment has files, pulls those. Else if production has files, pulls those. Else writes the hello-world starter (`index.html` + `styles.css`).
-5. Local files that already match the remote SHA-256 are skipped; files never overwrite an existing local file with different contents.
-6. Prints the next steps and the preview URL.
+2. Creates `<project>/.yard/landing-page/` and writes `<project>/.yard/settings.json` if absent: `{"version": 1, "product_slug": "<slug>", "ignore_files": []}`.
+3. Resolves the draft release (your open draft, or a new one seeded from what `--env` serves — a first init on a fresh product starts from what is live rather than from a blank page).
+4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
+5. Local files that already match the remote SHA-256 are skipped.
+6. Prints next steps (edit → `yard page push` → `yard releases publish <tag>`) and the preview URL.
 
 **Idempotent:** running `init` twice is safe. Existing files are preserved.
 
@@ -892,27 +907,28 @@ Create a `.yard/` project directory linked to a product. If the product already 
 {
   "project_root": "/home/alice/my-landing",
   "product": "my-slug",
-  "source": "development",
+  "source": "draft 9f3e1c2a",
+  "release": "9f3e1c2a-…",
   "written": ["index.html", "styles.css"],
   "skipped": [],
-  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
   "live_url": null
 }
 ```
 
-`source` is `"starter"` when both bundles were empty and the starter was written; otherwise the environment slug it pulled from (`"production"` when the requested environment was empty).
+`source` is `"starter"` when the draft had no page files and the starter was written; otherwise a label for the release it pulled from (its tag, or `draft <short-id>` for an untagged draft). `live_url` is only non-null when production actually serves a release.
 
 ---
 
 ### yard page status
 
-Print the diff between local files and one environment without writing anything.
+Print the diff between local files and a release without writing anything. Defaults to your open draft — the exact set `page push` would upload.
 
 **Output categories:**
 
 - `to_upload` — files changed or missing on remote
 - `unchanged` — local and remote hashes match
-- `remote_only` — files in the environment but not locally
+- `remote_only` — files in the release but not locally
 - `to_delete` — always empty (prune is only done via `push --prune`)
 
 **JSON output:**
@@ -920,7 +936,8 @@ Print the diff between local files and one environment without writing anything.
 ```json
 {
   "product": "my-slug",
-  "environment": "development",
+  "release": "9f3e1c2a-…",
+  "version": "",
   "to_upload": ["index.html"],
   "to_delete": [],
   "unchanged": ["styles.css"],
@@ -928,26 +945,29 @@ Print the diff between local files and one environment without writing anything.
 }
 ```
 
+`version` is empty for an untagged draft.
+
 ---
 
 ### yard page ls
 
-List files in one environment's bundle. Pass `--env production` to list what
-is currently live.
+List a release's landing-page files. Defaults to your open draft; `--release v1.4.0` lists a specific release, and `--env production` (with no draft open) lists what is currently live.
 
 **JSON output:**
 
 ```json
 {
   "product": "my-slug",
-  "environment": "development",
+  "release": "9f3e1c2a-…",
+  "version": "",
   "files": [
     {
+      "id": "…",
+      "artifact": "page",
       "path": "index.html",
       "content_type": "text/html",
       "size_bytes": 412,
-      "content_hash": "…",
-      "updated_at": "2026-04-20T10:00:00Z"
+      "content_hash": "…"
     }
   ]
 }
@@ -957,36 +977,34 @@ is currently live.
 
 ### yard page push
 
-Hash-diff the local landing-page directory against one environment and upload changed files.
+Hash-diff the local landing-page directory against your draft release and upload changed files. Published releases are immutable, so a push always writes a draft — your open one, or a new draft seeded from what `--env` currently serves.
 
 **Flags:**
 
 - `--prune` — delete remote files that are not present locally (opt-in for safety)
-- `--publish` — publish the environment to production after uploading (requires `index.html`)
+- `--release <id|tag>` — draft to push into (defaults to your open draft)
 - `--yes`, `-y` — skip prune confirmation prompt
 
 **Behavior:**
 
 1. Walk `<project>/.yard/landing-page/`, skip dotfiles and files matching `ignore_files` patterns from `settings.json`.
 2. Validate extensions, paths, per-file size, bundle size, and file count client-side.
-3. `GET /v1/products/{id}/custom-page?environment=<env>` to fetch remote hashes.
-4. For each local file whose SHA-256 doesn't match the remote hash, `PUT /v1/products/{id}/custom-page/files/{path}?environment=<env>` with the raw bytes.
-5. If `--prune`, `DELETE` remote files that are not present locally (prompts unless `--yes` or `--json`).
-6. If `--publish`, `POST /v1/products/{id}/landing-page/publish` with `{"environment": "<env>"}`.
-7. Re-fetch metadata and print `Preview:` (and `Live:` if published).
+3. Resolve the draft and compare each local file's SHA-256 against the draft's files; upload the ones that differ (`PUT /v1/products/{id}/custom-page/files/{path}?release=<id>`).
+4. If `--prune`, `DELETE` remote files that are not present locally (prompts unless `--yes` or `--json`).
+5. Print `Preview:`. Going live is a separate step: `yard releases publish <tag>`.
 
 **JSON output:**
 
 ```json
 {
   "product": "my-slug",
-  "environment": "development",
+  "release": "9f3e1c2a-…",
+  "version": "",
   "uploaded": ["index.html", "styles.css"],
   "skipped": ["logo.png"],
   "deleted": [],
   "remote_only": [],
-  "published": false,
-  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
+  "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
   "live_url": null,
   "errors": []
 }
@@ -1000,7 +1018,7 @@ When `--prune` is not passed, `remote_only` lists paths on the server that don't
 
 ### yard page pull
 
-Download one environment's bundle files to the local landing-page directory.
+Download a release's landing-page files to the local landing-page directory. Defaults to your open draft; pass `--release <id|tag>` for a specific release, or `--env production` (with no draft open) to pull what is currently live.
 
 **Flags:**
 
@@ -1010,7 +1028,7 @@ Download one environment's bundle files to the local landing-page directory.
 **Behavior:**
 
 1. Resolves project root (with `.yard/` discovery allowed to be missing — `pull` is useful for bootstrapping a fresh checkout).
-2. Walks the chosen environment's bundle; for each file, downloads and writes to disk unless the local file already has the same SHA-256 (skipped).
+2. Walks the release's landing-page files; for each, downloads and writes to disk unless the local file already has the same SHA-256 (skipped).
 3. Subdirectories are created as needed.
 
 **JSON output:**
@@ -1018,7 +1036,8 @@ Download one environment's bundle files to the local landing-page directory.
 ```json
 {
   "product": "my-slug",
-  "environment": "development",
+  "release": "9f3e1c2a-…",
+  "version": "",
   "destination": "/home/alice/my-landing/.yard/landing-page",
   "written": ["index.html"],
   "skipped": ["styles.css"]
@@ -1027,72 +1046,81 @@ Download one environment's bundle files to the local landing-page directory.
 
 ---
 
-### yard page publish
-
-Overwrite production's landing page with an environment's and make it live. The
-whole page moves together: pre-built content, gallery, and the custom bundle.
-
-**Flags:**
-
-- `--from <slug>` — environment to publish from (default: `development`). Pass `--from production` to redeploy production as it already stands, after editing it directly.
-
-**Behavior:**
-
-1. `POST /v1/products/{id}/landing-page/publish` with `{"environment": "<from>"}` — the server validates that `index.html` exists when the page type is custom.
-2. Re-fetches metadata and prints `Live:` and `Preview:` URLs.
-
-**JSON output:**
-
-```json
-{
-  "product": "my-slug",
-  "environment": "development",
-  "published": true,
-  "preview_url": "https://yard.sh/api/v1/products/.../custom-page/preview",
-  "live_url": "https://yard.sh/@alice/my-slug"
-}
-```
-
-There is no `yard page revert`: with no draft layer there is nothing to revert
-*to*. Use `yard page pull --env production` to overwrite your working copy with
-what is live.
+There is **no `yard page publish` or `yard page revert`**: the page ships
+inside a release, so going live is `yard releases publish <tag>` (then
+`yard releases promote <tag> --to production` if you published to a
+non-production environment). To discard draft changes, delete the draft from
+the dashboard and pull afresh (`yard page pull --env production`).
 
 ---
 
 ## yard env
 
 Manage a product's environments. Every product has two protected
-environments, `development` and `production`; landing-page pushes and app
-deploys default to `development`, and publishing is what goes live. Shared
-flags: `--product <slug-or-uuid>`, `--project <path>`, `--json` (same
+environments, `development` and `production`. An environment holds a **set**
+of releases and serves the newest member of that set unless the seller pins
+one explicitly; attaching a release to an environment is the deploy moment.
+Shared flags: `--product <slug-or-uuid>`, `--project <path>`, `--json` (same
 semantics as `yard page`).
 
 ### yard env list
 
-Lists the product's environments. JSON: array of
-`{"id": "<uuid>", "slug": "development", "protected": true}`.
+Lists the product's environments. JSON:
+
+```json
+{
+  "product": "my-slug",
+  "environments": [
+    {
+      "id": "<uuid>",
+      "product_id": "<uuid>",
+      "slug": "production",
+      "protected": true,
+      "active_release_id": null,
+      "created_at": "…",
+      "serving_release": { "id": "<uuid>", "version": "v1.4.0", "published_at": "…" },
+      "releases": [
+        { "id": "<uuid>", "version": "v1.4.0", "published_at": "…", "is_archived": false, "attached_at": "…" }
+      ]
+    }
+  ]
+}
+```
+
+`serving_release` is what the environment serves right now — the pinned
+release when `active_release_id` is set, else the newest member — and is
+`null` for an environment nothing has been deployed to. `releases` is the
+membership set, newest first.
 
 ### yard env create \<slug\>
 
-Creates a custom environment (Pro; cap of 10 total per product, counting
-the two protected defaults). Slugs are 2-60 characters: lowercase letters,
-digits, and hyphens, starting with a letter. `development` and `production`
-always exist and cannot be recreated.
+Creates a custom environment. How many environments a product may have is
+server-enforced via the `max_environments` permission, counting the two
+protected defaults (currently Basic: 2 — no custom environments; Pro: 10;
+check `yard me --json` → `.permissions.max_environments`). Slugs are 2-60
+characters: lowercase letters, digits, and hyphens, starting with a letter.
+`development` and `production` always exist and cannot be recreated.
 
 ### yard env delete \<slug\>
 
-Deletes a custom environment and everything in it: its files, its app
+Deletes a custom environment and everything scoped to it: its files, its app
 Worker, and its app database (immediately — no grace window for custom
-environments). `development`/`production` are protected and refuse.
+environments). Releases are product-scoped, so they survive the environment
+that served them. `development`/`production` are protected and refuse.
 
 ### yard env promote \<from\> \<to\>
 
-Copies the product's artifacts — landing page and web-app bundle — from one
-environment to another. Promoting to `production` deploys the result live.
-Code and assets only: **data and secrets never promote**; each environment
-keeps its own. JSON: `{"from": "...", "to": "...", "artifacts": ["page", "app"]}`
-(`artifacts` names what actually moved). Human output prints the live URL,
-plus the `/app/` URL when the app artifact was promoted.
+Attaches the release `<from>` currently serves to `<to>`, so the two serve
+identical content — landing page, pricing, download buttons, and the web-app
+bundle. Promoting to `production` deploys its Worker and takes it live at
+`/app/`. **Nothing is copied**: promote adds the release to the target's set,
+where as the newest member it starts serving. **Data and secrets never
+promote**; each environment keeps its own. `<from>` must serve a release —
+publish one with `yard releases publish` first. JSON (same shape as
+`yard releases promote`):
+`{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": [...]}`.
+Human output prints the live URL, plus the `/app/` URL when the app artifact
+was deployed.
 
 ---
 
@@ -1124,9 +1152,20 @@ yard-initialized. JSON:
 
 ### yard app deploy
 
-Uploads the bundle (content-addressed — only changed files transfer;
-remote files missing locally are removed) and deploys it to the target
-environment. Bundle dir resolution: `--dir` flag → `app_dir` from
+Uploads the bundle into your **draft release** (content-addressed — only
+changed files transfer; remote files missing locally are removed from the
+draft) and deploys that draft's app as a preview Worker in the target
+environment. `--release <id|tag>` names a specific draft; otherwise the open
+draft is used, or a new one is seeded from what `--env` serves.
+
+**Production refuses direct deploys** — it only ever runs what its serving
+release froze. Go live by publishing the draft (`yard releases publish <tag>
+--env production`) or attaching a published release (`yard releases promote
+<tag> --to production` / `yard env promote`). Non-production previews are a
+temporary override: the environment's next release change re-materializes what
+it actually serves.
+
+Bundle dir resolution: `--dir` flag → `app_dir` from
 `.yard/settings.json` → `./dist`. Prints root-absolute-URL lint warnings.
 JSON:
 
