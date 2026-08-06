@@ -54,11 +54,12 @@ with `409`. A draft may reserve its tag early.
 patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 
 The CLI's working area is a **draft release**: `publish` uploads each file into
-your open draft (creating one seeded from what the target environment serves if
-you have none; `--release <id|tag>` names one explicitly), then publishes the
-draft under the tag and attaches it to the target environment (`--env` /
-`environment`, default `development`). Anything `yard page push` or
-`yard app deploy` already staged in that draft ships with it.
+your open draft (creating one seeded from your newest published release if you
+have none; `--release <id|tag>` names one explicitly), then publishes the draft
+under the tag and attaches it to the target environment (`--env` /
+`environment`, default `production` — live to customers). Anything `yard push`
+already staged in that draft — landing page and app bundle alike — ships with
+it.
 
 ### Spec mode (recommended for agents)
 
@@ -83,7 +84,7 @@ Spec field rules:
 | `tag_name` | string | Yes | ≤255 chars |
 | `release_name` | string | No | ≤255 chars |
 | `release_notes` | string | No | markdown, ≤125,000 chars |
-| `environment` | string | No | environment the release deploys to; defaults to `development` |
+| `environment` | string | No | environment the release deploys to; defaults to `production` |
 | `files` | array of paths | No | absolute or relative; each path must exist and be a regular file |
 
 `--json` prints a single object on stdout (logs go to stderr):
@@ -92,7 +93,7 @@ Spec field rules:
 {
   "release": { /* the published release */ },
   "deployed": [
-    {"release_id": "…", "version": "v1.4.0", "to": "development", "action": "attach", "artifacts": ["page", "releases"]}
+    {"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["page", "releases"]}
   ],
   "files": [
     {"path": "./dist/yard-darwin-arm64.tar.gz", "status": "uploaded", "size_bytes": 12345678},
@@ -146,9 +147,17 @@ storage is not consumed twice and download counts carry over. There is no
 source environment to name — the tag alone identifies the release.
 
 ```sh
-yard releases publish v1.4.0 --file dist/app.zip   # publishes + deploys to development
+yard releases publish v1.4.0 --file dist/app.zip              # live to buyers
+```
+
+To check it before buyers do, publish to an environment of your own and promote
+when it looks right:
+
+```sh
+yard env create preview
+yard releases publish v1.4.0 --env preview --file dist/app.zip
 # …verify the download works…
-yard releases promote v1.4.0 --to production       # ships it to buyers
+yard releases promote v1.4.0 --to production                  # ships it to buyers
 ```
 
 ---

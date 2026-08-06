@@ -11,28 +11,28 @@ already have. Requires the `compute` permission (Pro; check
 |---|---|
 | `https://<handle>.yard.sh/<slug>/app/` | **Canonical.** Production app. |
 | `https://<customdomain>/app/` | Same app on the product's custom domain. |
-| `https://<handle>.yard.sh/<slug>/app/?yard_env=development` | Owner-only environment preview (below). |
+| `https://<handle>.yard.sh/<slug>/app/?yard_env=preview` | Owner-only environment preview (below). |
 | `https://yard.sh/@<handle>/<slug>/app` | Not served — 308-redirects to the canonical form. |
 
 `/app` without the trailing slash 308s to `/app/`. The app never takes over
 the product root: `<handle>.yard.sh/<slug>` stays the sales page.
 
-`yard app deploy` and `yard app status` return the environment's `url`
-(also in `--json`), and `yard app open [--env <slug>]` prints and opens it —
-never construct these URLs by hand.
+`yard app open [--env <slug>]` prints and opens the environment's `url` (also
+in `--json`) — never construct these URLs by hand.
 
 ### Environment previews (`?yard_env`)
 
-Every deploy has a real, browsable URL — including development:
+Every deployed environment has a real, browsable URL:
 
 ```
-yard app deploy                            # → development
-yard app open                              # opens the development preview
+yard push                                  # → a draft release
+yard releases publish v1.0.0 --env preview # deploy it to your own environment
+yard app open --env preview                # opens the owner-only preview
 ```
 
-Opening `…/app/?yard_env=development` signs the visitor in (if needed),
+Opening `…/app/?yard_env=preview` signs the visitor in (if needed),
 verifies they **own the product**, sets a host-locked cookie, and serves the
-`development` Worker at the same `/app/` path from then on. `?yard_env=` (empty
+`preview` Worker at the same `/app/` path from then on. `?yard_env=` (empty
 or `production`) switches back. Non-owners get an explanatory 403 — preview
 URLs are safe to have in scrollback but not shareable. `yard_env` is a
 reserved query parameter: don't use it in the app's own URLs.
@@ -84,7 +84,7 @@ The deploy walker skips dotfiles and, at the bundle root, `wrangler.toml` and
 `README.md` — local-dev artifacts are reported as skipped, never uploaded.
 `yard app init` scaffolds those at the project root anyway (outside the
 bundle) and records the bundle directory in `.yard/settings.json` as
-`app_dir`, so plain `yard app deploy` needs no `--dir`.
+`app_dir`, so plain `yard push` needs no `--dir`.
 
 ## yard.json
 
@@ -113,7 +113,7 @@ The Yard edge authenticates buyers and hands the Worker trusted headers:
 | `X-Yard-Email` | Buyer email (may be empty) |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
 | `X-Yard-Tier` | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price products never send it. |
-| `X-Yard-Environment` | Which environment is serving: `production`, `development`, … |
+| `X-Yard-Environment` | Which environment is serving: `production`, or one of your own |
 
 Absent identity headers = anonymous visitor (`public` apps only — gated
 modes never reach your code anonymously). Clients can never spoof these —
@@ -166,9 +166,9 @@ const { results } = await env.DB.prepare(
 
 Schema changes go in `migrations/` as new numbered files
 (`0002_add_column.sql`, …) — never edit an applied migration; deploys apply
-pending files in order. Each environment has its own database: development
-data never touches production. Inspect with
-`yard app db query "select ..." --env development --json` (or
+pending files in order. Each environment has its own database, so test data
+never touches production. Inspect with
+`yard app db query "select ..." --env preview --json` (or
 `--file schema.sql`, `-` for stdin).
 
 ### The migration ledger
@@ -195,7 +195,7 @@ statement idempotent.
 Third-party API keys go in per-environment secrets, exposed as `env.<NAME>`:
 
 ```
-yard app secrets set OPENAI_API_KEY=sk-... --env development
+yard app secrets set OPENAI_API_KEY=sk-... --env preview
 yard app secrets set OPENAI_API_KEY=sk-... --env production
 ```
 
@@ -210,21 +210,24 @@ scaffold writes `.dev.vars.example`).
 yard app init                                  # scaffold (once)
 npx wrangler dev                               # local: real runtime, local SQLite
 yard app check                                 # validate bundle + lint (no network)
-yard app deploy                                # stages the bundle into your draft release + deploys a development preview
-yard app open                                  # browse the development preview
-yard app logs --env development                # console output + exceptions
-yard releases publish v1.0.0                   # publish the draft → development serves it
+yard push                                      # uploads the bundle into your draft release
+yard releases publish v1.0.0                   # tag it and deploy to production
+yard app open                                  # browse it
+yard app logs                                  # console output + exceptions
 yard releases promote v1.0.0 --to production   # go live
 ```
 
-`yard app deploy` uploads the bundle into your **draft release** and deploys
-an owner-only preview of it to development (or another non-production
-environment). Production only ever runs what its serving release froze, so
-going live is always a release operation: publish the draft and promote it (as
-above), publish straight to production (`yard releases publish v1.0.0 --env
-production`), or `yard env promote development production` once development
-serves the published release. The release carries the landing page too, if one
-exists.
+`yard push` uploads the bundle into your **draft release** and deploys nothing:
+nothing serves a draft. An environment only ever runs what its serving release
+froze, so going live is always a release operation — publish the draft
+(`yard releases publish v1.0.0`, which defaults to production), or publish it
+to an environment of your own first and promote when it looks right
+(`yard env promote preview production`). The release carries the landing page
+too, if one exists.
+
+Editing a release an environment already serves is live: Yard redeploys that
+environment automatically, and `yard status` reports it as stale → updating →
+up to date while it catches up.
 
 ### Local dev differs from hosted Yard
 

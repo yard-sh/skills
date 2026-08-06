@@ -1,6 +1,6 @@
 # Custom Landing Pages
 
-Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in a `.yard/landing-page/` directory and uploaded with the `yard page …` commands (check with `yard me --json` → `.permissions`).
+Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in a `.yard/landing-page/` directory and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.permissions`).
 
 This document covers what you can put **inside** that bundle: the product data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
 
@@ -342,13 +342,13 @@ Pages serve under `<handle>.yard.sh/<slug>/`, so any CSS, JS, image, or font you
 <img src="screenshot.png" alt="" />
 ```
 
-Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<handle>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard page init` scaffolds.
+Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<handle>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard init --page` scaffolds.
 
 ---
 
 ## Bundle constraints (recap)
 
-The same limits apply whether you upload via `yard page push` or the dashboard editor:
+The same limits apply whether you upload via `yard push` or the dashboard editor:
 
 | Limit | Value |
 |---|---|
@@ -360,7 +360,7 @@ The same limits apply whether you upload via `yard page push` or the dashboard e
 | Required file | `index.html` (must exist before you can publish) |
 | Scope | Per environment — the caps apply to each environment's bundle separately |
 
-Anything outside these constraints is rejected client-side by `yard page push` before any upload happens.
+Anything outside these constraints is rejected client-side by `yard push` before any upload happens.
 
 ---
 
@@ -411,6 +411,6 @@ A complete one-file landing page for a single-tier product:
 
 ## Cross-references
 
-- [cli-commands.md → `yard page`](./cli-commands.md#yard-page) — the commands to scaffold, push, and publish the bundle
+- [cli-commands.md → project sync](./cli-commands.md#yard-push--pull--status--ls) — the commands to scaffold, push, and publish the bundle
 - [pricing-and-licensing.md](./pricing-and-licensing.md) — what the tier shapes (`one_time` / `subscription`, `single` / `fixed_pack` / `per_seat`, volume brackets) actually mean
 - [api-reference.md](./api-reference.md) — the public product endpoint that backs `window.yard.product`
