@@ -90,14 +90,14 @@ Every product has a stage that controls visibility and pricing. New products alw
 |---|---|---|
 | `draft` | Initial stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
 | `early_access` | Public, purchasable, but the seller signals the product is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
-| `released` | General availability. Final stage. | — |
+| `published` | General availability. Final stage. | — |
 | `archived` | No longer available for new purchases. (Existing buyers retain access.) | — |
 
 **Transition rules** (enforced server-side):
 
-- Order: `draft` → `early_access` → `released`. Going backwards is rejected with `Cannot move product stage backward`.
-- `released` is terminal — once there, the product cannot be moved again. The API returns `Product is already in the final 'released' stage and cannot be changed.`
-- Skipping `early_access` is allowed — `draft` → `released` directly is valid.
+- Order: `draft` → `early_access` → `published`. Going backwards is rejected with `Cannot move product stage backward`.
+- `published` is terminal — once there, the product cannot be moved again. The API returns `Product is already in the final 'published' stage and cannot be changed.`
+- Skipping `early_access` is allowed — `draft` → `published` directly is valid.
 - Transitioning out of `draft` requires an active Stripe Connect seller account. Backend rejects the change otherwise.
 
 Stage discounts are applied before coupon discounts during checkout.
