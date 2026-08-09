@@ -69,7 +69,7 @@ Each entry in `tiers` exposes:
 > To inspect this from the CLI before wiring the page, run `yard products show <slug> --json`
 > and read `.tiers[]` — `yard products --json` only returns product-level fields.
 
-> **Heads-up:** `window.yard.product` reflects the **saved** product state. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits to product fields — save first, then refresh the preview.
+> **Heads-up:** `window.yard.product` reflects the **saved** state of the release you are editing. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits — save first, then refresh the preview.
 
 ---
 
