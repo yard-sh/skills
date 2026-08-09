@@ -1,6 +1,6 @@
 # Custom Landing Pages
 
-Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in a `.yard/landing-page/` directory and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.permissions`).
+Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.permissions`).
 
 This document covers what you can put **inside** that bundle: the product data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
 

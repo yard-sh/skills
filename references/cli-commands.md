@@ -850,11 +850,14 @@ Update the CLI to the latest version.
 ## yard push / pull / status / ls
 
 The project sync commands. One set covers **everything** a project sends to
-Yard — the landing page in `.yard/landing-page/` and the web app in the
-directory `yard app init` recorded (`app_dir` in `.yard/settings.json`, else
-`./dist`). A project with only one of the two simply syncs that one; the app's
-`yard.json` is an ordinary bundle file, so config changes need no command of
-their own.
+Yard — three bundles: the landing page in its directory (`landing_page.dir`
+in `.yard/settings.json`, default `.yard/landing-page/`), the web app in the
+directory `yard app init` recorded (`app.dir`, else `./dist`), and
+`.yard/settings.json` itself (the `config` bundle — how deploys read the
+app's `access`/`database`, so an app-settings change is a settings edit plus
+a push). A project with only some of the bundles simply syncs what it has.
+The config bundle is **push-only**: `yard pull` never overwrites your local
+settings.json, since it is the project's identity.
 
 Common flags:
 
@@ -891,9 +894,9 @@ it to an environment.
 **App-bundle constraints:** ≤200 files, ≤5 MB per file, ≤25 MB total, paths nest
 ≤8 levels, extensions in `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp
 .gif .woff2 .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus
-`_worker.js`, `yard.json`, `migrations/*.sql`). `_worker.js` is required.
-Dotfiles and legacy bundle-root local-dev files (e.g. `README.md`) are
-skipped and reported.
+`_worker.js`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
+legacy bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
+manifest) are skipped and reported.
 
 ---
 
@@ -904,7 +907,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 **Behavior:**
 
 1. Resolves the product (flag → existing settings → sole product → error).
-2. Creates `<project>/.yard/landing-page/` and writes `<project>/.yard/settings.json` if absent: `{"version": 1, "product_slug": "<slug>", "ignore_files": []}`.
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 2, "product_slug": "<slug>", "ignore_files": []}`.
 3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh product starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.
@@ -1200,20 +1203,23 @@ deploys it. Requires the `compute` permission (Pro). Shared flags:
 ≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
 `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif .woff2 .woff
 .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`,
-`yard.json`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
-legacy bundle-root local-dev files (e.g. `README.md`) are skipped (reported
-as ignored), so old scaffolds that carried them inside the bundle still
-deploy.
+`migrations/*.sql`). `_worker.js` is required. Dotfiles and legacy
+bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
+manifest) are skipped (reported as ignored), so old scaffolds that carried
+them inside the bundle still deploy.
 
 ### yard app init
 
 Scaffolds a zero-dependency working app (notes API + vanilla frontend +
-first migration + `yard.json`) into `./app` (`--dir <name>` to change).
-A `README.md` describing the workflow is written at the **project root**,
-never inside the bundle, and is write-if-absent (an existing file is
-skipped and reported). Records the bundle dir as `app_dir` in
-`.yard/settings.json` when the project is yard-initialized. JSON:
-`{"dir": "app", "written": [...], "skipped": [...], "app_dir_recorded": true}`.
+first migration) into `./app` (`--dir <name>` to change). A `README.md`
+describing the workflow is written at the **project root**, never inside the
+bundle, and is write-if-absent (an existing file is skipped and reported).
+Records the bundle dir and deploy settings in the `app` block of
+`.yard/settings.json` — `{"dir": "app", "access": "authenticated",
+"database": true}` — bootstrapping an unlinked settings file first when the
+project isn't yard-initialized (a note says to run `yard init`). JSON:
+`{"dir": "app", "written": [...], "skipped": [...], "app_dir_recorded": true,
+"settings_bootstrapped": false}`.
 
 ### yard app open
 
@@ -1224,9 +1230,10 @@ are owner-only previews (sign-in enforced at the edge). JSON:
 ### yard app check
 
 Validates the local bundle exactly like a deploy would (limits, extensions,
-`_worker.js` presence) plus lint warnings for root-absolute `href`/`src`/
-`fetch("/…")` URLs — no network, no login. JSON:
-`{"dir": "...", "files": 7, "total_bytes": 5494, "ignored": [...], "warnings": [...]}`.
+`_worker.js` presence, the `app` block of `.yard/settings.json`) plus lint
+warnings for root-absolute `href`/`src`/`fetch("/…")` URLs — no network, no
+login. JSON: `{"dir": "...", "files": 7, "total_bytes": 5494, "ignored": [...],
+"warnings": [...], "access": "authenticated", "database": true}`.
 
 ### yard app secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
 

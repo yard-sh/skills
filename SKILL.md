@@ -181,8 +181,8 @@ For content products or anything static the buyer does not install locally, skip
 
 If the product runs on Yard — the buyer uses it in the browser, or an installed product calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `compute` permission (Pro; check `yard me --json` → `.permissions`). Whenever you detect this product type, the plan you present must cover:
 
-1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration, `yard.json`). Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/compute-and-database.md](references/compute-and-database.md).
-2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `yard.json`'s `access: customers` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
+1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration) and records the app's deploy settings in the `app` block of `.yard/settings.json`. Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/compute-and-database.md](references/compute-and-database.md).
+2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `app.access: "customers"` in `.yard/settings.json` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
 3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so to test it before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard app open --env preview` for the owner-only URL). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments — set production secrets explicitly.
 4. **Draft products serve the app to the owner only.** You can deploy, promote, and fully verify `/app/` while the product is still `draft` — the seller signs in and gets through; everyone else sees an explanatory 403. Never advance the product stage just to test (stage changes are one-way).
 5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any product; the product page remains the sales surface and the app lives under `/app/`. The owner always passes the paywall with `X-Yard-Entitlement: owner`.
@@ -312,7 +312,7 @@ The interactive flow:
 | `yard env list [--json]`                                                      | List the product's environments with what each serves, its attached releases, and whether its running app is up to date (only `production` always exists, and only it is protected)                                                                                     |
 | `yard env create <slug>` / `yard env delete <slug>`                           | Add / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.permissions`). Deleting removes its files, app Worker, and app database immediately.                                                                                 |
 | `yard env promote <from> <to>`                                                | Attach the release `<from>` currently serves to `<to>`; promoting to `production` takes it live. Nothing is copied; data and secrets never promote.                                                                                                                    |
-| `yard app init [--dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the project root and the bundle dir is recorded as `app_dir`                                                                                                        |
+| `yard app init [--dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the project root and the bundle dir + deploy settings are recorded in the `app` block of `.yard/settings.json`                                                       |
 | `yard app open [--env SLUG]`                                                  | Print and open the environment's app URL                                                                                                                                                                                                                                |
 | `yard app check [--dir PATH]`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
 | `yard app secrets set/list/rm [--env SLUG]`                                   | Per-environment `env.<NAME>` bindings; write-only; apply on the next deploy                                                                                                                                                                                             |
@@ -350,29 +350,38 @@ For everything an agent needs to **author** the page itself — how to read prod
 
 ### Project Layout
 
-`yard init --page` creates a `.yard/` directory at the project root:
+`.yard/` at the project root is the hub of everything Yard in a project. `yard init` creates it; `yard init --page` adds the landing-page directory:
 
 ```
 <project>/
-└── .yard/
-    ├── settings.json         # product_slug, version, ignore_files
-    └── landing-page/
-        ├── index.html
-        ├── styles.css
-        └── ...
+├── .yard/
+│   ├── settings.json         # all project settings (below)
+│   └── landing-page/         # landing page (default location, configurable)
+│       ├── index.html
+│       └── ...
+└── app/                      # web app bundle, wherever app.dir points
 ```
 
-`.yard/settings.json` schema (v1):
+`.yard/settings.json` schema (v2):
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "product_slug": "my-product",
-  "ignore_files": ["*.bak", "drafts/**"]
+  "ignore_files": ["*.bak", "drafts/**"],
+  "app": { "dir": "app", "access": "authenticated", "database": true },
+  "landing_page": { "dir": ".yard/landing-page" }
 }
 ```
 
-`ignore_files` uses shell-style globs relative to `.yard/landing-page/`; `**` matches any depth. Dotfiles are always ignored.
+- `product_slug` — which product this project belongs to.
+- `ignore_files` — shell-style globs relative to the landing-page directory; `**` matches any depth. Dotfiles are always ignored.
+- `app.dir` — web-app bundle directory relative to the project root (recorded by `yard app init`; default `dist`).
+- `app.access` — who can reach the deployed app: `public` | `authenticated` | `customers` (default `public`).
+- `app.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
+- `landing_page.dir` — landing-page directory relative to the project root (default `.yard/landing-page`).
+
+All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. The v1 flat `app_dir` field and the retired `yard.json` app manifest are migrated automatically: the CLI rewrites v1 settings on first use and skips a leftover `yard.json` in the bundle.
 
 ### Typical Flow
 
@@ -394,17 +403,27 @@ All project sync commands (`push`, `pull`, `status`, `ls`) accept:
 
 Exit codes: `0` = success, `1` = fatal (auth/validation/network), `2` = partial success (`push` only).
 
-Example `push --json` output:
+Example `push --json` output (one object per bundle the project has — `page`, `app`, `config`):
 
 ```json
 {
   "product": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
-  "uploaded": ["index.html", "styles.css"],
-  "skipped": [],
-  "deleted": [],
-  "remote_only": [],
+  "page": {
+    "dir": "/abs/path/.yard/landing-page",
+    "uploaded": ["index.html", "styles.css"],
+    "skipped": [],
+    "deleted": [],
+    "remote_only": []
+  },
+  "config": {
+    "dir": "/abs/path/.yard",
+    "uploaded": ["settings.json"],
+    "skipped": [],
+    "deleted": [],
+    "remote_only": []
+  },
   "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
   "live_url": null,
   "errors": []

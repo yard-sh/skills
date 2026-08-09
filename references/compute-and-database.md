@@ -42,27 +42,30 @@ A deployable app is one directory (build output or hand-written):
 | Path | Meaning |
 |---|---|
 | `_worker.js` | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
-| `yard.json` | Manifest (below). Optional. |
 | `migrations/*.sql` | Database schema migrations, applied in filename order at deploy. Never served publicly. |
 | everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`). |
 
 Limits: 200 files, 5 MB per file, 25 MB total, paths nest up to 8 levels.
 Start from a working scaffold with `yard app init` — it records the bundle
-directory in `.yard/settings.json` as `app_dir`, so plain `yard push` needs
+directory in `.yard/settings.json` as `app.dir`, so plain `yard push` needs
 no `--dir`. The deploy walker skips dotfiles and known local-config files at
-the bundle root (e.g. `README.md`) — they're reported as skipped, never
-uploaded.
+the bundle root (e.g. `README.md`, the retired `yard.json` manifest) —
+they're reported as skipped, never uploaded.
 
-## yard.json
+## App settings (`.yard/settings.json`)
+
+How the app deploys is the `app` block of the project's `.yard/settings.json`
+(pushed with everything else as the release's `config` artifact, so a
+settings change is an edit plus a `yard push`):
 
 ```json
-{ "access": "authenticated", "database": true }
+{ "app": { "dir": "app", "access": "authenticated", "database": true } }
 ```
 
 - `access`: `public` (everyone) · `authenticated` (Yard sign-in required —
   the edge redirects anonymous visitors to login) · `customers` (the edge
   paywall: non-customers are redirected to the product's sales page; only
-  buyers/trialers/subscribers get in).
+  buyers/trialers/subscribers get in). Default `public`.
 - `database`: `true` provisions a per-environment SQLite database bound as
   `env.DB`.
 
