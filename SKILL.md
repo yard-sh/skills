@@ -329,7 +329,7 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 
 1. **Seller** installs the Yard GitHub App on their repository
 2. **Seller** runs `yard init` to create a product with pricing (and optionally a custom landing page)
-3. When the seller publishes a **GitHub release**, Yard automatically captures the release assets via webhook and hosts them
+3. When the seller publishes a **GitHub release**, Yard automatically captures it via webhook — the release assets always, plus the app bundle, landing page, and pricing tiers when the repo has a `.yard/settings.json` at the tag (see [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_)
 4. **Buyers** visit the product page, pay via Stripe, and get instant download access
 5. Seller earnings are tracked and paid out by admin
 
@@ -370,7 +370,8 @@ For everything an agent needs to **author** the page itself — how to read prod
   "product_slug": "my-product",
   "ignore_files": ["*.bak", "drafts/**"],
   "app": { "dir": "app", "access": "authenticated", "database": true },
-  "landing_page": { "dir": ".yard/landing-page" }
+  "landing_page": { "dir": ".yard/landing-page" },
+  "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] }
 }
 ```
 
@@ -380,6 +381,7 @@ For everything an agent needs to **author** the page itself — how to read prod
 - `app.access` — who can reach the deployed app: `public` | `authenticated` | `customers` (default `public`).
 - `app.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
 - `landing_page.dir` — landing-page directory relative to the project root (default `.yard/landing-page`).
+- `pricing.tiers` — optional; when present, `yard push` and GitHub release sync replace the release's pricing tiers to match the array exactly (tiers missing from the file are removed). Absent = pricing is managed from the dashboard as usual. Full shape and rules: [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_.
 
 All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. The v1 flat `app_dir` field and the retired `yard.json` app manifest are migrated automatically: the CLI rewrites v1 settings on first use and skips a leftover `yard.json` in the bundle.
 

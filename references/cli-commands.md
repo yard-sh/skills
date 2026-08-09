@@ -1036,6 +1036,13 @@ published release.
 4. If `--prune`, `DELETE` release files not present locally (one confirmation covering every bundle, unless `--yes` or `--json`).
 5. Print `Preview:`. Going live is a separate step: `yard releases publish <tag>`.
 
+Pushing `settings.json` with a `pricing` section also **applies** it: the
+draft's pricing tiers are replaced to match `pricing.tiers` exactly (invalid
+pricing is a 400 naming the tier/field, before anything uploads). GitHub
+release sync reads the same section the same way — see
+[releases-and-updates.md](releases-and-updates.md) — _Syncing releases from
+GitHub_.
+
 **JSON output:**
 
 ```json

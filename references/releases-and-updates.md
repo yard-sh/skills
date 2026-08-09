@@ -10,6 +10,7 @@ not grant release access.
 
 - [What a release is](#what-a-release-is)
 - [Publishing a release with the CLI](#publishing-a-release-with-the-cli)
+- [Syncing releases from GitHub](#syncing-releases-from-github)
 - [Downloading releases — license-key path](#downloading-releases--license-key-path)
 - [Creating an API key](#creating-an-api-key)
 - [Listing API keys](#listing-api-keys)
@@ -159,6 +160,78 @@ yard releases publish v1.4.0 --env preview --file dist/app.zip
 # …verify the download works…
 yard releases promote v1.4.0 --to production                  # ships it to buyers
 ```
+
+---
+
+## Syncing releases from GitHub
+
+A product linked to a GitHub repository (Yard GitHub App installed, repo linked
+from the dashboard's Releases tab) publishes automatically: when the seller
+publishes a GitHub release, Yard receives the webhook and creates a matching
+**published** release — tag, title, notes, and every attached asset are copied
+into Yard's own storage. Editing the GitHub release re-syncs it; deleting it
+**archives** the Yard release (buyers keep their downloads).
+
+### Code and pricing from the repo
+
+If the repository contains `.yard/settings.json` at the released tag — the same
+file `yard init` writes and `yard push` uploads — the sync also imports what
+that file declares:
+
+| settings.json section | What syncs |
+|---|---|
+| `app.dir` | The web-app bundle in that directory (must contain `_worker.js`) becomes the release's app |
+| `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
+| `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
+
+Each section is independent, and **absent means "not managed from GitHub"**:
+the release carries that part forward unchanged, and removing it stays a
+dashboard/CLI operation. A repo with no `.yard/settings.json` syncs assets,
+name, and notes only. A section that IS declared must resolve — a declared dir
+with no files at the tag fails the sync (typo protection), as does an app
+bundle without `_worker.js`.
+
+The `pricing` section uses the release-document tier shape (note the nested
+`free_trial` object — this differs from the flat `free_trial_enabled` fields in
+`yard init --spec`). Array order is the display order:
+
+```json
+{
+  "version": 2,
+  "product_slug": "my-product",
+  "app": { "dir": "app" },
+  "pricing": {
+    "tiers": [
+      { "name": "Personal", "price_cents": 900, "is_default": true,
+        "pricing_model": "one_time", "features": ["Lifetime updates"] },
+      { "name": "Team", "price_cents": 4900, "pricing_model": "subscription",
+        "seat_type": "per_seat", "min_seats": 2, "yearly_discount_percent": 20,
+        "free_trial": { "enabled": true, "days": 14, "requires_card": true } }
+    ]
+  }
+}
+```
+
+Notes:
+
+- Normal pricing rules apply, validated against the **seller's plan**
+  (tier count, seat-based pricing, trials — all plan-gated as usual); existing
+  subscribers get the standard 30-day price-change notice when a sync changes
+  their tier's price.
+- Emptying `tiers` on a product that's charging customers fails the sync
+  rather than taking the product off sale.
+- Tag content is immutable, so a settings.json change lands with the **next**
+  release (or via Re-sync after force-moving a tag).
+- `yard push` applies the `pricing` section the same way — CLI and GitHub sync
+  read the same file identically.
+
+### Local edits and Re-sync
+
+A GitHub-sourced release edited from the dashboard is marked **Modified since
+sync**, and automatic syncs skip it so local changes are never silently
+overwritten. The dashboard's **Re-sync** button (after a confirmation)
+restores the GitHub-managed parts, keeps everything settings.json doesn't
+declare, and clears the marker.
 
 ---
 
