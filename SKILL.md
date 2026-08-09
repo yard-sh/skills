@@ -9,7 +9,7 @@ metadata:
     - references/api-reference.md
     - references/landing-pages.md
     - references/releases-and-updates.md
-    - references/webapps.md
+    - references/compute-and-database.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
@@ -175,19 +175,19 @@ If the product is **locally-installed software** — a desktop app, CLI tool, na
 
 Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.permissions` before suggesting any of those).
 
-For content products or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **SaaS / web apps, Yard hosts the app itself** — see the next section.
+For content products or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **anything Yard runs itself — a SaaS, a web app, an API or hosted backend** — see the next section.
 
-### Web app / SaaS scope
+### Hosted app scope (compute + database)
 
-If the product **is** the web app — the buyer uses it in the browser rather than downloading anything — Yard hosts frontend, backend, database, and buyer sign-in. Requires the `compute` permission (Pro; check `yard me --json` → `.permissions`). Whenever you detect this product type, the plan you present must cover:
+If the product runs on Yard — the buyer uses it in the browser, or an installed product calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `compute` permission (Pro; check `yard me --json` → `.permissions`). Whenever you detect this product type, the plan you present must cover:
 
-1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration, `yard.json`). Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/webapps.md](references/webapps.md).
+1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration, `yard.json`). Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/compute-and-database.md](references/compute-and-database.md).
 2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `yard.json`'s `access: customers` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
-3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so test locally with `npx wrangler dev`; to try it deployed before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard app open --env preview` for the owner-only URL). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments — set production secrets explicitly.
+3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so to test it before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard app open --env preview` for the owner-only URL). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments — set production secrets explicitly.
 4. **Draft products serve the app to the owner only.** You can deploy, promote, and fully verify `/app/` while the product is still `draft` — the seller signs in and gets through; everyone else sees an explanatory 403. Never advance the product stage just to test (stage changes are one-way).
 5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any product; the product page remains the sales surface and the app lives under `/app/`. The owner always passes the paywall with `X-Yard-Entitlement: owner`.
 
-A web-app release carries the app bundle and landing page, not downloadable files — there is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
+A hosted-app release carries the app bundle and landing page, not downloadable files — there is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
 
 ### Testing license-key validation
 
@@ -455,6 +455,6 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Pricing, licensing, coupons, trials                                                 | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions)    | [references/api-reference.md](references/api-reference.md)                 |
 | Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md)                 |
-| Web apps — runtime contract, `yard app` workflow, auth headers, database            | [references/webapps.md](references/webapps.md)                             |
+| Compute & database — runtime contract, `yard app` workflow, auth headers, database  | [references/compute-and-database.md](references/compute-and-database.md)   |
 | Publishing releases, downloading updates, API keys                                  | [references/releases-and-updates.md](references/releases-and-updates.md)   |
 | Troubleshooting common issues                                                       | [references/troubleshooting.md](references/troubleshooting.md)             |

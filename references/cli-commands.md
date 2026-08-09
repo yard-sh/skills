@@ -892,7 +892,8 @@ it to an environment.
 ≤8 levels, extensions in `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp
 .gif .woff2 .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus
 `_worker.js`, `yard.json`, `migrations/*.sql`). `_worker.js` is required.
-Dotfiles and bundle-root `wrangler.toml`/`README.md` are skipped and reported.
+Dotfiles and legacy bundle-root local-dev files (e.g. `README.md`) are
+skipped and reported.
 
 ---
 
@@ -1188,8 +1189,8 @@ was deployed.
 
 ## yard app
 
-Manage a product's running web app — its URL, logs, secrets and database (see
-`webapps.md` for the runtime model). App CODE is not managed here: `yard push`
+Manage a product's running app — its URL, logs, secrets and database (see
+`compute-and-database.md` for the runtime model). App CODE is not managed here: `yard push`
 uploads it into a release, and attaching that release to an environment is what
 deploys it. Requires the `compute` permission (Pro). Shared flags:
 `--product <slug-or-uuid>`, `--project <path>`, `--env <slug>` (default
@@ -1200,18 +1201,18 @@ deploys it. Requires the `compute` permission (Pro). Shared flags:
 `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif .woff2 .woff
 .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`,
 `yard.json`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
-bundle-root `wrangler.toml`/`README.md` are skipped (reported as ignored),
-so old scaffolds that carried them inside the bundle still deploy.
+legacy bundle-root local-dev files (e.g. `README.md`) are skipped (reported
+as ignored), so old scaffolds that carried them inside the bundle still
+deploy.
 
 ### yard app init
 
 Scaffolds a zero-dependency working app (notes API + vanilla frontend +
 first migration + `yard.json`) into `./app` (`--dir <name>` to change).
-Local-dev files — `wrangler.toml`, `.dev.vars.example`, `README.md` — are
-written at the **project root**, never inside the bundle, and are
-write-if-absent (existing files are skipped and reported). Records the
-bundle dir as `app_dir` in `.yard/settings.json` when the project is
-yard-initialized. JSON:
+A `README.md` describing the workflow is written at the **project root**,
+never inside the bundle, and is write-if-absent (an existing file is
+skipped and reported). Records the bundle dir as `app_dir` in
+`.yard/settings.json` when the project is yard-initialized. JSON:
 `{"dir": "app", "written": [...], "skipped": [...], "app_dir_recorded": true}`.
 
 ### yard app open

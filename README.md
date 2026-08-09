@@ -19,7 +19,7 @@ When this skill is installed, an agent gains awareness of:
   - `pricing-and-licensing.md` — pricing model, license keys, trials, coupons
   - `api-reference.md` — REST API endpoints
   - `landing-pages.md` — custom landing-page runtime and conventions
-  - `webapps.md` — hosted web-app runtime contract and workflow
+  - `compute-and-database.md` — hosted compute + database runtime contract and workflow
   - `releases-and-updates.md` — publishing releases and downloading updates
   - `troubleshooting.md` — common issues
 
