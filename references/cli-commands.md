@@ -321,7 +321,11 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 Manage releases for a product. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
-**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet, editable and unreachable by buyers (drafts can never belong to an environment). Every CLI command that writes files — `yard push`, `yard releases publish` — targets the same draft: your open one, or a new draft seeded from your newest published release; `--release <id|tag>` names one explicitly (required when multiple drafts are open). Publishing stamps the tag, freezes the release (one-way), and attaches it to an environment — attaching is the deploy moment. Environments hold a **set** of releases and serve the newest member unless pinned.
+**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (drafts can never belong to an environment). With no `--release`, every CLI command that writes files — `yard push`, `yard releases publish` — targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and attaches the release to an environment — attaching is the deploy moment. Environments hold a **set** of releases and serve the newest member unless pinned.
+
+**Published releases stay editable.** Publishing is one-way, but the release it produces is not frozen: `--release <id|tag>` names any release, draft or published, and `yard push` edits it in place. Editing a release nothing serves has no deploy side effects; editing one an environment is serving is live the moment it saves, which is why `yard push` names the environments a release belongs to and asks before uploading (`--yes` skips the prompt).
+
+**`--release` takes a tag or a UUID.** `--release v1.4.0` and `--release <release-uuid>` resolve to the same release; the CLI picks the right lookup from the shape of the value.
 
 ### yard releases publish [tag]
 
@@ -336,7 +340,7 @@ Publish a draft release under a tag, with optional file assets. Files upload int
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
 - `--env <slug>` — environment the release deploys to. Defaults to **production**, the one environment every product has, so a release published without this flag is live to customers. Pass `--env <your-env>` to deploy it somewhere only you can see first.
-- `--release <id|tag>` — the draft to publish. Defaults to your open draft (creating one from what `--env` serves if none exists); required when multiple drafts are open. Published releases are refused — they're immutable.
+- `--release <id|tag>` — the draft to publish. Defaults to your open draft (creating one from what `--env` serves if none exists); required when multiple drafts are open. Must still be a draft: publishing is one-way, so an already-published release is refused here (edit it with `yard push --release <id|tag>` instead).
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
 
@@ -402,7 +406,7 @@ EOF
 
 ### yard releases promote <tag>
 
-Attach an already-published release to another environment, which then serves exactly what that release froze — landing page, pricing, download buttons, app bundle, and downloadable files.
+Attach an already-published release to another environment, which then serves exactly what that release holds — landing page, pricing, download buttons, app bundle, and downloadable files.
 
 **Flags:**
 
@@ -418,7 +422,7 @@ yard releases publish v1.4.0 --file dist/app.zip   # publishes + deploys to prod
 yard releases promote v1.4.0 --to production       # ships it
 ```
 
-**Nothing is copied**: a release is an immutable, product-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op.
+**Nothing is copied**: a release is one product-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op. Because both environments now serve the same release, a later edit to it shows up in both.
 
 **`--json` output** (the membership-change result):
 
@@ -865,16 +869,18 @@ Common flags:
 - `--project <path>` — project root override (defaults to walking up from cwd for a `.yard/` directory)
 - `--release <id|tag>` — which release to act on (defaults to your open draft)
 - `--json` — emit a single machine-readable JSON object on stdout; logs go to stderr
-- `--yes`, `-y` — skip confirmation prompts (only applies to destructive commands)
+- `--yes`, `-y` — skip confirmation prompts (`push --prune`, and pushing into a release attached to an environment)
 
-**Everything targets a release, never an environment.** Writes go to a draft —
-your open one, or a new draft seeded from your newest published release when
-none exists. Reads (`status`, `ls`, `pull`) default to that same draft, which
-keeps `yard status` describing exactly what `yard push` would change; pass
-`--release <tag>` to inspect something else. With multiple drafts open,
-`--release` is required. Nothing here touches a live environment: content goes
-live when the draft is published (`yard releases publish <tag>`), which attaches
-it to an environment.
+**Everything targets a release, never an environment.** With no `--release`,
+writes go to a draft — your open one, or a new draft seeded from your newest
+published release when none exists — and reads (`status`, `ls`, `pull`) default
+to that same draft, which keeps `yard status` describing exactly what `yard
+push` would change. With multiple drafts open, `--release` is required.
+`--release <id|tag>` names any release explicitly, published ones included:
+reads inspect it, writes edit it in place. Editing a draft touches no live
+environment — content goes live when the draft is published (`yard releases
+publish <tag>`), which attaches it to an environment — but editing a release an
+environment is already serving is live on save.
 
 **Exit codes:**
 
@@ -1116,7 +1122,10 @@ There is **no publish flag on `push`**: everything ships inside a release, so
 going live is `yard releases publish <tag>` (then `yard releases promote <tag>
 --to production` if you published somewhere else first). To discard draft
 changes, delete the draft from the dashboard and pull afresh
-(`yard pull --release <last-published-tag> --force`).
+(`yard pull --release <last-published-tag> --force`). To correct something
+already shipped, either publish a new release or edit the published one in
+place with `yard push --release <tag>` — the latter is live immediately if an
+environment is serving it.
 
 ---
 

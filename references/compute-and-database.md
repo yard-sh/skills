@@ -203,7 +203,7 @@ yard releases promote v1.0.0 --to production   # go live
 
 `yard push` uploads the bundle into your **draft release** and deploys nothing:
 nothing serves a draft. An environment only ever runs what its serving release
-froze, so going live is always a release operation — publish the draft
+holds, so going live is always a release operation — publish the draft
 (`yard releases publish v1.0.0`, which defaults to production), or publish it
 to an environment of your own first and promote when it looks right
 (`yard env promote preview production` also works). The release carries the

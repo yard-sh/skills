@@ -31,10 +31,12 @@ of:
 - **`files`** — zero or more file assets uploaded to the seller's storage bucket
 
 Every release starts as a **draft**: an ordinary release that simply has not
-been published yet. Drafts are the only editable releases and can never be
-deployed anywhere, so editing one has no side effects. Publishing stamps the
-tag and freezes the release into an immutable snapshot — publishing is
-**one-way**. A product can hold at most **10 open drafts**.
+been published yet. A draft can never be deployed anywhere, so editing one has
+no side effects. Publishing stamps the tag and makes the release deployable —
+publishing itself is **one-way**, but the release stays editable afterwards.
+Editing a published release nothing serves is still side-effect free; editing
+one an environment is serving is live the moment it saves. A product can hold
+at most **10 open drafts**.
 
 Releases belong to the **product**, not to any environment. Each environment
 holds a **set** of releases and serves the newest member of that set, unless
@@ -54,9 +56,9 @@ with `409`. A draft may reserve its tag early.
 `yard releases publish` is the canonical command. It supports three usage
 patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 
-The CLI's working area is a **draft release**: `publish` uploads each file into
-your open draft (creating one seeded from your newest published release if you
-have none; `--release <id|tag>` names one explicitly), then publishes the draft
+`publish` works on a **draft**: it uploads each file into your open draft
+(creating one seeded from your newest published release if you have none;
+`--release <id|tag>` names one explicitly), then publishes the draft
 under the tag and attaches it to the target environment (`--env` /
 `environment`, default `production` — live to customers). Anything `yard push`
 already staged in that draft — landing page and app bundle alike — ships with

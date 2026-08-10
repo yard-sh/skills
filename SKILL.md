@@ -307,7 +307,7 @@ The interactive flow:
 | `yard init --page`                                                             | Scaffold `.yard/landing-page/` inside a Yard project, pulling the draft release's page files (or a hello-world starter) |
 | `yard status`                                                                  | Diff every local bundle (landing page + app) against your draft release — what `yard push` would change (no writes) |
 | `yard ls [--release <id\|tag>]`                                                | List a release's files, grouped by bundle (defaults to your open draft) |
-| `yard push [--prune]`                                                          | Upload every changed local file — landing page and app — into your draft release; go live with `yard releases publish <tag>` |
+| `yard push [--prune] [--release <id\|tag>]`                                    | Upload every changed local file — landing page and app — into your draft release; go live with `yard releases publish <tag>`. `--release` can name a published release, which is edited in place |
 | `yard pull [--release <id\|tag>]`                                              | Download a release's files into the project |
 | `yard env list [--json]`                                                      | List the product's environments with what each serves, its attached releases, and whether its running app is up to date (only `production` always exists, and only it is protected)                                                                                     |
 | `yard env create <slug>` / `yard env delete <slug>`                           | Add / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.permissions`). Deleting removes its files, app Worker, and app database immediately.                                                                                 |
@@ -399,9 +399,9 @@ All project sync commands (`push`, `pull`, `status`, `ls`) accept:
 
 - `--product <slug-or-uuid>` — override the product in `.yard/settings.json`
 - `--project <path>` — project root override (defaults to walking up from cwd for `.yard/`)
-- `--release <id|tag>` — target a specific release (defaults to your open draft, else a new one seeded from your newest published release; required when several drafts are open)
+- `--release <id|tag>` — target a specific release, by tag or UUID (defaults to your open draft, else a new one seeded from your newest published release; required when several drafts are open). Published releases are valid targets: `push` edits one in place, which is live on save if an environment is serving it.
 - `--json` — emit a single machine-readable JSON object; logs go to stderr
-- `--yes` — skip confirmation prompts (for `push --prune`)
+- `--yes` — skip confirmation prompts (`push --prune`, and pushing into a release attached to an environment)
 
 Exit codes: `0` = success, `1` = fatal (auth/validation/network), `2` = partial success (`push` only).
 
