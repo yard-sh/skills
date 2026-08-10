@@ -344,6 +344,37 @@ Pages serve under `<handle>.yard.sh/<slug>/`, so any CSS, JS, image, or font you
 
 Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<handle>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard init --page` scaffolds.
 
+Relative URLs matter more than usual because the same bundle serves under more than one prefix — a non-production environment adds a path segment (below). Root-relative paths break there too; relative ones just work.
+
+---
+
+## Testing a page before customers see it
+
+Every environment serves its own landing page, at `https://<handle>.yard.sh/<slug>/@<env>/`. Production stays at `https://<handle>.yard.sh/<slug>/`.
+
+```
+https://alice.yard.sh/widget/            production
+https://alice.yard.sh/widget/@preview/   the preview environment
+```
+
+These URLs are **owner-only**: the Yard edge verifies you own the product before serving, non-owners get an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback, not shareable.
+
+The environment you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which environment it serves. `window.yard.product` reflects **that environment's** state — its own pricing, copy, and gallery — so a preview page shows preview prices, not production's.
+
+An environment whose release has no custom page still has a landing page: the built-in one, rendered from that environment's content. So the URL always resolves, whether or not you have shipped a bundle there.
+
+The usual loop:
+
+```
+yard push                                   # into your draft release
+yard env create preview                     # once
+yard releases publish v1.0.0 --env preview  # deploy to the environment
+                                            # browse …/widget/@preview/
+yard releases promote v1.0.0 --to production
+```
+
+Editing a release an environment already serves is live — Yard redeploys that environment and `yard status` reports stale → updating → up to date while it catches up.
+
 ---
 
 ## Bundle constraints (recap)

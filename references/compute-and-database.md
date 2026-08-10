@@ -76,9 +76,10 @@ to use (or test) their own app.
 ## URLs — where the app serves
 
 Production serves at `https://<handle>.yard.sh/<slug>/app/` (on a custom
-domain: `https://<customdomain>/app/`). Never construct these URLs by hand —
-`yard app open [--env <slug>]` prints and opens the environment's `url`
-(also in `--json`).
+domain: `https://<customdomain>/app/`). Every other environment serves one
+path segment down, at `https://<handle>.yard.sh/<slug>/@<env>/app/`. Never
+construct these URLs by hand — `yard app open [--env <slug>]` prints and opens
+the environment's `url` (also in `--json`).
 
 The app never takes over the product root: `<handle>.yard.sh/<slug>` stays
 the landing/sales page, and pricing, trials, subscriptions, coupons, and
@@ -86,8 +87,10 @@ checkout are standard Yard — configure them as for any product. To send a
 buyer to purchase or upgrade from inside the app, link to the sales page
 (relative `../` from `/app/`, or the product's `buy_url`).
 
-`yard_env` is a reserved query parameter and `__yard/` a reserved path
-prefix — don't use them in the app's own URLs.
+`__yard/` is a reserved path prefix — don't use it in the app's own URLs. A
+path segment beginning with `@` directly after the slug names an environment
+and is likewise reserved, though the bundle path rules already prevent a
+collision: every segment of a file you ship must start with a letter or digit.
 
 ## Identity: never build your own auth
 
@@ -216,12 +219,18 @@ up to date while it catches up.
 
 ## Testing before customers see it
 
-Every deployed environment has a real, browsable URL. Opening
-`…/app/?yard_env=preview` signs the visitor in (if needed), verifies they
-**own the product**, sets a host-locked cookie, and serves the `preview`
-environment at the same `/app/` path from then on. `?yard_env=` (empty or
-`production`) switches back. Non-owners get an explanatory 403 — these URLs
-are safe to have in scrollback but not shareable.
+Every environment has a real, browsable URL. Opening
+`https://<handle>.yard.sh/<slug>/@preview/app/` signs the visitor in (if
+needed), verifies they **own the product**, and serves the `preview`
+environment's app. Drop the `/@preview` segment to go back to production.
+Non-owners get an explanatory 403 — these URLs are safe to have in scrollback
+but not shareable.
+
+The environment lives in the path rather than in a query parameter, so it is
+scoped to the one request: your app can carry whatever query string it likes
+without switching environments, and a URL always says which environment it
+serves. An environment with no app deployed says so rather than quietly
+serving production's.
 
 A `draft` (or archived/private) product's `/app/` works the same way **for
 the owner**: anonymous visitors are sent through sign-in, non-owners get an

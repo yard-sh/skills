@@ -146,8 +146,8 @@ yard init --product simple-note --json
     "id": "...",
     "slug": "simple-note",
     "title": "Simple Note",
-    "buy_url": "https://yard.sh/@alice/simple-note",
-    "profile_url": "https://yard.sh/@alice",
+    "buy_url": "https://alice.yard.sh/simple-note",
+    "profile_url": "https://alice.yard.sh/",
     "created": true
   },
   "settings_file": "/abs/path/.yard/settings.json",
