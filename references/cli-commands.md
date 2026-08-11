@@ -1131,28 +1131,52 @@ environment is serving it.
 
 ## yard env
 
-Manage a product's environments. Every product has exactly one protected
-environment, `production`; every other environment is created by the seller and
-can be deleted. An environment holds a **set** of releases and serves the newest
-member of that set unless the seller pins one explicitly; attaching a release to
-an environment is the deploy moment. Shared flags: `--product <slug-or-uuid>`,
-`--project <path>`, `--json`.
+Manage a product's environments and choose what each one serves.
+
+A **release** is one product-wide snapshot — landing page, pricing, downloads,
+and the web-app bundle. An **environment** is a *set* of releases serving one of
+them: the newest member, unless a pointer says otherwise. Attaching a release to
+an environment is the deploy moment. Only `production` always exists, and only
+it is protected.
+
+An environment is always in one of three serving states, and the commands below
+are how it moves between them:
+
+| State | Reached by | Next attach |
+|---|---|---|
+| newest-wins | `env unpin`, or `env attach` of the newest release | takes over |
+| deployed | `env deploy` | takes over |
+| pinned | `env pin` | joins the set, does **not** take over |
+
+Shared flags: `--product <slug-or-uuid>`, `--project <path>`, `--json`. Every
+`<release>` argument accepts a version tag or a release UUID. Mutations need the
+`environments` permission — check `yard me --json` → `.permissions`.
 
 ### yard env list
 
-Lists the product's environments. JSON:
+Lists the environments with what each serves and why.
+
+```
+ENVIRONMENT          SERVING                  RELEASES  COMPUTE    PROTECTED
+------------------------------------------------------------------------------
+production           1.4.0 (pinned)           3                    yes
+staging              1.3.0 (deployed)         2         stale
+preview              -                        0
+```
+
+`COMPUTE` is blank when the app is up to date; a `failed` environment gets a
+warning line after the table with its error. JSON:
 
 ```json
 {
   "product": "my-slug",
   "environments": [
     {
-      "id": "<uuid>",
-      "product_id": "<uuid>",
-      "slug": "production",
-      "protected": true,
-      "active_release_id": null,
-      "created_at": "…",
+      "id": "<uuid>", "product_id": "<uuid>", "slug": "production",
+      "protected": true, "active_release_id": "<uuid>", "pinned": true,
+      "created_at": "…", "compute_status": "up_to_date",
+      "page_url": "https://acme.yard.sh/my-slug/",
+      "app_url": "https://acme.yard.sh/my-slug/app/",
       "serving_release": { "id": "<uuid>", "version": "v1.4.0", "published_at": "…" },
       "releases": [
         { "id": "<uuid>", "version": "v1.4.0", "published_at": "…", "is_archived": false, "attached_at": "…" }
@@ -1162,10 +1186,10 @@ Lists the product's environments. JSON:
 }
 ```
 
-`serving_release` is what the environment serves right now — the pinned
-release when `active_release_id` is set, else the newest member — and is
-`null` for an environment nothing has been deployed to. `releases` is the
-membership set, newest first.
+Read the serving state from two fields: `active_release_id` null means
+newest-wins; set with `pinned: false` means deployed; set with `pinned: true`
+means pinned. `serving_release` is what it serves right now (null when nothing
+has been deployed), and `releases` is the membership set, newest first.
 
 `compute_status` reports how the environment's running app compares to that
 release: `up_to_date`, `stale` (the release changed and the redeploy hasn't
@@ -1174,35 +1198,93 @@ environment keeps serving what it had). Yard drives this itself — editing a
 release an environment serves triggers exactly one redeploy, however many files
 changed.
 
-### yard env create \<slug\>
+### yard env create \<env\>
 
-Creates an environment. How many environments a product may have is
-server-enforced via the `max_environments` permission, counting the protected
-`production` default (currently Basic: 1 — no environments of your own; Pro:
-10; check `yard me --json` → `.permissions.max_environments`). Slugs are 2-60
-characters: letters, digits, and hyphens, starting with a letter, compared
-case-insensitively. `production` always exists and cannot be recreated.
+Creates an environment. Names are 2-60 characters: letters, digits, and hyphens,
+starting with a letter, compared case-insensitively. `production` always exists
+and cannot be recreated. How many environments a product may have is
+server-enforced via `max_environments`, counting `production` (currently Basic:
+1 — no environments of your own; Pro: 10).
 
-### yard env delete \<slug\>
+### yard env rename \<env\> \<new-name\>
 
-Deletes an environment and everything scoped to it: its files, its app Worker,
-and its app database (immediately — no grace window outside production).
-Releases are product-scoped, so they survive the environment that served them.
+Renames in place. Only the name moves: releases, files, secrets and the database
+follow it, because the environment keeps its id. Its URLs change with the name —
+the `/@<env>/` segment *is* the name — so anything pointing at the old one stops
+resolving. `production` refuses (400); an existing name conflicts (409).
+
+### yard env delete \<env\> [-y]
+
+Deletes the environment and everything scoped to it: its files, its app Worker,
+and its app database (immediately — no grace window). Releases are
+product-scoped, so they survive. Prompts first; pass `-y`/`--yes` in scripts.
 `production` is protected and refuses.
+
+### yard env attach \<env\> \<release\> [--no-serve]
+
+Adds a release to the environment's set. As the newest member it starts serving
+there; an older one joins the set without taking over. `--no-serve` holds what
+the environment serves today, staging the release for a later `env deploy`.
+
+Attaching the newest release also clears an unpinned pointer left by an earlier
+`env deploy` — newest-wins resuming. A pinned environment is unmoved.
+
+### yard env detach \<env\> \<release\>
+
+Removes a release from the set — "stop serving this". The release survives; it
+belongs to the product. Refused (409) when it would leave the environment with
+nothing to serve.
+
+### yard env deploy \<env\> \<release\>
+
+Points the environment at a release and checks it out, attaching it first when
+it is not already a member. This is how you ship a specific release, however
+old. The choice is **not** frozen: the next release attached on top takes over.
+
+### yard env pin \<env\> [release]
+
+Pins the environment to a release, so later attaches join the set without taking
+over. Naming no release pins what it serves right now — how a rollback is held.
+
+### yard env unpin \<env\>
+
+Clears the pointer, so the newest member serves again and every later attach
+takes over.
 
 ### yard env promote \<from\> \<to\>
 
 Attaches the release `<from>` currently serves to `<to>`, so the two serve
-identical content — landing page, pricing, download buttons, and the web-app
-bundle. Promoting to `production` deploys its Worker and takes it live at
-`/app/`. **Nothing is copied**: promote adds the release to the target's set,
-where as the newest member it starts serving. **Data and secrets never
-promote**; each environment keeps its own. `<from>` must serve a release —
-publish one with `yard releases publish` first. JSON (same shape as
-`yard releases promote`):
+identical content. **Nothing is copied**: promote adds the release to the
+target's set, where as the newest member it starts serving. **Data and secrets
+never promote**; each environment keeps its own. `<from>` must serve a release.
+Prefer `env deploy` when you can name the release.
+
+`attach`, `detach`, `deploy`, `pin`, `unpin` and `promote` all answer the same
+JSON:
 `{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": [...]}`.
-Human output prints the live URL, plus the `/app/` URL when the app artifact
-was deployed.
+Human output ends with what the environment now serves, plus the live and
+`/app/` URLs when the target was `production`.
+
+### Recipes
+
+```sh
+# Ship to staging, check it, then to production
+yard releases publish v1.4.0 --env staging
+yard env deploy production v1.4.0
+
+# Roll back production and hold it there through later publishes
+yard env pin production v1.3.0
+
+# Resume newest-wins once the fix ships
+yard env unpin production
+
+# Stage a release without serving it, deploy on your own schedule
+yard env attach production v1.5.0 --no-serve
+yard env deploy production v1.5.0
+
+# What is each environment serving, and why?
+yard env list --json | jq '.environments[] | {slug, serving: .serving_release.version, pinned, compute_status}'
+```
 
 ---
 
