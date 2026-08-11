@@ -224,7 +224,9 @@ Every environment has a real, browsable URL. Opening
 needed), verifies they **own the product**, and serves the `preview`
 environment's app. Drop the `/@preview` segment to go back to production.
 Non-owners get an explanatory 403 — these URLs are safe to have in scrollback
-but not shareable.
+and, by default, not shareable. `yard env visibility <env> public` opens an
+environment to anyone with the URL (no sign-in, no purchase); `private` closes
+it again.
 
 The environment lives in the path rather than in a query parameter, so it is
 scoped to the one request: your app can carry whatever query string it likes
@@ -232,10 +234,12 @@ without switching environments, and a URL always says which environment it
 serves. An environment with no app deployed says so rather than quietly
 serving production's.
 
-A `draft` (or archived/private) product's `/app/` works the same way **for
-the owner**: anonymous visitors are sent through sign-in, non-owners get an
-explanatory 403, the owner gets the app. You can build and verify everything
-before ever advancing the product stage (stage changes are one-way).
+A `draft` (or archived) product's `/app/` works the same way **for the
+owner** — as does a product whose Production environment is private
+(`yard env visibility production private`): anonymous visitors are sent
+through sign-in, non-owners get an explanatory 403, the owner gets the app.
+You can build and verify everything before ever advancing the product stage
+(stage changes are one-way).
 
 ## Debugging deployed apps
 

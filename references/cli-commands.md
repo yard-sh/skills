@@ -163,7 +163,7 @@ NAME                                PRICE      RELEASES   SALES
 Total: 2 product(s)
 ```
 
-- `✓` = public visibility, `✗` = not public
+- `✓` = publicly visible (the Production environment's visibility is `public`), `✗` = not public — change it with `yard env visibility production <public|private>`
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
 - `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`). **Tiers are not included** — free trials, `trial_requires_card`, and `gift_enabled` are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].trial_requires_card` / `tiers[].gift_enabled`.
@@ -662,7 +662,7 @@ The purchases a coupon was redeemed on. **Flags:** `--json`, `--page N`, `--limi
 
 Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--seller <username>`, `--json`.
 
-The product must be **public**: checkout never sees drafts, so a draft product answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
+The product must be **public** (its Production environment's visibility): checkout never sees drafts or private products, so either answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
 
 **Typical agent flows:**
 
@@ -1157,11 +1157,11 @@ Shared flags: `--product <slug-or-uuid>`, `--project <path>`, `--json`. Every
 Lists the environments with what each serves and why.
 
 ```
-ENVIRONMENT          SERVING                  RELEASES  COMPUTE    PROTECTED
-------------------------------------------------------------------------------
-production           1.4.0 (pinned)           3                    yes
-staging              1.3.0 (deployed)         2         stale
-preview              -                        0
+ENVIRONMENT          SERVING                  RELEASES  VISIBILITY  COMPUTE    PROTECTED
+------------------------------------------------------------------------------------------
+production           1.4.0 (pinned)           3         public                 yes
+staging              1.3.0 (deployed)         2         private     stale
+preview              -                        0         public
 ```
 
 `COMPUTE` is blank when the app is up to date; a `failed` environment gets a
@@ -1173,7 +1173,8 @@ warning line after the table with its error. JSON:
   "environments": [
     {
       "id": "<uuid>", "product_id": "<uuid>", "slug": "production",
-      "protected": true, "active_release_id": "<uuid>", "pinned": true,
+      "protected": true, "visibility": "public",
+      "active_release_id": "<uuid>", "pinned": true,
       "created_at": "…", "compute_status": "up_to_date",
       "page_url": "https://acme.yard.sh/my-slug/",
       "app_url": "https://acme.yard.sh/my-slug/app/",
@@ -1212,6 +1213,16 @@ Renames in place. Only the name moves: releases, files, secrets and the database
 follow it, because the environment keeps its id. Its URLs change with the name —
 the `/@<env>/` segment *is* the name — so anything pointing at the old one stops
 resolving. `production` refuses (400); an existing name conflicts (409).
+
+### yard env visibility \<env\> \<public|private\>
+
+Sets who may view the environment's URLs. `private` (the default for custom
+environments) is owner-only: the edge sends everyone else through sign-in.
+`public` means anyone with the URL can view the environment's landing page and
+app — no sign-in, no purchase. `production` works too, and is how a product
+goes private: its visibility is the storefront's. The product's stage still
+trumps — a draft product serves nothing publicly regardless. The seller gets
+an in-app + email notification on every flip.
 
 ### yard env delete \<env\> [-y]
 
@@ -1281,6 +1292,11 @@ yard env unpin production
 # Stage a release without serving it, deploy on your own schedule
 yard env attach production v1.5.0 --no-serve
 yard env deploy production v1.5.0
+
+# Share a work-in-progress preview with someone who has no Yard account
+yard env create preview
+yard releases publish v1.5.0-rc1 --env preview
+yard env visibility preview public   # anyone with the URL can now view it
 
 # What is each environment serving, and why?
 yard env list --json | jq '.environments[] | {slug, serving: .serving_release.version, pinned, compute_status}'

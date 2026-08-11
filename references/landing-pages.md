@@ -357,7 +357,7 @@ https://alice.yard.sh/widget/            production
 https://alice.yard.sh/widget/@preview/   the preview environment
 ```
 
-These URLs are **owner-only**: the Yard edge verifies you own the product before serving, non-owners get an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback, not shareable.
+Environment URLs are **owner-only by default**: the Yard edge verifies you own the product before serving, non-owners get an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback — and shareable only once you opt in with `yard env visibility <env> public`, which lets anyone with the URL view that environment.
 
 The environment you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which environment it serves. `window.yard.product` reflects **that environment's** state — its own pricing, copy, and gallery — so a preview page shows preview prices, not production's.
 

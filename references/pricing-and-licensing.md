@@ -84,7 +84,7 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 ## Product Stages and Discounts
 
-Every product has a stage that controls visibility and pricing. New products always start in `draft` and progress through stages **forward-only** — once advanced, a product can never go back.
+Every product has a stage that controls availability and pricing. New products always start in `draft` and progress through stages **forward-only** — once advanced, a product can never go back. Stage is not the same thing as visibility: whether strangers may view the storefront at all is the Production **environment's** visibility (`yard env visibility production <public|private>`), and stage gates on top of it — a draft serves nothing publicly however the environments are set.
 
 | Stage | Description | Discount field |
 |---|---|---|
