@@ -398,6 +398,6 @@ Emits the raw `APIKeyListResponse`:
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
 - **`404 No releases found for this product`** — nothing has shipped to production yet. Run `yard releases publish` and then `yard releases promote <tag> --to production` (or publish with `--env production` in one step).
-- **Storage-limit `403` on publish** — the seller's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
+- **Storage-limit `403` on publish** — the selling team's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

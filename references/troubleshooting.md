@@ -66,6 +66,35 @@ This runs a fresh OAuth flow and saves a new session token.
 
 ---
 
+## "A team is required" / `NO_TEAM` 403
+
+Every seller-side command — `yard init`, `yard products`, `yard coupons`, `yard keys`, `yard push` — acts on a **team**, because teams own products. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
+
+This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
+
+**Fix:** create a team at https://yard.sh/team, then confirm:
+```sh
+yard team
+```
+
+Signup normally creates a team on the way through, so this mostly shows up on accounts that exited onboarding early.
+
+---
+
+## Commands act on the wrong team
+
+Products or coupons that exist in the dashboard don't show up in the CLI (or land under an unexpected handle). The CLI acts as **one** team at a time, and which one is stored on the account — the same setting the dashboard's team switcher writes — so it can change out from under a session.
+
+**Fix:** check and switch:
+```sh
+yard team                  # who am I acting as?
+yard team use acme         # switch (the leading @ is optional)
+```
+
+Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public product URL 404s, compare its handle against `yard team --json` → `.active_team.handle` — a product lives under its owning team's handle, never under the seller's username.
+
+---
+
 ## GitHub App not installed
 
 If you haven't installed the Yard GitHub App and you want to link a repo during `yard init`, the CLI will:

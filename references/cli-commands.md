@@ -13,6 +13,8 @@
 
 Authenticate with your GitHub account.
 
+A new account signing up through the CLI is walked through the browser onboarding first — profile, then **team creation** — before the token is handed back, because a seller with no team can't do anything. An existing account goes straight to the handoff. Either way, run `yard team` afterwards to see which team the session acts as.
+
 **Flow:**
 
 1. Binds a local HTTP server on **port 9876** (fails immediately if port is in use)
@@ -56,7 +58,7 @@ Clear stored credentials.
 
 ## yard me
 
-Print the currently logged-in user, their plan, and the permissions their plan grants. Useful for agents deciding which features to suggest before proposing them.
+Print the currently logged-in user, the team they act as, and what each is entitled to. Useful for agents deciding which features to suggest before proposing them.
 
 **Usage:** `yard me [--json]`
 
@@ -69,9 +71,12 @@ Username:     alice
 GitHub:       alice
 Email:        alice@example.com
 Subscription: Pro
+Team:         Acme Corp (@acme, owner)
 ```
 
-The `GitHub` and `Email` lines are omitted when not set.
+The `GitHub` and `Email` lines are omitted when not set. When the user belongs
+to no team, the `Team` line reads `none — create one at https://yard.sh/team to
+sell anything`, and every seller command will fail until they do.
 
 **JSON output (`--json`):**
 
@@ -83,6 +88,15 @@ The `GitHub` and `Email` lines are omitted when not set.
   "email": "alice@example.com",
   "plan": "Pro",
   "permissions": {
+    "create_teams": { "granted": true, "value_type": "boolean" }
+  },
+  "team": {
+    "id": "1f0c8a2e-2a1b-4c3d-9e8f-7a6b5c4d3e2f",
+    "name": "Acme Corp",
+    "handle": "acme",
+    "role": "owner"
+  },
+  "team_permissions": {
     "sell_products": { "granted": true, "value_type": "boolean" },
     "license_keys": { "granted": true, "value_type": "boolean" },
     "coupons": { "granted": true, "value_type": "boolean" },
@@ -100,7 +114,53 @@ The `GitHub` and `Email` lines are omitted when not set.
 }
 ```
 
-`username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `plan` is a human label (`Free` / `Basic` / `Pro`) for display only. **`permissions` is the source of truth** for what the account can do: each entry is a merged grant — booleans carry `granted`; limits also carry `limit` (a number) or `unlimited: true`. Feature gating is entirely permission-based, so a feature isn't tied to a plan _name_ — a custom role could grant any subset. (The old `is_pro` field was removed; use `permissions` or `plan`.)
+`username` is the best available display name (GitHub username → username → email → id), matching `User.DisplayName()`. `plan` is a human label (`Free` / `Basic` / `Pro`) for display only.
+
+There are **two** grant maps, and picking the wrong one gives the wrong answer:
+
+- **`team_permissions` is the source of truth for every seller feature** — products, tiers, coupons, license keys, custom pages, compute, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any product capability.
+- `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's products may do.
+
+The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's products, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
+
+Each entry in either map is a merged grant — booleans carry `granted`; limits also carry `limit` (a number) or `unlimited: true`. Gating is entirely permission-based, so a feature isn't tied to a plan _name_ — a custom role could grant any subset. (The old `is_pro` field was removed; use `team_permissions` or `plan`.)
+
+---
+
+## yard team
+
+Show or switch the team the CLI acts as. **Products, coupons, affiliate links, payouts and API keys are owned by a team, never by a user**, so every seller command reads and writes the active team's data.
+
+**Usage:** `yard team [--json]` / `yard team use <handle>`
+
+**Auth:** required (session auth only — an API key is already pinned to one team).
+
+**Human output:**
+
+```
+Team:   Acme Corp (@acme)
+Role:   owner
+Products are published at https://yard.sh/@acme/<slug>
+
+Other teams (switch with 'yard team use <handle>'):
+  @side-project            Side Project
+```
+
+With no team, it prints where to create one instead. `--json` emits `{ active_team_id, active_team, teams }`.
+
+### Switching
+
+```bash
+yard team use side-project     # the leading @ is optional
+```
+
+The active team is stored **on the account, not in `~/.yard/config.json`** — the same setting the dashboard's team switcher writes. So switching in the browser changes what the CLI sees, switching here changes what the dashboard sees, and it follows the user across machines. An agent that has just run `yard team use` should not assume any earlier `yard products` output is still current.
+
+`use` rejects a handle the user isn't a member of and lists the ones they are, rather than silently doing nothing.
+
+### Why a command needs a team
+
+Every seller-scoped endpoint answers `403` with `code: "NO_TEAM"` when the caller belongs to no team. The CLI turns that into instructions to create one — it is **not** a plan problem and upgrading won't fix it. A brand-new account reaches this state if it somehow skipped team creation during signup; the fix is https://yard.sh/team, then `yard team` to confirm.
 
 ---
 
@@ -127,7 +187,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
    - Title prompt (max 60 chars). Defaults to repo name if a git repo was detected.
    - Price prompt in dollars. Minimum $3.00, or $0 for free.
    - `POST /v1/products`. If git context was fully collected and the repo isn't already listed, the request includes `github_repo_id` + `github_repo_name`; otherwise those fields are omitted (the backend accepts products with no linked repo).
-   - The wizard never blocks a choice by plan. If the assembled product uses something the account's plan doesn't include (e.g. multiple tiers or seat-based pricing), the create call returns `upgrade_required`; the CLI shows the generic upgrade link and then prompts _"Once you've upgraded, press Enter to retry"_ — pressing Enter resubmits the **same** request, so the user upgrades in the browser and retries without re-answering the wizard.
+   - The wizard never blocks a choice by plan. If the assembled product uses something the team's plan doesn't include (e.g. multiple tiers or seat-based pricing), the create call returns `upgrade_required`; the CLI shows the generic upgrade link and then prompts _"Once you've upgraded, press Enter to retry"_ — pressing Enter resubmits the **same** request, so the user upgrades in the browser and retries without re-answering the wizard.
 
 6. **Scaffold `.yard/`** — Writes `./.yard/settings.json` via `EnsureYardProject`. Existing settings are preserved.
 
@@ -140,7 +200,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
 
-   Changes are applied via `PUT /v1/products/{id}`. If the account's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard products tiers`.)
+   Changes are applied via `PUT /v1/products/{id}`. If the team's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard products tiers`.)
 
 9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
@@ -171,7 +231,7 @@ Total: 2 product(s)
 **Discovering a product's slug.** The default table shows the _display name_ (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
 
 ```sh
-# All slugs the current account owns
+# All slugs the active team owns
 yard products --json | jq -r '.[].slug'
 
 # Slug + title, tab-separated (handy when titles aren't unique)
@@ -209,7 +269,7 @@ If the output is empty, no tier offers a trial — the trial button on the landi
 
 ### yard products edit [slug-or-id]
 
-Modify seller settings on an existing product: license keys and device activations (and the per-key limit). Whether the account's plan includes these is enforced by the server, not the CLI.
+Modify seller settings on an existing product: license keys and device activations (and the per-key limit). Whether the team's plan includes these is enforced by the server, not the CLI.
 
 **Resolution:**
 
@@ -290,7 +350,7 @@ Append a new tier. Spec shape:
 }
 ```
 
-How many tiers a product may have depends on the account's plan (server-enforced via the `max_pricing_tiers` permission — currently Basic: 2, Pro: 10). The CLI doesn't pre-check; if you exceed the plan's limit the add is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.permissions.max_pricing_tiers`.
+How many tiers a product may have depends on the owning team's plan (server-enforced via the `max_pricing_tiers` permission — currently Basic: 2, Pro: 10). The CLI doesn't pre-check; if you exceed the plan's limit the add is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
 
 #### yard products tiers edit <product-slug> <tier-id-or-name> --spec <file|->
 
@@ -438,9 +498,11 @@ For full download server schemas (license-key path and API-key path), see [refer
 
 Manage API keys for programmatic access. Without a subcommand, runs `keys list`.
 
+Keys belong to the **active team**, not to the person who created them: anyone on the team can use one, and it keeps working after that person leaves. Confirm which team you're minting into with `yard team` first — a key created under the wrong team authenticates as the wrong team.
+
 ### yard keys list
 
-Lists your API keys with the same columns the dashboard shows (name, prefix, scopes, last-used, created). The full secret is never displayed — only the prefix `yard_xxxxxxx`.
+Lists the **active team's** API keys with the same columns the dashboard shows (name, prefix, scopes, last-used, created). The full secret is never displayed — only the prefix `yard_xxxxxxx`. Switching teams (`yard team use`) changes what this lists.
 
 **Flags:**
 
@@ -461,7 +523,7 @@ Total: 2 / 100 keys
 
 ### yard keys create [name]
 
-Mints a new API key. **The full secret is shown only once at creation time.** After that, only the prefix is recoverable.
+Mints a new API key **for the active team**. **The full secret is shown only once at creation time.** After that, only the prefix is recoverable. The key limit is per team, so `403 … maximum` counts the team's keys, not yours.
 
 **Flags:**
 
@@ -571,7 +633,7 @@ yard licenses test-activations clear --yes
 
 Manage the discount codes buyers redeem at checkout. Without a subcommand, runs `coupons list`.
 
-Coupons need the `coupons` permission on the seller's plan — check `yard me --json` → `.permissions.coupons`. There is no client-side gate: the server answers `403` and the CLI prints what the plan is missing plus the pricing link.
+Coupons need the `coupons` permission on the selling team's plan — check `yard me --json` → `.team_permissions.coupons`. There is no client-side gate: the server answers `403` and the CLI prints what the plan is missing plus the pricing link.
 
 **Two ways to describe a coupon.** Flags cover the common path; `--spec <file|->` takes the API's own JSON shape for full control. When both are given, **flags win** field by field, so a spec can supply the base and a flag can override one value.
 
@@ -660,7 +722,9 @@ The purchases a coupon was redeemed on. **Flags:** `--json`, `--page N`, `--limi
 
 ### yard coupons validate \<code\>
 
-Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--seller <username>`, `--json`.
+Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--team <handle>` (the team that owns the product; defaults to your active team), `--json`.
+
+The product is resolved under the team's handle, so validating a coupon on another team's public product means naming it: `--team acme`.
 
 The product must be **public** (its Production environment's visibility): checkout never sees drafts or private products, so either answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
 
@@ -712,9 +776,9 @@ cust_c0ffee11    bob@example.com                1        $29.00       2026-07-18
 2 customers (1 new this month), $58.00 avg spend, 50.0% repeat rate
 ```
 
-The summary line doesn't move with pagination. It is account-wide by default, and product-wide under `--product`.
+The summary line doesn't move with pagination. It is team-wide by default, and product-wide under `--product`.
 
-Unlike `yard transactions --product` — where the filters narrow the rows but the earnings summary stays account-wide — `yard customers --product` narrows the summary too, because "customers of this product" is a different set from "customers", not a filtered view of it.
+Unlike `yard transactions --product` — where the filters narrow the rows but the earnings summary stays team-wide — `yard customers --product` narrows the summary too, because "customers of this product" is a different set from "customers", not a filtered view of it.
 
 ### yard customers show \<customer-id\>
 
@@ -766,7 +830,7 @@ order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com       $
 2 of 97 transactions · $2699.00 earned, 97 sales, $27.81 avg order, 3 active trials
 ```
 
-`--trials` and the date/product filters narrow the rows **and** the total; the summary figures stay account-wide, matching the dashboard. `TYPE` is derived: `gift`, `trial`, `trial upgrade`, `subscription`, or `purchase`. `STATUS` shows the refund state when there is one, because a refunded sale still has `status: "completed"`.
+`--trials` and the date/product filters narrow the rows **and** the total; the summary figures stay team-wide, matching the dashboard. `TYPE` is derived: `gift`, `trial`, `trial upgrade`, `subscription`, or `purchase`. `STATUS` shows the refund state when there is one, because a refunded sale still has `status: "completed"`.
 
 ### yard transactions show \<order-id\>
 
@@ -785,7 +849,7 @@ A revival is refused in one case: the buyer already has another pending or activ
 
 Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard products tiers edit`.
 
-Requires a plan that can sell products (`yard me --json` → `.permissions.sell_products`).
+Requires a plan that can sell products (`yard me --json` → `.team_permissions.sell_products`).
 
 **Typical agent flows:**
 
@@ -1150,7 +1214,7 @@ are how it moves between them:
 
 Shared flags: `--product <slug-or-uuid>`, `--project <path>`, `--json`. Every
 `<release>` argument accepts a version tag or a release UUID. Mutations need the
-`environments` permission — check `yard me --json` → `.permissions`.
+`environments` permission — check `yard me --json` → `.team_permissions`.
 
 ### yard env list
 

@@ -1,6 +1,6 @@
 # Custom Landing Pages
 
-Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.permissions`).
+Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.team_permissions`).
 
 This document covers what you can put **inside** that bundle: the product data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
 
@@ -14,7 +14,7 @@ When a custom landing page is rendered, Yard makes the product's data available 
 window.yard.product   // the product (or null if data couldn't be loaded)
 ```
 
-The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
+The object is the JSON returned by `GET /v1/products/{handle}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -36,7 +36,7 @@ The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` �
 | `license_key_enabled` | `boolean` | Whether license keys are issued |
 | `latest_release` | `PublicReleaseInfo?` | Most recent published release (tag, name, notes, date) |
 | `release_count` | `number` | Total published releases |
-| `seller` | `{ username, avatar_url?, … }` | Public seller info |
+| `seller` | `{ username, avatar_url?, … }` | The owning **team**. `username` carries the team's handle and `avatar_url` its icon — the JSON keys predate teams and kept their names, so `seller.username` is a handle, not a person's username. |
 
 Each entry in `tiers` exposes:
 

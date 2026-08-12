@@ -17,7 +17,7 @@
 
 ## Pricing Tiers
 
-Each product has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.permissions.max_pricing_tiers`.
+Each product has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
 
 **Tier fields:**
 - `name` — Display name for the tier
@@ -108,7 +108,7 @@ Stage discounts are applied before coupon discounts during checkout.
 
 ## Coupons
 
-Coupons depend on the plan's `coupons` permission — check with `yard me --json` → `.permissions.coupons` rather than assuming a tier. There is no client-side gate: the server answers `403` if the plan doesn't include them.
+Coupons depend on the plan's `coupons` permission — check with `yard me --json` → `.team_permissions.coupons` rather than assuming a tier. There is no client-side gate: the server answers `403` if the plan doesn't include them.
 
 **Manage them from the CLI** — `yard coupons` covers list / show / create / generate / update / rm / transactions / validate, all with `--json` and `--spec`. See [cli-commands.md](./cli-commands.md#yard-coupons) for the full surface.
 
@@ -141,7 +141,7 @@ A coupon is only usable when it is active, started, unexpired, and under its lim
 
 ## Free Trials
 
-Free trials are a **Pro-only** feature (check with `yard me --json` → `.permissions`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
+Free trials are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
 
 Tier-level trial fields:
 
@@ -161,7 +161,7 @@ There is no product-level trial setting anymore — putting `free_trial_enabled`
 
 ## Gift Purchases
 
-Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.permissions`).
+Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.team_permissions`).
 
 - `gift_enabled` — Toggle on each pricing tier (one-time tiers only; checkout hides gifting for subscriptions)
 - Buyer provides a recipient email at checkout
@@ -173,7 +173,7 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.per
 
 ## License Keys
 
-License keys are a **Pro-only** feature (check with `yard me --json` → `.permissions`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
+License keys are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
 
 Yard automatically generates license keys for each purchase.
 
@@ -194,7 +194,7 @@ Yard automatically generates license keys for each purchase.
 
 ## Device Activations
 
-Device activations are a **Pro-only** feature (check with `yard me --json` → `.permissions`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
+Device activations are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
 
 License keys can track device activations:
 

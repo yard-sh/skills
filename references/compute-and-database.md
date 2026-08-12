@@ -6,7 +6,7 @@ It powers full web apps, but the same feature hosts any HTTP workload: a
 JSON API, a webhook receiver, or the backend an installed product calls
 home to. A bundle with no frontend at all (just `_worker.js`) is valid.
 Requires the `compute` permission (Pro; check `yard me --json` →
-`.permissions` before promising a deploy).
+`.team_permissions` before promising a deploy).
 
 ## The runtime model — read this first
 

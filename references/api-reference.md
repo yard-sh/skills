@@ -12,6 +12,14 @@ https://api.yard.sh
 
 All API paths below are relative to this base URL (e.g., `/v1/licenses/validate` means `https://api.yard.sh/v1/licenses/validate`).
 
+## `{handle}` — how products are addressed
+
+Products are owned by a **team**, and a product is addressed by its owning team's handle plus its slug: `/v1/products/{handle}/{slug}/…`, matching the public URL `https://yard.sh/@{handle}/{slug}` and the subdomain `https://{handle}.yard.sh/{slug}`.
+
+A handle is **not** a user's username. They share one namespace (so neither can collide with the other), but a team handle is what resolves here, and a seller's personal username resolves nothing unless they happen to own a team with the same handle. Read the value from `yard team --json` → `.active_team.handle`, or from `seller.username` on the public product response — never assume it matches the signed-in user.
+
+(Some server-side route definitions still spell this parameter `username`, from before teams existed. The value it takes is the team handle.)
+
 ---
 
 ## Authentication
@@ -22,7 +30,7 @@ All API paths below are relative to this base URL (e.g., `/v1/licenses/validate`
 Authorization: Bearer yard_{key}
 ```
 
-API keys start with the `yard_` prefix and are issued per seller in the dashboard at https://yard.sh/dashboard/api-keys?action=create. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
+API keys start with the `yard_` prefix and are issued **per team** in the dashboard at https://yard.sh/dashboard/api-keys?action=create — a key is a team credential pinned to the team that created it, so it stays valid when the person who minted it leaves. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
 
 **Scopes** — each key is limited to the actions it actually needs. Pick only what you use:
 
@@ -54,7 +62,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/products/{username}/{slug}/metadata` | `products:read` | Read product metadata (title, stage, tiers, pricing) |
+| `GET` | `/v1/products/{handle}/{slug}/metadata` | `products:read` | Read product metadata (title, stage, tiers, pricing) |
 
 ### Licenses
 
@@ -68,9 +76,9 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | Method | Path | Scope | Description |
 |---|---|---|---|
 | `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
-| `GET` | `/v1/products/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a product |
-| `POST` | `/v1/products/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
-| `POST` | `/v1/products/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
+| `GET` | `/v1/products/{handle}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a product |
+| `POST` | `/v1/products/{handle}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
+| `POST` | `/v1/products/{handle}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
 
 ---
 
@@ -93,8 +101,8 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/ready` | Readiness check |
 | `GET` | `/version` | API version info |
 | `GET` | `/v1/products/public` | List all public products |
-| `GET` | `/v1/products/{username}/{slug}/public` | Get a public product (scoped under the seller's handle — this is the shape `window.yard.product` exposes) |
-| `GET` | `/v1/authors/{username}` | Get author profile and products |
+| `GET` | `/v1/products/{handle}/{slug}/public` | Get a public product (scoped under the owning team's handle — this is the shape `window.yard.product` exposes) |
+| `GET` | `/v1/authors/{handle}` | Get an author profile (a team) and its products |
 | `GET` | `/v1/search?q={query}` | Search products |
 | `POST` | `/v1/coupons/validate` | Validate a coupon code |
 
@@ -107,7 +115,7 @@ The following are **not** exposed over HTTP as integration endpoints — an API 
 - Create / update / delete a product (`yard init`, product edits in the dashboard)
 - Create, publish, or promote a release (`yard releases publish`, `yard releases promote`, the GitHub App on release webhook, or the dashboard)
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
-- Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the seller's own account, not an integration surface, so an API key can't reach them
+- Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
 - Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
 - Stripe Connect onboarding and payout management
 - Custom domains, product images / videos, webhook secrets
