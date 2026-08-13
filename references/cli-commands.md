@@ -93,7 +93,7 @@ sell anything`, and every seller command will fail until they do.
   "team": {
     "id": "1f0c8a2e-2a1b-4c3d-9e8f-7a6b5c4d3e2f",
     "name": "Acme Corp",
-    "handle": "acme",
+    "username": "acme",
     "role": "owner"
   },
   "team_permissions": {
@@ -131,7 +131,7 @@ Each entry in either map is a merged grant — booleans carry `granted`; limits 
 
 Show or switch the team the CLI acts as. **Products, coupons, affiliate links, payouts and API keys are owned by a team, never by a user**, so every seller command reads and writes the active team's data.
 
-**Usage:** `yard team [--json]` / `yard team use <handle>`
+**Usage:** `yard team [--json]` / `yard team use <username>`
 
 **Auth:** required (session auth only — an API key is already pinned to one team).
 
@@ -142,7 +142,7 @@ Team:   Acme Corp (@acme)
 Role:   owner
 Products are published at https://yard.sh/@acme/<slug>
 
-Other teams (switch with 'yard team use <handle>'):
+Other teams (switch with 'yard team use <username>'):
   @side-project            Side Project
 ```
 
@@ -156,7 +156,7 @@ yard team use side-project     # the leading @ is optional
 
 The active team is stored **on the account, not in `~/.yard/config.json`** — the same setting the dashboard's team switcher writes. So switching in the browser changes what the CLI sees, switching here changes what the dashboard sees, and it follows the user across machines. An agent that has just run `yard team use` should not assume any earlier `yard products` output is still current.
 
-`use` rejects a handle the user isn't a member of and lists the ones they are, rather than silently doing nothing.
+`use` rejects a username the user isn't a member of and lists the ones they are, rather than silently doing nothing.
 
 ### Why a command needs a team
 
@@ -722,9 +722,9 @@ The purchases a coupon was redeemed on. **Flags:** `--json`, `--page N`, `--limi
 
 ### yard coupons validate \<code\>
 
-Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--team <handle>` (the team that owns the product; defaults to your active team), `--json`.
+Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--team <username>` (the team that owns the product; defaults to your active team), `--json`.
 
-The product is resolved under the team's handle, so validating a coupon on another team's public product means naming it: `--team acme`.
+The product is resolved under the team's username, so validating a coupon on another team's public product means naming it: `--team acme`.
 
 The product must be **public** (its Production environment's visibility): checkout never sees drafts or private products, so either answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
 

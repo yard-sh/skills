@@ -75,13 +75,13 @@ to use (or test) their own app.
 
 ## URLs — where the app serves
 
-Production serves at `https://<handle>.yard.sh/<slug>/app/` (on a custom
+Production serves at `https://<username>.yard.sh/<slug>/app/` (on a custom
 domain: `https://<customdomain>/app/`). Every other environment serves one
-path segment down, at `https://<handle>.yard.sh/<slug>/@<env>/app/`. Never
+path segment down, at `https://<username>.yard.sh/<slug>/@<env>/app/`. Never
 construct these URLs by hand — `yard app open [--env <slug>]` prints and opens
 the environment's `url` (also in `--json`).
 
-The app never takes over the product root: `<handle>.yard.sh/<slug>` stays
+The app never takes over the product root: `<username>.yard.sh/<slug>` stays
 the landing/sales page, and pricing, trials, subscriptions, coupons, and
 checkout are standard Yard — configure them as for any product. To send a
 buyer to purchase or upgrade from inside the app, link to the sales page
@@ -220,7 +220,7 @@ up to date while it catches up.
 ## Testing before customers see it
 
 Every environment has a real, browsable URL. Opening
-`https://<handle>.yard.sh/<slug>/@preview/app/` signs the visitor in (if
+`https://<username>.yard.sh/<slug>/@preview/app/` signs the visitor in (if
 needed), verifies they **own the product**, and serves the `preview`
 environment's app. Drop the `/@preview` segment to go back to production.
 Non-owners get an explanatory 403 — these URLs are safe to have in scrollback

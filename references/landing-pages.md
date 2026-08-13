@@ -14,7 +14,7 @@ When a custom landing page is rendered, Yard makes the product's data available 
 window.yard.product   // the product (or null if data couldn't be loaded)
 ```
 
-The object is the JSON returned by `GET /v1/products/{handle}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
+The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -36,7 +36,7 @@ The object is the JSON returned by `GET /v1/products/{handle}/{slug}/public` —
 | `license_key_enabled` | `boolean` | Whether license keys are issued |
 | `latest_release` | `PublicReleaseInfo?` | Most recent published release (tag, name, notes, date) |
 | `release_count` | `number` | Total published releases |
-| `seller` | `{ username, avatar_url?, … }` | The owning **team**. `username` carries the team's handle and `avatar_url` its icon — the JSON keys predate teams and kept their names, so `seller.username` is a handle, not a person's username. |
+| `seller` | `{ username, avatar_url?, … }` | The owning **team**: `username` carries the team's username and `avatar_url` its icon. |
 
 Each entry in `tiers` exposes:
 
@@ -142,7 +142,7 @@ Recognised attributes on `data-action="checkout"` elements:
 |---|---|
 | `data-tier-id` (or `data-tier`) | Tier UUID to trial. Since trials are per-tier, set this to the id of a tier whose `free_trial_enabled` is true. Omit it to let yard use the default tier (or the first trial-enabled tier if the default has no trial). |
 
-A trial click redirects to yard's hosted trial flow (`/trial/<handle>/<slug>`): a signed-in
+A trial click redirects to yard's hosted trial flow (`/trial/<username>/<slug>`): a signed-in
 visitor's trial starts immediately, while a signed-out visitor gets an email-confirmation step.
 Only show the trial button when a tier actually offers a trial — see the worked example.
 
@@ -326,23 +326,23 @@ domain back to yard.sh may not see the visitor's session even when
 they're signed in. The bridge will resolve with `null` or
 `signed_in: false` in that case — your UI should fall back gracefully
 (default to the "Buy" CTA instead of "Open in Library"). Pages on
-`<handle>.yard.sh` subdomains aren't affected — they're same-site
+`<username>.yard.sh` subdomains aren't affected — they're same-site
 with yard.sh.
 
 ---
 
 ## Asset paths in your HTML
 
-Pages serve under `<handle>.yard.sh/<slug>/`, so any CSS, JS, image, or font your `index.html` references needs to resolve inside that directory. The simplest rule: **use relative URLs**.
+Pages serve under `<username>.yard.sh/<slug>/`, so any CSS, JS, image, or font your `index.html` references needs to resolve inside that directory. The simplest rule: **use relative URLs**.
 
 ```html
-<!-- Good — resolves to <handle>.yard.sh/<slug>/styles.css -->
+<!-- Good — resolves to <username>.yard.sh/<slug>/styles.css -->
 <link rel="stylesheet" href="styles.css" />
 <script type="module" src="app.js"></script>
 <img src="screenshot.png" alt="" />
 ```
 
-Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<handle>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard init --page` scaffolds.
+Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<username>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard init --page` scaffolds.
 
 Relative URLs matter more than usual because the same bundle serves under more than one prefix — a non-production environment adds a path segment (below). Root-relative paths break there too; relative ones just work.
 
@@ -350,7 +350,7 @@ Relative URLs matter more than usual because the same bundle serves under more t
 
 ## Testing a page before customers see it
 
-Every environment serves its own landing page, at `https://<handle>.yard.sh/<slug>/@<env>/`. Production stays at `https://<handle>.yard.sh/<slug>/`.
+Every environment serves its own landing page, at `https://<username>.yard.sh/<slug>/@<env>/`. Production stays at `https://<username>.yard.sh/<slug>/`.
 
 ```
 https://alice.yard.sh/widget/            production
