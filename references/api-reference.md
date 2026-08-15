@@ -100,7 +100,7 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/version` | API version info |
 | `GET` | `/v1/products/public` | List all public products |
 | `GET` | `/v1/products/{username}/{slug}/public` | Get a public product (scoped under the owning team's username — this is the shape `window.yard.product` exposes) |
-| `GET` | `/v1/authors/{username}` | Get an author profile (a team) and its products |
+| `GET` | `/v1/teams/{id}` | Get a team's public profile and its products. `{id}` is the team's UUID **or** its username (the subject is always a team, never an individual user) |
 | `GET` | `/v1/search?q={query}` | Search products |
 | `POST` | `/v1/coupons/validate` | Validate a coupon code |
 

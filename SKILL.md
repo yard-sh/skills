@@ -30,7 +30,7 @@ Yard lets developers make their software available for sale in just a few clicks
 
 **A product belongs to a team, not to a user.** So do coupons, affiliate links, API keys, payouts, GitHub installations, and the Stripe account the money lands in. A user belongs to any number of teams and acts as exactly one at a time — the **active team** — and that is what every seller-side command and endpoint reads and writes.
 
-Four consequences worth holding onto:
+Five consequences worth holding onto:
 
 1. **Products are addressed by the team's username**, not the seller's username: `https://yard.sh/@{username}/{slug}`, `https://{username}.yard.sh/{slug}`, and `/v1/products/{username}/{slug}/…`. Team and user usernames share one namespace, so they can't collide — but they are not the same thing and routinely differ. Get the team's from `yard team --json` → `.active_team.username`; never assume it from the user's login.
 
@@ -39,6 +39,8 @@ Four consequences worth holding onto:
 3. **The active team is server-side state**, shared with the dashboard's team switcher — not something in `~/.yard/config.json`. It can change between commands if the user switches in the browser. When it matters which team you're operating on, check `yard team` rather than remembering an earlier answer; switch with `yard team use <username>`.
 
 4. **No team means nothing works.** Seller endpoints answer `403` with `code: "NO_TEAM"` and the message "A team is required". That is not a plan problem and upgrading does not fix it — the user must create a team at https://yard.sh/team. Signup normally does this, so if you hit it, say so plainly instead of suggesting an upgrade.
+
+5. **The team's money belongs to its owner.** Membership is `owner` or `admin`; both can run the whole product surface, and they part company where accountability sits. **Payouts and billing are owner-only, reads included** — `/v1/payouts/…`, `/v1/billing/invoices`, the payout bank accounts, and the Payouts and Billing pages of the dashboard. An admin gets `403` with `code: "NOT_TEAM_OWNER"`; no upgrade and no permission change clears it, only the owner acting instead. Handing the team over is the owner's alone too. `yard team` prints the acting user's role, so check it before pointing someone at those pages.
 
 API keys follow the same rule: a key is a **team credential** pinned to one team, usable by anyone on that team, and it keeps working when whoever created it leaves. `yard keys list` shows the active team's keys, not a personal set.
 
