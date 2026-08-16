@@ -1,9 +1,9 @@
 # Compute and database on Yard
 
-Yard runs a product's server-side code — with an optional per-environment
+Yard runs a project's server-side code — with an optional per-environment
 database, secrets, and buyer sign-in — using the same CLI you already have.
 It powers full web apps, but the same feature hosts any HTTP workload: a
-JSON API, a webhook receiver, or the backend an installed product calls
+JSON API, a webhook receiver, or the backend an installed project calls
 home to. A bundle with no frontend at all (just `_worker.js`) is valid.
 Requires the `compute` permission (Pro; check `yard me --json` →
 `.team_permissions` before promising a deploy).
@@ -48,7 +48,7 @@ A deployable app is one directory (build output or hand-written):
 Limits: 200 files, 5 MB per file, 25 MB total, paths nest up to 8 levels.
 Start from a working scaffold with `yard app init` — it records the bundle
 directory in `.yard/settings.json` as `app.dir`, so plain `yard push` needs
-no `--dir`. The deploy walker skips dotfiles and known local-config files at
+no override. The deploy walker skips dotfiles and known local-config files at
 the bundle root (e.g. `README.md`, the retired `yard.json` manifest) —
 they're reported as skipped, never uploaded.
 
@@ -64,13 +64,13 @@ settings change is an edit plus a `yard push`):
 
 - `access`: `public` (everyone) · `authenticated` (Yard sign-in required —
   the edge redirects anonymous visitors to login) · `customers` (the edge
-  paywall: non-customers are redirected to the product's sales page; only
+  paywall: non-customers are redirected to the project's sales page; only
   buyers/trialers/subscribers get in). Default `public`.
 - `database`: `true` provisions a per-environment SQLite database bound as
   `env.DB`.
 
-**The product owner always gets in**, whatever the access mode, with
-`X-Yard-Entitlement: owner` — a seller never needs to buy their own product
+**The project owner always gets in**, whatever the access mode, with
+`X-Yard-Entitlement: owner` — a seller never needs to buy their own project
 to use (or test) their own app.
 
 ## URLs — where the app serves
@@ -81,11 +81,11 @@ path segment down, at `https://<username>.yard.sh/<slug>/@<env>/app/`. Never
 construct these URLs by hand — `yard app open [--env <slug>]` prints and opens
 the environment's `url` (also in `--json`).
 
-The app never takes over the product root: `<username>.yard.sh/<slug>` stays
+The app never takes over the project root: `<username>.yard.sh/<slug>` stays
 the landing/sales page, and pricing, trials, subscriptions, coupons, and
-checkout are standard Yard — configure them as for any product. To send a
+checkout are standard Yard — configure them as for any project. To send a
 buyer to purchase or upgrade from inside the app, link to the sales page
-(relative `../` from `/app/`, or the product's `buy_url`).
+(relative `../` from `/app/`, or the project's `buy_url`).
 
 `__yard/` is a reserved path prefix — don't use it in the app's own URLs. A
 path segment beginning with `@` directly after the slug names an environment
@@ -101,7 +101,7 @@ The Yard edge signs buyers in and hands your code trusted headers:
 | `X-Yard-User-Id` | Stable buyer id — use as your foreign key |
 | `X-Yard-Email` | Buyer email (may be empty) |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
-| `X-Yard-Tier` | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price products never send it. |
+| `X-Yard-Tier` | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price projects never send it. |
 | `X-Yard-Environment` | Which environment is serving: `production`, or one of your own |
 
 Absent identity headers = anonymous visitor (`public` apps only — gated
@@ -135,7 +135,7 @@ state with `fetch("__yard/auth/me")` (relative URL!) and links to
 
 `email` can be `""`; `tier` is **omitted** (not null) when empty. Note
 `authenticated: true` with `entitlement: "none"` is a real state (signed-in
-non-customer on a `public` or `authenticated` app). Sessions are per-product:
+non-customer on a `public` or `authenticated` app). Sessions are per-project:
 signing in to one seller's app grants nothing anywhere else.
 
 Do not implement OAuth, sessions, or password storage — with
@@ -221,7 +221,7 @@ up to date while it catches up.
 
 Every environment has a real, browsable URL. Opening
 `https://<username>.yard.sh/<slug>/@preview/app/` signs the visitor in (if
-needed), verifies they **own the product**, and serves the `preview`
+needed), verifies they **own the project**, and serves the `preview`
 environment's app. Drop the `/@preview` segment to go back to production.
 Non-owners get an explanatory 403 — these URLs are safe to have in scrollback
 and, by default, not shareable. `yard env visibility <env> public` opens an
@@ -234,11 +234,11 @@ without switching environments, and a URL always says which environment it
 serves. An environment with no app deployed says so rather than quietly
 serving production's.
 
-A `draft` (or archived) product's `/app/` works the same way **for the
-owner** — as does a product whose Production environment is private
+A `draft` (or archived) project's `/app/` works the same way **for the
+owner** — as does a project whose Production environment is private
 (`yard env visibility production private`): anonymous visitors are sent
 through sign-in, non-owners get an explanatory 403, the owner gets the app.
-You can build and verify everything before ever advancing the product stage
+You can build and verify everything before ever advancing the project stage
 (stage changes are one-way).
 
 ## Debugging deployed apps

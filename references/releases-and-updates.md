@@ -1,6 +1,6 @@
 # Releases and the Update Server
 
-This reference covers how to publish a release for a Yard product (with file
+This reference covers how to publish a release for a Yard project (with file
 assets) and how shipped software downloads those releases. Downloads
 authenticate with **license keys** (per-buyer, hit `/v1/updates/latest`).
 API keys cover first-party automation for licenses and subscriptions; they do
@@ -20,7 +20,7 @@ not grant release access.
 
 ## What a release is
 
-A Yard release is a **product-wide snapshot** — landing page, pricing, download
+A Yard release is a **project-wide snapshot** — landing page, pricing, download
 buttons, web-app bundle, and file assets all live in one release. It consists
 of:
 
@@ -35,17 +35,17 @@ been published yet. A draft can never be deployed anywhere, so editing one has
 no side effects. Publishing stamps the tag and makes the release deployable —
 publishing itself is **one-way**, but the release stays editable afterwards.
 Editing a published release nothing serves is still side-effect free; editing
-one an environment is serving is live the moment it saves. A product can hold
+one an environment is serving is live the moment it saves. A project can hold
 at most **10 open drafts**.
 
-Releases belong to the **product**, not to any environment. Each environment
+Releases belong to the **project**, not to any environment. Each environment
 holds a **set** of releases and serves the newest member of that set, unless
 the seller explicitly pins an older one. **Attaching a release to an
 environment is the deploy moment.** Buyers only ever see what **production**
 serves — attach a release there (`yard releases promote <tag> --to
 production`, or publish with `--env production`) to make it live.
 
-Version tags are **unique per product** across all non-archived releases —
+Version tags are **unique per project** across all non-archived releases —
 publishing under an existing tag (or tagging a draft with one) is rejected
 with `409`. A draft may reserve its tag early.
 
@@ -68,7 +68,7 @@ it.
 
 ```sh
 echo '{
-  "product":      "my-slug",
+  "project":      "my-slug",
   "tag_name":     "v1.4.0",
   "release_name": "Late April fixes",
   "release_notes": "## Highlights\n- Faster startup\n- Bug fixes",
@@ -83,7 +83,7 @@ Spec field rules:
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `product` | string | Only if you have multiple products | slug or UUID |
+| `project` | string | Only if you have multiple projects | slug or UUID |
 | `tag_name` | string | Yes | ≤255 chars |
 | `release_name` | string | No | ≤255 chars |
 | `release_notes` | string | No | markdown, ≤125,000 chars |
@@ -111,7 +111,7 @@ Spec field rules:
 
 ```sh
 yard releases publish v1.4.0 \
-  --product my-slug \
+  --project my-slug \
   --name "Late April fixes" \
   --notes-file ./CHANGELOG.md \
   --file ./dist/yard-darwin-arm64.tar.gz \
@@ -122,7 +122,7 @@ yard releases publish v1.4.0 \
 
 ```sh
 yard releases publish
-# prompts for: product (if multiple), tag, name, notes, files
+# prompts for: project (if multiple), tag, name, notes, files
 ```
 
 ### How upload failures are handled
@@ -167,7 +167,7 @@ yard releases promote v1.4.0 --to production                  # ships it to buye
 
 ## Syncing releases from GitHub
 
-A product linked to a GitHub repository (Yard GitHub App installed, repo linked
+A project linked to a GitHub repository (Yard GitHub App installed, repo linked
 from the dashboard's Releases tab) publishes automatically: when the seller
 publishes a GitHub release, Yard receives the webhook and creates a matching
 **published** release — tag, title, notes, and every attached asset are copied
@@ -199,8 +199,8 @@ The `pricing` section uses the release-document tier shape (note the nested
 
 ```json
 {
-  "version": 2,
-  "product_slug": "my-product",
+  "version": 3,
+  "project_slug": "my-project",
   "app": { "dir": "app" },
   "pricing": {
     "tiers": [
@@ -220,8 +220,8 @@ Notes:
   (tier count, seat-based pricing, trials — all plan-gated as usual); existing
   subscribers get the standard 30-day price-change notice when a sync changes
   their tier's price.
-- Emptying `tiers` on a product that's charging customers fails the sync
-  rather than taking the product off sale.
+- Emptying `tiers` on a project that's charging customers fails the sync
+  rather than taking the project off sale.
 - Tag content is immutable, so a settings.json change lands with the **next**
   release (or via Re-sync after force-moving a tag).
 - `yard push` applies the `pricing` section the same way — CLI and GitHub sync
@@ -240,7 +240,7 @@ declare, and clears the marker.
 ## Downloading releases — license-key path
 
 Use this path for shipped software that downloads updates. It requires the
-product to issue a license key per buyer (i.e. `license_key_enabled: true`).
+project to issue a license key per buyer (i.e. `license_key_enabled: true`).
 Each buyer's key is unique, so revocation, activation limits, and per-user
 analytics work out of the box, and there's no shared secret to embed in the
 binary.
@@ -267,7 +267,7 @@ the live build:
 GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&environment=beta
 ```
 
-Any valid license key for the product can read any of its environments — that is
+Any valid license key for the project can read any of its environments — that is
 how beta channels work: hand testers the license key they already have and point
 their updater at a beta environment. Unpublished work is never reachable: draft
 releases can't belong to any environment, and each environment only serves
@@ -306,7 +306,7 @@ Errors:
 - `400 Invalid license key format` — the key doesn't match the expected format.
 - `403 Purchase not completed` — the license exists but the buyer's payment hasn't finalized.
 - `403 License has been refunded` — the seller refunded the buyer; access revoked.
-- `404 No releases found` — the product has no synced, non-archived release yet.
+- `404 No releases found` — the project has no synced, non-archived release yet.
 - `404 License key not found` — the key isn't in our system.
 
 ### Download a release file
@@ -345,11 +345,11 @@ the prefix (`yard_a1b2c3d`) and metadata.
 
 | Scope | Description |
 |---|---|
-| `products:read` | Read product metadata |
+| `projects:read` | Read project metadata |
 | `licenses:validate` | Validate license keys (called from your own software) |
 | `licenses:activate` | Activate / deactivate license keys |
-| `subscriptions:read` | Read product subscription status |
-| `subscriptions:write` | Create / cancel / reactivate product subscriptions |
+| `subscriptions:read` | Read project subscription status |
+| `subscriptions:write` | Create / cancel / reactivate project subscriptions |
 
 Validation rules:
 
@@ -397,7 +397,7 @@ Emits the raw `APIKeyListResponse`:
 
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
-- **`404 No releases found for this product`** — nothing has shipped to production yet. Run `yard releases publish` and then `yard releases promote <tag> --to production` (or publish with `--env production` in one step).
+- **`404 No releases found for this project`** — nothing has shipped to production yet. Run `yard releases publish` and then `yard releases promote <tag> --to production` (or publish with `--env production` in one step).
 - **Storage-limit `403` on publish** — the selling team's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

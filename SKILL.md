@@ -14,7 +14,7 @@ metadata:
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
-  yard init, yard install, yard products, yard releases, yard keys, yard licenses, yard help, installing the yard CLI,
+  yard init, yard install, yard projects, yard releases, yard keys, yard licenses, yard help, installing the yard CLI,
   pricing, trials, device activations, affiliate links, referral codes, update server, file updates, publishing a
   release, downloading updates, creating API keys, testing license-key validation, the test license key, clearing
   test device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, or extending
@@ -24,23 +24,23 @@ description: >-
 
 # Yard
 
-Yard lets developers make their software available for sale in just a few clicks. Yard provides a product page with checkout flow. It also provides a license server, allowing sellers to integrate the Yard REST API into their app to validate a user's ownership. Sellers can also control the number of device activations allowed per account. Buyers manage their purchases through their Yard account. Sellers install the Yard GitHub App on their repo, run `yard init` from the command line, set a price, and start selling. Buyers pay via Yard Checkout page and get instant access to download current and future releases. Yard acts as the Merchant of Record, handling payments, license keys, and file hosting.
+Yard lets developers make their software available for sale in just a few clicks. Yard provides a project page with checkout flow. It also provides a license server, allowing sellers to integrate the Yard REST API into their app to validate a user's ownership. Sellers can also control the number of device activations allowed per account. Buyers manage their purchases through their Yard account. Sellers install the Yard GitHub App on their repo, run `yard init` from the command line, set a price, and start selling. Buyers pay via Yard Checkout page and get instant access to download current and future releases. Yard acts as the Merchant of Record, handling payments, license keys, and file hosting.
 
 ## Teams own everything a seller has
 
-**A product belongs to a team, not to a user.** So do coupons, affiliate links, API keys, payouts, GitHub installations, and the Stripe account the money lands in. A user belongs to any number of teams and acts as exactly one at a time — the **active team** — and that is what every seller-side command and endpoint reads and writes.
+**A project belongs to a team, not to a user.** So do coupons, affiliate links, API keys, payouts, GitHub installations, and the Stripe account the money lands in. A user belongs to any number of teams and acts as exactly one at a time — the **active team** — and that is what every seller-side command and endpoint reads and writes.
 
 Five consequences worth holding onto:
 
-1. **Products are addressed by the team's username**, not the seller's username: `https://yard.sh/@{username}/{slug}`, `https://{username}.yard.sh/{slug}`, and `/v1/products/{username}/{slug}/…`. Team and user usernames share one namespace, so they can't collide — but they are not the same thing and routinely differ. Get the team's from `yard team --json` → `.active_team.username`; never assume it from the user's login.
+1. **Projects are addressed by the team's username**, not the seller's username: `https://yard.sh/@{username}/{slug}`, `https://{username}.yard.sh/{slug}`, and `/v1/projects/{username}/{slug}/…`. Team and user usernames share one namespace, so they can't collide — but they are not the same thing and routinely differ. Get the team's from `yard team --json` → `.active_team.username`; never assume it from the user's login.
 
-2. **Entitlements come from the team, not from the person typing.** The server gates seller features on the merged plans of the team's _owners_. A free user in a Pro team gets Pro features on that team's products; a Pro user acting as a free team does not. Read `yard me --json` → `.team_permissions` for anything seller-side. `.permissions` is the user's own account-level entitlement (things like `create_teams`) and is the wrong map for deciding what a product may do.
+2. **Entitlements come from the team, not from the person typing.** The server gates seller features on the merged plans of the team's _owners_. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not. Read `yard me --json` → `.team_permissions` for anything seller-side. `.permissions` is the user's own account-level entitlement (things like `create_teams`) and is the wrong map for deciding what a project may do.
 
 3. **The active team is server-side state**, shared with the dashboard's team switcher — not something in `~/.yard/config.json`. It can change between commands if the user switches in the browser. When it matters which team you're operating on, check `yard team` rather than remembering an earlier answer; switch with `yard team use <username>`.
 
 4. **No team means nothing works.** Seller endpoints answer `403` with `code: "NO_TEAM"` and the message "A team is required". That is not a plan problem and upgrading does not fix it — the user must create a team at https://yard.sh/team. Signup normally does this, so if you hit it, say so plainly instead of suggesting an upgrade.
 
-5. **The team's money belongs to its owner.** Membership is `owner` or `admin`; both can run the whole product surface, and they part company where accountability sits. **Payouts and billing are owner-only, reads included** — `/v1/payouts/…`, `/v1/billing/invoices`, the payout bank accounts, and the Payouts and Billing pages of the dashboard. An admin gets `403` with `code: "NOT_TEAM_OWNER"`; no upgrade and no permission change clears it, only the owner acting instead. Handing the team over is the owner's alone too. `yard team` prints the acting user's role, so check it before pointing someone at those pages.
+5. **The team's money belongs to its owner.** Membership is `owner` or `admin`; both can run the whole project surface, and they part company where accountability sits. **Payouts and billing are owner-only, reads included** — `/v1/payouts/…`, `/v1/billing/invoices`, the payout bank accounts, and the Payouts and Billing pages of the dashboard. An admin gets `403` with `code: "NOT_TEAM_OWNER"`; no upgrade and no permission change clears it, only the owner acting instead. Handing the team over is the owner's alone too. `yard team` prints the acting user's role, so check it before pointing someone at those pages.
 
 API keys follow the same rule: a key is a **team credential** pinned to one team, usable by anyone on that team, and it keeps working when whoever created it leaves. `yard keys list` shows the active team's keys, not a personal set.
 
@@ -48,8 +48,8 @@ API keys follow the same rule: a key is a **team credential** pinned to one team
 
 Yard has two surfaces. Pick by intent:
 
-- **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing products, linking repos, scaffolding and publishing landing pages, viewing products, running discount codes, and reading who bought what. An LLM/agent working on a seller's codebase should drive all management through the CLI. This includes the seller's own reporting — `yard customers` and `yard transactions` — which an API key cannot reach.
-- **REST API** — for **integrating** Yard into shipped software: validating a buyer's license at runtime, deactivating a device, fetching the latest release, reading product metadata, managing a buyer's subscription. The API does **not** replace the CLI for catalog management — an agent that wants to "create a product" runs `yard init`, not an HTTP call.
+- **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing projects, linking repos, scaffolding and publishing landing pages, viewing projects, running discount codes, and reading who bought what. An LLM/agent working on a seller's codebase should drive all management through the CLI. This includes the seller's own reporting — `yard customers` and `yard transactions` — which an API key cannot reach.
+- **REST API** — for **integrating** Yard into shipped software: validating a buyer's license at runtime, deactivating a device, fetching the latest release, reading project metadata, managing a buyer's subscription. The API does **not** replace the CLI for catalog management — an agent that wants to "create a project" runs `yard init`, not an HTTP call.
 
 API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
 
@@ -57,29 +57,29 @@ For shipped end-user software, downloads authenticate with a **license key** (pe
 
 See [references/releases-and-updates.md](references/releases-and-updates.md).
 
-## Onboarding / new product setup — agent workflow
+## Onboarding / new project setup — agent workflow
 
-When a user asks to get onboarded to Yard, set up a new product, run `yard init`, publish their software on Yard, or any equivalent request, **do not immediately run commands**. First ask the user which mode they prefer:
+When a user asks to get onboarded to Yard, set up a new project, run `yard init`, publish their software on Yard, or any equivalent request, **do not immediately run commands**. First ask the user which mode they prefer:
 
 1. **Guided (step by step).** The user drives; you explain each step and wait for their input. Start by asking which directory to run `yard init` in, then walk through `yard login` (if needed) and the `yard init` prompts one at a time, pausing for confirmation between commands.
 2. **Autopilot (the agent handles it).** You drive the CLI on the user's behalf. In this mode:
-   1. Ask the user for a **brief description of the product** (what it is, who it's for, and — if they already have one in mind — a rough price point).
+   1. Ask the user for a **brief description of the project** (what it is, who it's for, and — if they already have one in mind — a rough price point).
    2. Based on the description, formulate a **pricing recommendation** using the options the CLI actually supports, and note which pieces require **Yard Pro** (check with `yard me --json` → `.team_permissions`):
-      - **One-time purchase, single tier** — simple products, one price, lifetime access. Works on the free plan.
+      - **One-time purchase, single tier** — simple projects, one price, lifetime access. Works on the free plan.
       - **Subscription, single tier** — recurring billing (monthly, with optional yearly discount). Works on the free plan.
-      - **Multiple pricing tiers** (e.g., Starter / Pro / Team) — the number allowed depends on the plan and is server-enforced via `max_pricing_tiers` (currently Basic: 2, Pro: 10; check `yard me --json` → `.team_permissions.max_pricing_tiers`). Good when the product has clearly differentiated feature sets.
+      - **Multiple pricing tiers** (e.g., Starter / Pro / Team) — the number allowed depends on the plan and is server-enforced via `max_pricing_tiers` (currently Basic: 2, Pro: 10; check `yard me --json` → `.team_permissions.max_pricing_tiers`). Good when the project has clearly differentiated feature sets.
       - **Seat-based pricing** (`fixed_pack` packs like "Team 5-Pack", or `per_seat` with min/max and volume discounts) — **requires Yard Pro** (check with `yard me --json` → `.team_permissions`). Good for B2B / team software.
-      - **"Enterprise" / contact-sales** — Yard has no first-class enterprise tier; model it as a high-priced `per_seat` tier (Pro) or a separate high-end tier in a multi-tier product (Pro), and let the seller handle custom contracts off-platform (check with `yard me --json` → `.team_permissions`).
+      - **"Enterprise" / contact-sales** — Yard has no first-class enterprise tier; model it as a high-priced `per_seat` tier (Pro) or a separate high-end tier in a multi-tier project (Pro), and let the seller handle custom contracts off-platform (check with `yard me --json` → `.team_permissions`).
       - Also flag, where relevant, that **gift purchases, custom landing pages, license keys, device activations, and free trials are Pro-only**, and that **coupons depend on the plan** too — never state a tier from memory, read `yard me --json` → `.team_permissions` (coupons live under `.team_permissions.coupons`).
-      - If license-key features are appropriate for the product (anything users install locally and where the seller needs to validate ownership at runtime), suggest enabling **license keys**, optionally **device activations** with a per-key limit, and/or a **free trial** of N days. These can be set in the same `yard init --spec` payload (Pro only — check with `yard me --json` → `.team_permissions`) or configured later via `yard products edit`.
-      - Recommend a **launch stage**. Every new product is created in `draft` (not visible to buyers). After setup, the seller advances the stage from the Yard dashboard — stage transitions are **forward-only** (`draft` → `early_access` → `published`) and `published` is final. Two reasonable launch paths:
-        - **Straight to `published`** — for finished products with no soft-launch period. Skip `early_access` entirely.
-        - **`early_access` first, then `published` later** — for products the seller wants to ship but signal as still being polished. Optionally pair with `early_access_discount_percent` (1–100) so early adopters get a launch discount that disappears when the product moves to `published`. The discount field is set in the dashboard; `yard init`/`yard products edit` don't surface it today.
-   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.team_permissions` before suggesting Pro-only items), and the recommended launch stage (and any early-access discount). **If the product is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). **If the product is a web app / SaaS** (the buyer uses it in the browser), verify the `compute` permission in `yard me --json` → `.team_permissions` **now, at planning time** — web-app hosting is Pro-only and failing later at `yard push` wastes the whole build; the plan must follow ["Web app / SaaS scope"](#web-app--saas-scope) below. Then ask the user to **accept**, **edit**, or **switch to guided mode**.
-   4. On accept: run `yard products --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt) — each entry's `.slug` is what the rest of the CLI takes as `<slug-or-id>` or `--product`; see [references/cli-commands.md#yard-products](references/cli-commands.md#yard-products) ("Discovering a product's slug") for the common `jq` recipes. Then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
+      - If license-key features are appropriate for the project (anything users install locally and where the seller needs to validate ownership at runtime), suggest enabling **license keys**, optionally **device activations** with a per-key limit, and/or a **free trial** of N days. These can be set in the same `yard init --spec` payload (Pro only — check with `yard me --json` → `.team_permissions`) or configured later via `yard projects edit`.
+      - Recommend a **launch stage**. Every new project is created in `draft` (not visible to buyers). After setup, the seller advances the stage from the Yard dashboard — stage transitions are **forward-only** (`draft` → `early_access` → `published`) and `published` is final. Two reasonable launch paths:
+        - **Straight to `published`** — for finished projects with no soft-launch period. Skip `early_access` entirely.
+        - **`early_access` first, then `published` later** — for projects the seller wants to ship but signal as still being polished. Optionally pair with `early_access_discount_percent` (1–100) so early adopters get a launch discount that disappears when the project moves to `published`. The discount field is set in the dashboard; `yard init`/`yard projects edit` don't surface it today.
+   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.team_permissions` before suggesting Pro-only items), and the recommended launch stage (and any early-access discount). **If the project is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). **If the project is a web app / SaaS** (the buyer uses it in the browser), verify the `compute` permission in `yard me --json` → `.team_permissions` **now, at planning time** — web-app hosting is Pro-only and failing later at `yard push` wastes the whole build; the plan must follow ["Web app / SaaS scope"](#web-app--saas-scope) below. Then ask the user to **accept**, **edit**, or **switch to guided mode**.
+   4. On accept: run `yard projects --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt) — each entry's `.slug` is what the rest of the CLI takes as `<slug-or-id>` or `--project`; see [references/cli-commands.md#yard-projects](references/cli-commands.md#yard-projects) ("Discovering a project's slug") for the common `jq` recipes. Then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
    5. On edit: adjust the plan and re-confirm before running anything.
 
-Keep the CLI as the single source of truth for product creation — **never** try to create a product via the REST API (see "API vs CLI" above).
+Keep the CLI as the single source of truth for project creation — **never** try to create a project via the REST API (see "API vs CLI" above).
 
 ### Autopilot: non-interactive `yard init`
 
@@ -87,25 +87,25 @@ Keep the CLI as the single source of truth for product creation — **never** tr
 
 | Mode            | Invocation                           | When to use                                                                                                                       |
 | --------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Spec**        | `yard init --spec <file\|->`         | Creating a new product. Accepts the full pricing shape as JSON.                                                                   |
-| **Link**        | `yard init --product <slug-or-uuid>` | Linking the current directory to an existing product.                                                                             |
+| **Spec**        | `yard init --spec <file\|->`         | Creating a new project. Accepts the full pricing shape as JSON.                                                                   |
+| **Link**        | `yard init --project <slug-or-uuid>` | Linking the current directory to an existing project.                                                                             |
 | **Interactive** | `yard init`                          | Humans only. Trying to drive this from an agent via stdin is a dead end — the prompt order is load-bearing and changes over time. |
 
 Global non-interactive flags:
 
 - `--json` — emit a single JSON object on stdout; logs (including HTTP request lines and progress messages) go to stderr. Safe to pipe into `jq`.
 - `--page` / `--no-page` — explicitly opt in or out of landing-page scaffolding without prompting. `--json` defaults to no page unless `--page` is set.
-- `--link-repo` / `--no-link-repo` — force GitHub repo linking on or off in spec mode. The default tries to link if (a) the cwd is a git repo with a GitHub remote and (b) the Yard GitHub App is already installed. If the App isn't installed, linking is silently skipped — the product is still created.
+- `--link-repo` / `--no-link-repo` — force GitHub repo linking on or off in spec mode. The default tries to link if (a) the cwd is a git repo with a GitHub remote and (b) the Yard GitHub App is already installed. If the App isn't installed, linking is silently skipped — the project is still created.
 
 If the user isn't authenticated, all non-interactive modes fail with `not logged in. Run 'yard login' first`. Ask the user to run `yard login` in their terminal, then retry.
 
 #### Spec schema
 
-The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are strictly required; `pricing_model` defaults to `one_time`.
+The spec matches `CreateProjectRequest` exactly. Only `title` and `tiers` are strictly required; `pricing_model` defaults to `one_time`.
 
 ```jsonc
 {
-  "title": "My Product", // required, 1–60 chars, must contain a letter/digit
+  "title": "My Project", // required, 1–60 chars, must contain a letter/digit
   "pricing_model": "one_time", // "one_time" | "subscription"
   "tiers": [
     // one or more tiers; how many depends on the plan (server-enforced via max_pricing_tiers — Basic: 2, Pro: 10)
@@ -119,31 +119,31 @@ The spec matches `CreateProductRequest` exactly. Only `title` and `tiers` are st
       "max_seats": null, // per_seat; optional
       "yearly_discount_percent": null, // subscription only, 1..100
       "volume_brackets": [], // per_seat only; contiguous, increasing discount
-      "free_trial_enabled": false, // needs free_trials permission when true — per-tier flag, not product-level
+      "free_trial_enabled": false, // needs free_trials permission when true — per-tier flag, not project-level
       "free_trial_days": null, // 1..365; required when free_trial_enabled is true
       "trial_requires_card": true, // per-tier; when true, subscription-tier trials collect a card via checkout (omitted = true)
       "gift_enabled": false, // per-tier; whether this tier can be bought as a gift (one-time tiers only)
     },
   ],
-  // Optional product-level seller settings.
+  // Optional project-level seller settings.
   // license keys + activations depend on the plan (server-enforced); the CLI sends the
   // request either way and the server returns upgrade_required if not included.
-  // Applied via a follow-up PUT /v1/products/{id} after creation.
+  // Applied via a follow-up PUT /v1/projects/{id} after creation.
   "license_key_enabled": false, // needs license_keys permission when true
   "activations_enabled": false, // needs device_activations permission when true; requires license_key_enabled=true
   "max_activations": null, // 1..10000; only meaningful when activations_enabled
 }
 ```
 
-> **Heads up — per-tier trials.** `free_trial_enabled` / `free_trial_days` live on each tier, not on the product. A product "offers a trial" when at least one of its tiers has them set. To enable a trial on an existing product later, use `yard products tiers edit <slug> <tier-id-or-name> --spec -` (see [references/cli-commands.md](references/cli-commands.md#yard-products-tiers)). Putting `free_trial_enabled` at the product level in a spec will be rejected with `unknown field`.
+> **Heads up — per-tier trials.** `free_trial_enabled` / `free_trial_days` live on each tier, not on the project. A project "offers a trial" when at least one of its tiers has them set. To enable a trial on an existing project later, use `yard projects tiers edit <slug> <tier-id-or-name> --spec -` (see [references/cli-commands.md](references/cli-commands.md#yard-projects-tiers)). Putting `free_trial_enabled` at the project level in a spec will be rejected with `unknown field`.
 
 #### Typical agent flow
 
 ```sh
 # 1. Discover what exists (safe to run on every autopilot turn).
-yard products --json
+yard projects --json
 
-# 2. If the user asked for a new product, create it from a spec.
+# 2. If the user asked for a new project, create it from a spec.
 yard init --spec - --json <<'EOF'
 {
   "title": "Simple Note",
@@ -152,15 +152,15 @@ yard init --spec - --json <<'EOF'
 }
 EOF
 
-# 3. If the user already has the product, just link this directory to it.
-yard init --product simple-note --json
+# 3. If the user already has the project, just link this directory to it.
+yard init --project simple-note --json
 ```
 
 `yard init --json` output shape:
 
 ```json
 {
-  "product": {
+  "project": {
     "id": "...",
     "slug": "simple-note",
     "title": "Simple Note",
@@ -176,48 +176,48 @@ yard init --product simple-note --json
 
 #### Troubleshooting
 
-- **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new product) or `--product <slug>` (for an existing one).
+- **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new project) or `--project <slug>` (for an existing one).
 - **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
-- **Plan-gated 403s.** The **team's** plan doesn't include the feature you used (an extra tier, seat-based pricing, license keys, device activations, a free trial, custom pages, coupons, …). Product endpoints tag these `upgrade_required`; permission-gated endpoints like `yard coupons` answer a plain `FORBIDDEN` 403 — either way it's a plan problem, not a bad request. The CLI doesn't gate this client-side; the server decides. Either send a spec the plan supports, or ask the user to upgrade at https://yard.sh/pricing. To see what the plan includes, read `yard me --json` → `.team_permissions` (the team's map — `.permissions` is the user's own and does not gate this).
-- **`NO_TEAM` 403s.** A different failure that looks the same: `code: "NO_TEAM"`, message "A team is required". The caller belongs to no team, so there is nothing to own the product. Upgrading does **not** fix it — send them to https://yard.sh/team, then `yard team` to confirm. Never render this as an upsell.
-- **Duplicate product after a failed attempt.** Run `yard products --json` first — if the product already exists, link it with `yard init --product <slug>` instead of re-creating.
-- **Need to change settings on an existing product.** Use `yard products edit <slug> --spec -` with an `UpdateProductRequest` JSON body for product-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`). For tier mutations — including **enabling a free trial on a specific tier**, its `trial_requires_card` / `gift_enabled` flags, changing a tier's price, or removing a tier — use `yard products tiers add | edit | rm` (see the command table). The legacy product-level `free_trial_enabled` / `free_trial_days` / `trial_requires_card` / `gift_enabled` fields no longer exist; they were all moved per-tier.
+- **Plan-gated 403s.** The **team's** plan doesn't include the feature you used (an extra tier, seat-based pricing, license keys, device activations, a free trial, custom pages, coupons, …). Project endpoints tag these `upgrade_required`; permission-gated endpoints like `yard coupons` answer a plain `FORBIDDEN` 403 — either way it's a plan problem, not a bad request. The CLI doesn't gate this client-side; the server decides. Either send a spec the plan supports, or ask the user to upgrade at https://yard.sh/pricing. To see what the plan includes, read `yard me --json` → `.team_permissions` (the team's map — `.permissions` is the user's own and does not gate this).
+- **`NO_TEAM` 403s.** A different failure that looks the same: `code: "NO_TEAM"`, message "A team is required". The caller belongs to no team, so there is nothing to own the project. Upgrading does **not** fix it — send them to https://yard.sh/team, then `yard team` to confirm. Never render this as an upsell.
+- **Duplicate project after a failed attempt.** Run `yard projects --json` first — if the project already exists, link it with `yard init --project <slug>` instead of re-creating.
+- **Need to change settings on an existing project.** Use `yard projects edit <slug> --spec -` with an `UpdateProjectRequest` JSON body for project-level fields (`license_key_enabled`, `activations_enabled`, `max_activations`). For tier mutations — including **enabling a free trial on a specific tier**, its `trial_requires_card` / `gift_enabled` flags, changing a tier's price, or removing a tier — use `yard projects tiers add | edit | rm` (see the command table). The legacy project-level `free_trial_enabled` / `free_trial_days` / `trial_requires_card` / `gift_enabled` fields no longer exist; they were all moved per-tier.
 
 ### Desktop / CLI app integration scope
 
-If the product is **locally-installed software** — a desktop app, CLI tool, native binary, anything the buyer downloads and runs on their own machine — `yard init` alone is **not** a complete sales surface. The buy page has nothing to download until a release is published, and the installed app has no built-in update path. Whenever you detect this product type during the autopilot flow, the plan you present in step 3 must cover both halves:
+If the project is **locally-installed software** — a desktop app, CLI tool, native binary, anything the buyer downloads and runs on their own machine — `yard init` alone is **not** a complete sales surface. The buy page has nothing to download until a release is published, and the installed app has no built-in update path. Whenever you detect this project type during the autopilot flow, the plan you present in step 3 must cover both halves:
 
 1. **Publish releases.** After `yard init`, the seller publishes each shipped version with `yard releases publish` (spec mode is the agent-friendly form). This is what populates the buy page's download. See [references/releases-and-updates.md](references/releases-and-updates.md) — _Publishing a release with the CLI_.
-2. **Wire the update endpoint.** The installed app needs an auto-updater that pulls the latest release from Yard, authenticating with the buyer's **license key** → `GET https://api.yard.sh/v1/updates/latest?license_key=<key>`. One key per buyer (revocable per customer); requires the product to issue license keys.
+2. **Wire the update endpoint.** The installed app needs an auto-updater that pulls the latest release from Yard, authenticating with the buyer's **license key** → `GET https://api.yard.sh/v1/updates/latest?license_key=<key>`. One key per buyer (revocable per customer); requires the project to issue license keys.
 
    Tell the user this needs to be wired into their app's auto-updater. See [references/releases-and-updates.md](references/releases-and-updates.md) — _Downloading releases_.
 
 Scope is deliberately narrow: this section covers **publish + updates only**. License validation (refusing to run for non-buyers), device activations, and free trials are separate Pro-only concerns and should not be folded into this step (check with `yard me --json` → `.team_permissions` before suggesting any of those).
 
-For content products or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **anything Yard runs itself — a SaaS, a web app, an API or hosted backend** — see the next section.
+For content projects or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **anything Yard runs itself — a SaaS, a web app, an API or hosted backend** — see the next section.
 
 ### Hosted app scope (compute + database)
 
-If the product runs on Yard — the buyer uses it in the browser, or an installed product calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `compute` permission (Pro; check `yard me --json` → `.team_permissions`). Whenever you detect this product type, the plan you present must cover:
+If the project runs on Yard — the buyer uses it in the browser, or an installed project calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `compute` permission (Pro; check `yard me --json` → `.team_permissions`). Whenever you detect this project type, the plan you present must cover:
 
 1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration) and records the app's deploy settings in the `app` block of `.yard/settings.json`. Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/compute-and-database.md](references/compute-and-database.md).
 2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `app.access: "customers"` in `.yard/settings.json` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
 3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so to test it before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard app open --env preview` — owner-only by default; `yard env visibility preview public` makes the URL shareable with testers). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments — set production secrets explicitly.
-4. **Draft products serve the app to the owner only.** You can deploy, promote, and fully verify `/app/` while the product is still `draft` — the seller signs in and gets through; everyone else sees an explanatory 403. Never advance the product stage just to test (stage changes are one-way).
-5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any product; the product page remains the sales surface and the app lives under `/app/`. The owner always passes the paywall with `X-Yard-Entitlement: owner`.
+4. **Draft projects serve the app to the owner only.** You can deploy, promote, and fully verify `/app/` while the project is still `draft` — the seller signs in and gets through; everyone else sees an explanatory 403. Never advance the project stage just to test (stage changes are one-way).
+5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any project; the project page remains the sales surface and the app lives under `/app/`. The owner always passes the paywall with `X-Yard-Entitlement: owner`.
 
 A hosted-app release carries the app bundle and landing page, not downloadable files — there is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
 
 ### Testing license-key validation
 
-Every product with `license_key_enabled: true` has a sandbox **test license key** — a real license key value the seller can pass to `POST /v1/licenses/validate` and have the API treat it like a paid customer's key. Test activations live in a separate `test_activations` table, so they never collide with real customers.
+Every project with `license_key_enabled: true` has a sandbox **test license key** — a real license key value the seller can pass to `POST /v1/licenses/validate` and have the API treat it like a paid customer's key. Test activations live in a separate `test_activations` table, so they never collide with real customers.
 
 **Auth:** `POST /v1/licenses/validate` is **not unauthenticated**. It requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). The test license key goes in the **request body**, not the header — it's the data being validated, not the credential.
 
 Three CLI commands cover the loop:
 
 ```sh
-# Print the test key for the current product (or pass --product <slug>).
+# Print the test key for the current project (or pass --project <slug>).
 yard licenses test-key
 
 # See what's currently activated against the test key.
@@ -235,7 +235,7 @@ Typical agent flow when wiring license validation into a seller's app:
 4. `yard licenses test-activations list` to confirm the device showed up.
 5. After enough iterations to hit `max_activations`, `yard licenses test-activations clear` resets the slate.
 
-All three `yard licenses` commands accept `--product <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
+All three `yard licenses` commands accept `--project <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
 
 ## Quick Start
 
@@ -282,12 +282,12 @@ The interactive flow:
 
 1. Checks for CLI updates (prompts to install if available)
 2. Verifies login (runs login flow if needed)
-3. **Best-effort** git context: if inside a git repo with a GitHub remote, prompts to install the Yard GitHub App and verifies the repo. Any step failing here is non-fatal — the product will simply be created without a linked repo.
-4. Lets you select an existing product or create a new one (prompts for title + price on create)
+3. **Best-effort** git context: if inside a git repo with a GitHub remote, prompts to install the Yard GitHub App and verifies the repo. Any step failing here is non-fatal — the project will simply be created without a linked repo.
+4. Lets you select an existing project or create a new one (prompts for title + price on create)
 5. Writes `.yard/settings.json` in the current directory
 6. Offers to scaffold a custom landing page. If accepted, pulls or scaffolds starter files into `.yard/landing-page/` and uploads them into your draft release (going live requires publishing the draft with `yard releases publish`). If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI shows a friendly upgrade link and keeps the draft.
 
-**No git repo required.** `yard init` works inside any directory — it will just create the product without a GitHub link. Only GitHub repositories are supported for linking.
+**No git repo required.** `yard init` works inside any directory — it will just create the project without a GitHub link. Only GitHub repositories are supported for linking.
 
 ## CLI Commands
 
@@ -296,34 +296,34 @@ The interactive flow:
 | `yard login`                                                                  | Authenticate via GitHub OAuth                                                                                                                                                                                                                                           |
 | `yard logout`                                                                 | Clear local credentials (`~/.yard/config.json`)                                                                                                                                                                                                                         |
 | `yard me [--json]`                                                            | Show the current user (id, username, GitHub, email), plan, and the `permissions` map. Read `--json` → `.team_permissions` to see what the active team can do (`.permissions` is the user's own, and is not what seller features are gated on); feature limits are server-enforced, so you can also just attempt an action and handle `upgrade_required`.          |
-| `yard team [--json]` / `yard team use <username>`                              | Show or switch the team the CLI acts as. Products, coupons and API keys belong to a team, so this decides what every other command reads and writes. The active team is stored on the account (shared with the dashboard), not in the local config.                       |
-| `yard init`                                                                   | Set up a Yard project in the current directory — create or select a product, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--product <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use.   |
-| `yard products [--json]`                                                      | List your published products with stats                                                                                                                                                                                                                                 |
-| `yard products show <slug-or-id> [--json]`                                    | Print one product's full detail, including `tiers[]` with per-tier `free_trial_enabled` / `free_trial_days`. Use this (not `yard products`) when you need to check whether a tier offers a trial. This command is used to retrieve any sort of metadata about a product |
-| `yard products edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify product-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`) and optionally the full `tiers[]` array (full-replace). No client-side plan gate — the server returns `upgrade_required` if the plan doesn't include a setting.       |
-| `yard products tiers add <slug> --spec <file\|->`                             | Append one tier without rebuilding the full tier list.                                                                                                                                                                                                                  |
-| `yard products tiers edit <slug> <tier-id-or-name> --spec <file\|->`          | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`).                                                                                                                                             |
-| `yard products tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default.                                                                                                                                                                      |
+| `yard team [--json]` / `yard team use <username>`                              | Show or switch the team the CLI acts as. Projects, coupons and API keys belong to a team, so this decides what every other command reads and writes. The active team is stored on the account (shared with the dashboard), not in the local config.                       |
+| `yard init`                                                                   | Set up a Yard project in the current directory — create or select a project, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--project <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use.   |
+| `yard projects [--json]`                                                      | List your published projects with stats                                                                                                                                                                                                                                 |
+| `yard projects show <slug-or-id> [--json]`                                    | Print one project's full detail, including `tiers[]` with per-tier `free_trial_enabled` / `free_trial_days`. Use this (not `yard projects`) when you need to check whether a tier offers a trial. This command is used to retrieve any sort of metadata about a project |
+| `yard projects edit [slug-or-id] [--spec <file\|->] [--json]`                 | Modify project-level seller settings (`license_key_enabled`, `activations_enabled`, `max_activations`) and optionally the full `tiers[]` array (full-replace). No client-side plan gate — the server returns `upgrade_required` if the plan doesn't include a setting.       |
+| `yard projects tiers add <slug> --spec <file\|->`                             | Append one tier without rebuilding the full tier list.                                                                                                                                                                                                                  |
+| `yard projects tiers edit <slug> <tier-id-or-name> --spec <file\|->`          | Apply a partial spec to one tier (e.g. enable a free trial on Base: `{"free_trial_enabled": true, "free_trial_days": 14}`).                                                                                                                                             |
+| `yard projects tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]` | Remove a tier. Tiers with paid transactions are kept as historical records but marked non-default.                                                                                                                                                                      |
 | `yard releases publish [tag] [flags]`                                         | Publish a draft release under a tag, with optional file assets; deploys it to `--env` (default `production` — live to customers). Supports `--spec <file\|->` and `--json` for non-interactive use. See [references/releases-and-updates.md](references/releases-and-updates.md).          |
 | `yard releases promote <tag> --to <env>`                                      | Attach an already-published release to another environment (e.g. `--to production` to go live). Nothing is copied — the environment serves the release from its set.                                                                                                   |
 | `yard keys list [--json]`                                                     | List the active team's API keys (name, prefix, scopes, last-used, created). Keys are team credentials, not personal ones. The full secret is never shown.                                                                                                               |
 | `yard keys create [name] [flags]`                                             | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation.                                                                                                                                                           |
-| `yard licenses test-key [--product <slug>] [--json]`                          | Print the product's sandbox **test license key** — usable with `POST /v1/licenses/validate` to exercise license-validation logic without buying your own product.                                                                                                       |
-| `yard licenses test-activations list [--product <slug>] [--json]`             | List active test device activations attached to the product's test license key.                                                                                                                                                                                         |
-| `yard licenses test-activations clear [--product <slug>] [--yes] [--json]`    | Deactivate every test device on the product's test key (real customer activations are untouched).                                                                                                                                                                       |
+| `yard licenses test-key [--project <slug>] [--json]`                          | Print the project's sandbox **test license key** — usable with `POST /v1/licenses/validate` to exercise license-validation logic without buying your own project.                                                                                                       |
+| `yard licenses test-activations list [--project <slug>] [--json]`             | List active test device activations attached to the project's test license key.                                                                                                                                                                                         |
+| `yard licenses test-activations clear [--project <slug>] [--yes] [--json]`    | Deactivate every test device on the project's test key (real customer activations are untouched).                                                                                                                                                                       |
 | `yard coupons [--json]`                                                       | List discount codes with their discount, scope, usage, and derived status (`active`, `scheduled`, `expired`, `used up`, `inactive`).                                                                                                                                    |
 | `yard coupons show <code-or-id> [--json]`                                     | One coupon plus its redemption analytics. `--json` emits `{coupon, analytics}`. Accepts the code or the UUID.                                                                                                                                                           |
-| `yard coupons create <code> [flags] [--spec <file\|->] [--json]`              | Create a code. `--percent 20` or `--amount 5` (**dollars**; a spec's `discount_value` is **cents** for `fixed_amount`), `--products <csv>`, `--max-uses`, `--expires`, `--valid-from`, `--subscription-duration once\|forever`. Flags override `--spec` field by field.  |
+| `yard coupons create <code> [flags] [--spec <file\|->] [--json]`              | Create a code. `--percent 20` or `--amount 5` (**dollars**; a spec's `discount_value` is **cents** for `fixed_amount`), `--projects <csv>`, `--max-uses`, `--expires`, `--valid-from`, `--subscription-duration once\|forever`. Flags override `--spec` field by field.  |
 | `yard coupons generate --count N [flags] [--json]`                            | Bulk-generate up to 100 unique codes sharing one discount (`--prefix`, `--length`). Codes are returned **once** — capture them from the output.                                                                                                                        |
 | `yard coupons update <code-or-id> [flags] [--spec <file\|->] [--json]`        | Partial update. `--activate`/`--deactivate`, and explicit clearing via `--no-expiry`, `--no-valid-from`, `--unlimited-uses` (or `null` in a spec). Discounts can't change once a coupon has been redeemed.                                                              |
 | `yard coupons rm <code-or-id> [--yes]`                                        | Delete an unused coupon. Redeemed coupons can't be deleted — deactivate them instead.                                                                                                                                                                                  |
 | `yard coupons transactions <code-or-id> [--json]`                             | The purchases a coupon was redeemed on.                                                                                                                                                                                                                                |
-| `yard coupons validate <code> --product <slug> [--json]`                      | Dry-run a code through the checkout-time check and see what the buyer would pay. The product must be public.                                                                                                                                                            |
-| `yard customers [--json]`                                                     | List the buyers who completed a purchase, with order count, spend, and activity dates. `--product <slug>` narrows both the rows and the summary to one product's buyers. Amounts are pre-formatted display strings, not cents.                                          |
+| `yard coupons validate <code> --project <slug> [--json]`                      | Dry-run a code through the checkout-time check and see what the buyer would pay. The project must be public.                                                                                                                                                            |
+| `yard customers [--json]`                                                     | List the buyers who completed a purchase, with order count, spend, and activity dates. `--project <slug>` narrows both the rows and the summary to one project's buyers. Amounts are pre-formatted display strings, not cents.                                          |
 | `yard customers show <cust-id> [--json]`                                      | One buyer's totals plus their orders (refunded ones included). Takes the opaque `cust_xxxxxxxx` id from the list, not an email.                                                                                                                                         |
-| `yard transactions [--json]`                                                  | List sales. `--trials`, `--product <slug>`, `--start`/`--end` narrow the rows and total; the earnings summary stays team-wide.                                                                                                                                       |
+| `yard transactions [--json]`                                                  | List sales. `--trials`, `--project <slug>`, `--start`/`--end` narrow the rows and total; the earnings summary stays team-wide.                                                                                                                                       |
 | `yard transactions show <order-id> [--json]`                                  | One sale in full — tier, coupon, refund state, trial expiry. Takes the short `order_xxxxxxxx` id or the full UUID.                                                                                                                                                      |
-| `yard transactions trial <order-id> --add-days N [--json]`                    | Lengthen (`7`) or shorten (`-3`) a free trial, ±365. Days are added to the **current expiry, not today**; an expired trial whose new expiry is in the future goes back to active (`reactivated: true`). The buyer is emailed. Needs `.team_permissions.sell_products`. |
+| `yard transactions trial <order-id> --add-days N [--json]`                    | Lengthen (`7`) or shorten (`-3`) a free trial, ±365. Days are added to the **current expiry, not today**; an expired trial whose new expiry is in the future goes back to active (`reactivated: true`). The buyer is emailed. Needs `.team_permissions.sell_projects`. |
 | `yard init --page`                                                             | Scaffold `.yard/landing-page/` inside a Yard project, pulling the draft release's page files (or a hello-world starter) |
 | `yard status`                                                                  | Diff every local bundle (landing page + app) against your draft release — what `yard push` would change (no writes) |
 | `yard ls [--release <id\|tag>]`                                                | List a release's files, grouped by bundle (defaults to your open draft) |
@@ -331,14 +331,14 @@ The interactive flow:
 | `yard pull [--release <id\|tag>]`                                              | Download a release's files into the project |
 | `yard env list [--json]`                                                      | List the environments with what each serves and **why** — `(newest)`, `(deployed)` or `(pinned)` — plus its release set and whether its running app is up to date (only `production` always exists, and only it is protected)                                            |
 | `yard env create <env>` / `yard env rename <env> <new-name>` / `yard env delete <env> [-y]` | Add / rename / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.team_permissions`). Renaming keeps its releases, files, secrets and database but changes its `/@<env>/` URL. Deleting removes its files, app Worker, and app database immediately, and prompts unless `-y`. |
-| `yard env visibility <env> <public\|private>`                                  | Set who may view the environment's URLs. `private` (custom-env default) is owner-only; `public` lets anyone with the URL view its page and app. Works on `production` — that is how a product goes private (there is no product-level visibility setting any more). Stage still trumps: drafts serve nothing publicly. |
+| `yard env visibility <env> <public\|private>`                                  | Set who may view the environment's URLs. `private` (custom-env default) is owner-only; `public` lets anyone with the URL view its page and app. Works on `production` — that is how a project goes private (there is no project-level visibility setting any more). Stage still trumps: drafts serve nothing publicly. |
 | `yard env deploy <env> <release>`                                             | **Serve this release here now**, attaching it first if needed. Works with any release, however old — this is the rollback and the ship command. Not frozen: the next release attached on top takes over.                                                                |
 | `yard env pin <env> [release]` / `yard env unpin <env>`                       | Freeze what the environment serves so later attaches join its set without taking over (no release named = pin what it serves now); `unpin` hands the choice back to the newest member.                                                                                  |
 | `yard env attach <env> <release> [--no-serve]` / `yard env detach <env> <release>` | Add a release to the environment's set — as the newest member it starts serving, so attaching is the deploy moment; `--no-serve` stages it instead. `detach` stops serving it, and is refused if nothing would be left to serve.                                    |
 | `yard env promote <from> <to>`                                                | Attach the release `<from>` currently serves to `<to>`; promoting to `production` takes it live. Nothing is copied; data and secrets never promote. Prefer `env deploy` when you can name the release.                                                                  |
-| `yard app init [--dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the project root and the bundle dir + deploy settings are recorded in the `app` block of `.yard/settings.json`                                                       |
+| `yard app init [--app-dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the top of the working directory and the bundle dir + deploy settings are recorded in the `app` block of `.yard/settings.json`                                                       |
 | `yard app open [--env SLUG]`                                                  | Print and open the environment's app URL                                                                                                                                                                                                                                |
-| `yard app check [--dir PATH]`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
+| `yard app check`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
 | `yard app secrets set/list/rm [--env SLUG]`                                   | Per-environment `env.<NAME>` bindings; write-only; apply on the next deploy                                                                                                                                                                                             |
 | `yard app db query [sql] [--file PATH] [--env SLUG]`                          | Run SQL against the environment's app database (`-` for stdin; `_yard_migrations` records applied migrations)                                                                                                                                                          |
 | `yard app logs [--env SLUG] [--limit N] [--since 2h]`                         | Recent Worker console output + exceptions (empty list for a fresh app, not an error)                                                                                                                                                                                    |
@@ -352,16 +352,16 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 ## How It Works
 
 1. **Seller** installs the Yard GitHub App on their repository
-2. **Seller** runs `yard init` to create a product with pricing (and optionally a custom landing page)
+2. **Seller** runs `yard init` to create a project with pricing (and optionally a custom landing page)
 3. When the seller publishes a **GitHub release**, Yard automatically captures it via webhook — the release assets always, plus the app bundle, landing page, and pricing tiers when the repo has a `.yard/settings.json` at the tag (see [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_)
-4. **Buyers** visit the product page, pay via Stripe, and get instant download access
+4. **Buyers** visit the project page, pay via Stripe, and get instant download access
 5. Seller earnings are tracked and paid out by admin
 
 ## Custom Landing Pages
 
-Every Yard product has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page (check with `yard me --json` → `.team_permissions`). The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
+Every Yard project has a public landing page. Pro sellers can replace the default layout with their own HTML/CSS/JS via a custom landing page (check with `yard me --json` → `.team_permissions`). The same editor is available from both the frontend dashboard and the CLI, so the flow can be driven by an LLM-based coding agent.
 
-For everything an agent needs to **author** the page itself — how to read product data at runtime (`window.yard.product`), the `data-yard` / `data-action` attribute conventions, the `window.yard.checkout(...)` / `trial()` helpers, and the full `PublicProduct` field reference — see [references/landing-pages.md](references/landing-pages.md). The remainder of this section covers the **management** flow (scaffolding, pushing, publishing).
+For everything an agent needs to **author** the page itself — how to read project data at runtime (`window.yard.project`), the `data-yard` / `data-action` attribute conventions, the `window.yard.checkout(...)` / `trial()` helpers, and the full `PublicProject` field reference — see [references/landing-pages.md](references/landing-pages.md). The remainder of this section covers the **management** flow (scaffolding, pushing, publishing).
 
 **Limits** (enforced server-side; also validated client-side before upload):
 
@@ -374,7 +374,7 @@ For everything an agent needs to **author** the page itself — how to read prod
 
 ### Project Layout
 
-`.yard/` at the project root is the hub of everything Yard in a project. `yard init` creates it; `yard init --page` adds the landing-page directory:
+`.yard/` at the top of a working directory is the hub of everything Yard in a project. `yard init` creates it; `yard init --page` adds the landing-page directory:
 
 ```
 <project>/
@@ -390,8 +390,8 @@ For everything an agent needs to **author** the page itself — how to read prod
 
 ```json
 {
-  "version": 2,
-  "product_slug": "my-product",
+  "version": 3,
+  "project_slug": "my-project",
   "ignore_files": ["*.bak", "drafts/**"],
   "app": { "dir": "app", "access": "authenticated", "database": true },
   "landing_page": { "dir": ".yard/landing-page" },
@@ -399,15 +399,15 @@ For everything an agent needs to **author** the page itself — how to read prod
 }
 ```
 
-- `product_slug` — which product this project belongs to.
+- `project_slug` — which project this working directory belongs to.
 - `ignore_files` — shell-style globs relative to the landing-page directory; `**` matches any depth. Dotfiles are always ignored.
-- `app.dir` — web-app bundle directory relative to the project root (recorded by `yard app init`; default `dist`).
+- `app.dir` — web-app bundle directory relative to the working directory (recorded by `yard app init`; default `dist`).
 - `app.access` — who can reach the deployed app: `public` | `authenticated` | `customers` (default `public`).
 - `app.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
-- `landing_page.dir` — landing-page directory relative to the project root (default `.yard/landing-page`).
+- `landing_page.dir` — landing-page directory relative to the working directory (default `.yard/landing-page`).
 - `pricing.tiers` — optional; when present, `yard push` and GitHub release sync replace the release's pricing tiers to match the array exactly (tiers missing from the file are removed). Absent = pricing is managed from the dashboard as usual. Full shape and rules: [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_.
 
-All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. The v1 flat `app_dir` field and the retired `yard.json` app manifest are migrated automatically: the CLI rewrites v1 settings on first use and skips a leftover `yard.json` in the bundle.
+All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. A leftover `yard.json` (the retired app manifest) in the bundle is skipped. Settings files below `"version": 3` are rejected, not upgraded: they name the entity `product_slug`, which no longer binds to anything — rename the key to `project_slug` and set `"version": 3`, or re-run `yard init`.
 
 ### Typical Flow
 
@@ -421,8 +421,8 @@ All blocks are optional. `yard push` uploads `settings.json` itself as the relea
 
 All project sync commands (`push`, `pull`, `status`, `ls`) accept:
 
-- `--product <slug-or-uuid>` — override the product in `.yard/settings.json`
-- `--project <path>` — project root override (defaults to walking up from cwd for `.yard/`)
+- `--project <slug-or-uuid>` — override the project in `.yard/settings.json`
+- `--dir <path>` — directory containing `.yard/` (defaults to walking up from cwd)
 - `--release <id|tag>` — target a specific release, by tag or UUID (defaults to your open draft, else a new one seeded from your newest published release; required when several drafts are open). Published releases are valid targets: `push` edits one in place, which is live on save if an environment is serving it.
 - `--json` — emit a single machine-readable JSON object; logs go to stderr
 - `--yes` — skip confirmation prompts (`push --prune`, and pushing into a release attached to an environment)
@@ -433,7 +433,7 @@ Example `push --json` output (one object per bundle the project has — `page`, 
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
   "page": {
@@ -450,7 +450,7 @@ Example `push --json` output (one object per bundle the project has — `page`, 
     "deleted": [],
     "remote_only": []
   },
-  "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
+  "preview_url": "https://yard.sh/dashboard/projects/my-slug/landing-page",
   "live_url": null,
   "errors": []
 }
@@ -482,9 +482,9 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 
 ## Key Features
 
-- **Pricing tiers** — Multiple tiers per product (how many depends on the plan; Basic: 2, Pro: 10), with single, fixed-pack, or per-seat licensing
+- **Pricing tiers** — Multiple tiers per project (how many depends on the plan; Basic: 2, Pro: 10), with single, fixed-pack, or per-seat licensing
 - **Volume discounts** — Percentage discounts at quantity thresholds for per-seat tiers
-- **Product stages** — Draft → Early Access → Published, forward-only (Early Access supports a launch discount; Published is final)
+- **Project stages** — Draft → Early Access → Published, forward-only (Early Access supports a launch discount; Published is final)
 - **Free trials** — Configurable trial periods (1-365 days)
 - **License keys** — Automatic generation with device activation tracking
 - **Coupons** — Percentage or fixed-amount discounts, single or bulk-generated, managed with `yard coupons` (plan-gated — check `yard me --json` → `.team_permissions.coupons`)

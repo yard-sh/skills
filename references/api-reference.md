@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Product, release, and coupon management — plus reading the seller's customers and sales — happen through the **Yard CLI** (`yard init`, `yard products`, `yard coupons`, `yard customers`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
+> **Scope of this API.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management — plus reading the seller's customers and sales — happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard customers`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://yard.sh/dashboard/api-keys?action=create**.
 
@@ -12,11 +12,11 @@ https://api.yard.sh
 
 All API paths below are relative to this base URL (e.g., `/v1/licenses/validate` means `https://api.yard.sh/v1/licenses/validate`).
 
-## `{username}` — how products are addressed
+## `{username}` — how projects are addressed
 
-Products are owned by a **team**, and a product is addressed by its owning team's username plus its slug: `/v1/products/{username}/{slug}/…`, matching the public URL `https://yard.sh/@{username}/{slug}` and the subdomain `https://{username}.yard.sh/{slug}`.
+Projects are owned by a **team**, and a project is addressed by its owning team's username plus its slug: `/v1/projects/{username}/{slug}/…`, matching the public URL `https://yard.sh/@{username}/{slug}` and the subdomain `https://{username}.yard.sh/{slug}`.
 
-A team username is **not** a user's username. They share one namespace (so neither can collide with the other), but a team username is what resolves here, and a seller's personal username resolves nothing unless they happen to own a team with the same username. Read the value from `yard team --json` → `.active_team.username`, or from `seller.username` on the public product response — never assume it matches the signed-in user.
+A team username is **not** a user's username. They share one namespace (so neither can collide with the other), but a team username is what resolves here, and a seller's personal username resolves nothing unless they happen to own a team with the same username. Read the value from `yard team --json` → `.active_team.username`, or from `seller.username` on the public project response — never assume it matches the signed-in user.
 
 ---
 
@@ -34,13 +34,13 @@ API keys start with the `yard_` prefix and are issued **per team** in the dashbo
 
 | Scope | What it allows |
 |-------|----------------|
-| `products:read` | Read a product's metadata |
+| `projects:read` | Read a project's metadata |
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
-| `subscriptions:read` | Read a buyer's product subscription status |
-| `subscriptions:write` | Create, cancel, or reactivate a buyer's product subscription |
+| `subscriptions:read` | Read a buyer's project subscription status |
+| `subscriptions:write` | Create, cancel, or reactivate a buyer's project subscription |
 
-Catalog management scopes do **not** exist — product create / update / delete are CLI-only.
+Catalog management scopes do **not** exist — project create / update / delete are CLI-only.
 
 ### Session Token (CLI and dashboard only)
 
@@ -56,11 +56,11 @@ The session token is a 64-character hex string (32 random bytes) issued to the C
 
 Everything below accepts `Authorization: Bearer yard_...` with the listed scope. These are the endpoints you integrate into your software.
 
-### Products
+### Projects
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/products/{username}/{slug}/metadata` | `products:read` | Read product metadata (title, stage, tiers, pricing) |
+| `GET` | `/v1/projects/{username}/{slug}/metadata` | `projects:read` | Read project metadata (title, stage, tiers, pricing) |
 
 ### Licenses
 
@@ -74,9 +74,9 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | Method | Path | Scope | Description |
 |---|---|---|---|
 | `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
-| `GET` | `/v1/products/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a product |
-| `POST` | `/v1/products/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
-| `POST` | `/v1/products/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
+| `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a project |
+| `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
+| `POST` | `/v1/projects/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
 
 ---
 
@@ -98,10 +98,10 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/health` | Health check |
 | `GET` | `/ready` | Readiness check |
 | `GET` | `/version` | API version info |
-| `GET` | `/v1/products/public` | List all public products |
-| `GET` | `/v1/products/{username}/{slug}/public` | Get a public product (scoped under the owning team's username — this is the shape `window.yard.product` exposes) |
-| `GET` | `/v1/teams/{id}` | Get a team's public profile and its products. `{id}` is the team's UUID **or** its username (the subject is always a team, never an individual user) |
-| `GET` | `/v1/search?q={query}` | Search products |
+| `GET` | `/v1/projects/public` | List all public projects |
+| `GET` | `/v1/projects/{username}/{slug}/public` | Get a public project (scoped under the owning team's username — this is the shape `window.yard.project` exposes) |
+| `GET` | `/v1/teams/{id}` | Get a team's public profile and its projects. `{id}` is the team's UUID **or** its username (the subject is always a team, never an individual user) |
+| `GET` | `/v1/search?q={query}` | Search projects |
 | `POST` | `/v1/coupons/validate` | Validate a coupon code |
 
 ---
@@ -110,13 +110,13 @@ Built-in updaters in the seller's software can reach these directly with just a 
 
 The following are **not** exposed over HTTP as integration endpoints — an API key can't reach them, because they manage the seller's own catalog. If an agent needs to do any of these, it must run the CLI, not issue HTTP requests:
 
-- Create / update / delete a product (`yard init`, product edits in the dashboard)
+- Create / update / delete a project (`yard init`, project edits in the dashboard)
 - Create, publish, or promote a release (`yard releases publish`, `yard releases promote`, the GitHub App on release webhook, or the dashboard)
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
 - Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
 - Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
 - Stripe Connect onboarding and payout management
-- Custom domains, product images / videos, webhook secrets
+- Custom domains, project images / videos, webhook secrets
 - Custom landing page editing (`yard init --page`, `yard push`, …)
 
 See [cli-commands.md](./cli-commands.md) for the full CLI surface.

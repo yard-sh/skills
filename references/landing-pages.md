@@ -1,24 +1,24 @@
 # Custom Landing Pages
 
-Every Yard product has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.team_permissions`).
+Every Yard project has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.team_permissions`).
 
-This document covers what you can put **inside** that bundle: the product data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
+This document covers what you can put **inside** that bundle: the project data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
 
 ---
 
-## Runtime data: `window.yard.product`
+## Runtime data: `window.yard.project`
 
-When a custom landing page is rendered, Yard makes the product's data available to your code as a synchronous JavaScript object — no `fetch`, no API key, no async wait:
+When a custom landing page is rendered, Yard makes the project's data available to your code as a synchronous JavaScript object — no `fetch`, no API key, no async wait:
 
 ```js
-window.yard.product   // the product (or null if data couldn't be loaded)
+window.yard.project   // the project (or null if data couldn't be loaded)
 ```
 
-The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.product`). The most useful fields:
+The object is the JSON returned by `GET /v1/projects/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.project`). The most useful fields:
 
 | Field | Type | Notes |
 |---|---|---|
-| `slug` | `string` | URL-safe product identifier |
+| `slug` | `string` | URL-safe project identifier |
 | `title` | `string` | Display name |
 | `tagline` | `string?` | Short marketing line |
 | `description` | `string?` | Markdown source of the long description |
@@ -29,7 +29,7 @@ The object is the JSON returned by `GET /v1/products/{username}/{slug}/public` �
 | `stage` | `string` | `draft`, `early_access`, or `published` |
 | `stage_discount_percent` | `number?` | Active stage-discount percent, if any |
 | `tiers` | `PricingTier[]` | All pricing tiers — see below |
-| `images` | `ProductImage[]` | Uploaded screenshots/icons; each has a `url` |
+| `images` | `ProjectImage[]` | Uploaded screenshots/icons; each has a `url` |
 | `category` | `string?` | Optional category label |
 | `faq` | `{ question, answer }[]` | Seller-defined FAQ entries |
 | `metadata` | `{ key, value }[]` | Seller-defined free-form metadata pairs |
@@ -54,7 +54,7 @@ Each entry in `tiers` exposes:
   "pricing_model": "one_time",   // "one_time" | "subscription"
   "yearly_discount_percent": null,
   "features": ["…", "…"],
-  "free_trial_enabled": false,   // free trials are configured PER TIER, not per product
+  "free_trial_enabled": false,   // free trials are configured PER TIER, not per project
   "free_trial_days": null,       // trial length in days, when free_trial_enabled
   "trial_requires_card": true,   // per-tier: subscription-tier trials collect a card via checkout
   "gift_enabled": false,         // per-tier: whether this tier can be bought as a gift
@@ -62,14 +62,14 @@ Each entry in `tiers` exposes:
 }
 ```
 
-> **Free trials are per-tier.** There is no product-level trial flag — a product
+> **Free trials are per-tier.** There is no project-level trial flag — a project
 > "offers a trial" when at least one of its `tiers` has `free_trial_enabled: true`
-> and `free_trial_days > 0`. Gate your trial CTA on a tier, not on the product (see
+> and `free_trial_days > 0`. Gate your trial CTA on a tier, not on the project (see
 > the [worked example](#worked-example)), and pass that tier's `id` to the trial button.
-> To inspect this from the CLI before wiring the page, run `yard products show <slug> --json`
-> and read `.tiers[]` — `yard products --json` only returns product-level fields.
+> To inspect this from the CLI before wiring the page, run `yard projects show <slug> --json`
+> and read `.tiers[]` — `yard projects --json` only returns project-level fields.
 
-> **Heads-up:** `window.yard.product` reflects the **saved** state of the release you are editing. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits — save first, then refresh the preview.
+> **Heads-up:** `window.yard.project` reflects the **saved** state of the release you are editing. While you're editing in the dashboard, the preview iframe won't pick up unsaved edits — save first, then refresh the preview.
 
 ---
 
@@ -77,9 +77,9 @@ Each entry in `tiers` exposes:
 
 For most pages you don't need to write any JavaScript. Two attribute conventions cover the common cases:
 
-### `data-yard` — bind product fields to text
+### `data-yard` — bind project fields to text
 
-Put a dotted path to any field on `product` in a `data-yard` attribute. On page load, the element's `textContent` is set to that value:
+Put a dotted path to any field on `project` in a `data-yard` attribute. On page load, the element's `textContent` is set to that value:
 
 ```html
 <h1 data-yard="title">Loading…</h1>
@@ -107,7 +107,7 @@ Add `data-action="checkout"` (or `"trial"`) to any clickable element and Yard ha
 <!-- Default tier, no extra options -->
 <button data-action="checkout">Buy now</button>
 
-<!-- Specific tier (UUID from product.tiers[i].id) -->
+<!-- Specific tier (UUID from project.tiers[i].id) -->
 <button data-action="checkout" data-tier-id="…uuid…">Buy Pro</button>
 
 <!-- Subscription tier with billing interval -->
@@ -158,7 +158,7 @@ If the attribute conventions don't fit your page, drive everything from JS:
 
 ```js
 window.yard = {
-  product,                 // PublicProduct | null  (see above)
+  project,                 // PublicProject | null  (see above)
   checkoutBase,            // string, e.g. "https://yard.sh"
 
   checkout(opts),          // top-level redirect to checkout
@@ -198,7 +198,7 @@ Examples:
 
 ```js
 // Render tier buttons dynamically — no hardcoded UUIDs in HTML
-for (const tier of window.yard.product.tiers) {
+for (const tier of window.yard.project.tiers) {
   const btn = document.createElement('button');
   btn.textContent = `${tier.name} — $${(tier.price_cents / 100).toFixed(2)}`;
   btn.addEventListener('click', () => window.yard.checkout({ tier: tier.id }));
@@ -206,7 +206,7 @@ for (const tier of window.yard.product.tiers) {
 }
 
 // Conditionally show a "Start free trial" CTA — trials are per-tier
-const trialTier = window.yard.product.tiers.find(
+const trialTier = window.yard.project.tiers.find(
   (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
 );
 if (trialTier) {
@@ -223,9 +223,9 @@ const url = window.yard.checkoutURL({ tier: defaultTier.id, quantity: 3 });
 
 ## Buyer state: `window.yard.ownership()`
 
-`window.yard.product` is **product** data — same for every visitor.
+`window.yard.project` is **project** data — same for every visitor.
 `window.yard.ownership()` is **buyer** data — specific to the visitor:
-are they signed in to yard, and do they own this product? Useful for
+are they signed in to yard, and do they own this project? Useful for
 swapping a "Buy" button for "Open in Library", showing the buyer's
 avatar, gating gated content, or branching on which tier they hold.
 
@@ -245,11 +245,11 @@ Resolved shape:
 |---|---|---|
 | `signed_in` | `boolean` | Is the visitor signed in to yard at all? |
 | `user` | `{ id, username, avatar_url } \| null` | Minimal profile; `null` when signed out. |
-| `owned` | `boolean` | Does this user own this product (any tier, paid or free)? Active trials and active subscriptions count. |
+| `owned` | `boolean` | Does this user own this project (any tier, paid or free)? Active trials and active subscriptions count. |
 | `is_trial` | `boolean` | True when the active entitlement is a free trial. |
 | `is_subscription` | `boolean` | True when the active entitlement is a subscription. |
 | `transaction_id` | `string \| null` | The transaction or subscription ID. Useful as an opaque entitlement reference. |
-| `tier_id` | `string \| null` | UUID of the tier they hold. Match against `window.yard.product.tiers[i].id` to know **which** tier. |
+| `tier_id` | `string \| null` | UUID of the tier they hold. Match against `window.yard.project.tiers[i].id` to know **which** tier. |
 | `tier_name` | `string \| null` | Display name of the held tier (e.g. `"Pro"` or `"Monthly"`). Handy for UI copy. |
 
 ### Zero-JS shortcuts: `data-yard-when`
@@ -290,7 +290,7 @@ if (state?.signed_in) {
 // Branch by tier
 const state = await window.yard.ownership();
 if (state?.owned) {
-  const proTier = window.yard.product.tiers.find((t) => t.name === 'Pro');
+  const proTier = window.yard.project.tiers.find((t) => t.name === 'Pro');
   if (state.tier_id === proTier?.id) {
     showProFeatures();
   } else {
@@ -302,7 +302,7 @@ if (state?.owned) {
 const state = await window.yard.ownership();
 if (state?.is_subscription) {
   document.querySelector('#manage-sub').href =
-    `https://yard.sh/library/${window.yard.product.slug}/subscription`;
+    `https://yard.sh/library/${window.yard.project.slug}/subscription`;
 }
 ```
 
@@ -342,7 +342,7 @@ Pages serve under `<username>.yard.sh/<slug>/`, so any CSS, JS, image, or font y
 <img src="screenshot.png" alt="" />
 ```
 
-Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<username>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the product, which is what `yard init --page` scaffolds.
+Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<username>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the project, which is what `yard init --page` scaffolds.
 
 Relative URLs matter more than usual because the same bundle serves under more than one prefix — a non-production environment adds a path segment (below). Root-relative paths break there too; relative ones just work.
 
@@ -357,9 +357,9 @@ https://alice.yard.sh/widget/            production
 https://alice.yard.sh/widget/@preview/   the preview environment
 ```
 
-Environment URLs are **owner-only by default**: the Yard edge verifies you own the product before serving, non-owners get an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback — and shareable only once you opt in with `yard env visibility <env> public`, which lets anyone with the URL view that environment.
+Environment URLs are **owner-only by default**: the Yard edge verifies you own the project before serving, non-owners get an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback — and shareable only once you opt in with `yard env visibility <env> public`, which lets anyone with the URL view that environment.
 
-The environment you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which environment it serves. `window.yard.product` reflects **that environment's** state — its own pricing, copy, and gallery — so a preview page shows preview prices, not production's.
+The environment you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which environment it serves. `window.yard.project` reflects **that environment's** state — its own pricing, copy, and gallery — so a preview page shows preview prices, not production's.
 
 An environment whose release has no custom page still has a landing page: the built-in one, rendered from that environment's content. So the URL always resolves, whether or not you have shipped a bundle there.
 
@@ -397,7 +397,7 @@ Anything outside these constraints is rejected client-side by `yard push` before
 
 ## Worked example
 
-A complete one-file landing page for a single-tier product:
+A complete one-file landing page for a single-tier project:
 
 ```html
 <!doctype html>
@@ -425,7 +425,7 @@ A complete one-file landing page for a single-tier product:
       // Trials are per-tier: reveal the button only when some tier offers one,
       // and point it at that tier. (Independent of ownership — the
       // `data-yard-when="not_owned"` already hides it for buyers.)
-      const trialTier = window.yard.product?.tiers.find(
+      const trialTier = window.yard.project?.tiers.find(
         (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
       );
       if (trialTier) {
@@ -444,4 +444,4 @@ A complete one-file landing page for a single-tier product:
 
 - [cli-commands.md → project sync](./cli-commands.md#yard-push--pull--status--ls) — the commands to scaffold, push, and publish the bundle
 - [pricing-and-licensing.md](./pricing-and-licensing.md) — what the tier shapes (`one_time` / `subscription`, `single` / `fixed_pack` / `per_seat`, volume brackets) actually mean
-- [api-reference.md](./api-reference.md) — the public product endpoint that backs `window.yard.product`
+- [api-reference.md](./api-reference.md) — the public project endpoint that backs `window.yard.project`

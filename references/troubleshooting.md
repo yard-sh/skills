@@ -38,7 +38,7 @@ Then re-run `yard login`.
 
 ## `yard init` in a non-git folder
 
-`yard init` works outside a Git repository — the product will simply be created without a linked GitHub repo. If you *want* the product linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
+`yard init` works outside a Git repository — the project will simply be created without a linked GitHub repo. If you *want* the project linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
 
 **Fix:**
 ```sh
@@ -68,7 +68,7 @@ This runs a fresh OAuth flow and saves a new session token.
 
 ## "A team is required" / `NO_TEAM` 403
 
-Every seller-side command — `yard init`, `yard products`, `yard coupons`, `yard keys`, `yard push` — acts on a **team**, because teams own products. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
+Every seller-side command — `yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push` — acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
 
 This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
 
@@ -83,7 +83,7 @@ Signup normally creates a team on the way through, so this mostly shows up on ac
 
 ## Commands act on the wrong team
 
-Products or coupons that exist in the dashboard don't show up in the CLI (or land under an unexpected username). The CLI acts as **one** team at a time, and which one is stored on the account — the same setting the dashboard's team switcher writes — so it can change out from under a session.
+Projects or coupons that exist in the dashboard don't show up in the CLI (or land under an unexpected username). The CLI acts as **one** team at a time, and which one is stored on the account — the same setting the dashboard's team switcher writes — so it can change out from under a session.
 
 **Fix:** check and switch:
 ```sh
@@ -91,7 +91,7 @@ yard team                  # who am I acting as?
 yard team use acme         # switch (the leading @ is optional)
 ```
 
-Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public product URL 404s, compare its username against `yard team --json` → `.active_team.username` — a product lives under its owning team's username, never under the seller's username.
+Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public project URL 404s, compare its username against `yard team --json` → `.active_team.username` — a project lives under its owning team's username, never under the seller's username.
 
 ---
 
@@ -101,22 +101,22 @@ If you haven't installed the Yard GitHub App and you want to link a repo during 
 1. Open your browser to the GitHub App installation page
 2. Wait up to 5 minutes for you to complete the installation
 
-If it times out, you close the browser, or the install fails, `yard init` falls back to creating the product without a linked repo. To retry the link later:
+If it times out, you close the browser, or the install fails, `yard init` falls back to creating the project without a linked repo. To retry the link later:
 1. Go to https://github.com/apps/yard-app-official/installations/new
 2. Select the account/org and grant access to the repositories you want to sell
-3. Link the repo from the dashboard, or delete the product and re-run `yard init`
+3. Link the repo from the dashboard, or delete the project and re-run `yard init`
 
 ---
 
-## "repository is already listed as a product"
+## "repository is already listed as a project"
 
-Each GitHub repository can only be published as one Yard product. If you've already published it, use the web dashboard to manage the existing product.
+Each GitHub repository can only be published as one Yard project. If you've already published it, use the web dashboard to manage the existing project.
 
 ---
 
 ## Price validation errors
 
-- **"minimum price is $3.00"** — Paid products must be at least $3.00. Enter `0` for a free product.
+- **"minimum price is $3.00"** — Paid projects must be at least $3.00. Enter `0` for a free project.
 - **"price cannot be negative"** — Prices must be zero or positive.
 - **"could not parse price"** — Enter a number like `5`, `5.00`, or `9.99`. Don't include the `$` sign.
 

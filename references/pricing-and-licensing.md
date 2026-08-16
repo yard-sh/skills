@@ -5,7 +5,7 @@
 - [Pricing Tiers](#pricing-tiers)
 - [Seat Types](#seat-types)
 - [Volume Brackets](#volume-brackets)
-- [Product Stages and Discounts](#product-stages-and-discounts)
+- [Project Stages and Discounts](#project-stages-and-discounts)
 - [Coupons](#coupons)
 - [Free Trials](#free-trials)
 - [Gift Purchases](#gift-purchases)
@@ -17,14 +17,14 @@
 
 ## Pricing Tiers
 
-Each product has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
+Each project has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
 
 **Tier fields:**
 - `name` — Display name for the tier
 - `price_cents` — Base price in cents ($0 for free, or $3.00-$10,000.00)
 - `description` — Optional description
 - `sort_order` — Display ordering (0-based)
-- `is_default` — Exactly one tier per product must be the default
+- `is_default` — Exactly one tier per project must be the default
 - `seat_type` — `single`, `fixed_pack`, or `per_seat`
 - `features` — List of feature strings (max 10 per tier)
 - `pricing_model` — `one_time` or `subscription`
@@ -82,27 +82,27 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 ---
 
-## Product Stages and Discounts
+## Project Stages and Discounts
 
-Every product has a stage that controls availability and pricing. New products always start in `draft` and progress through stages **forward-only** — once advanced, a product can never go back. Stage is not the same thing as visibility: whether strangers may view the storefront at all is the Production **environment's** visibility (`yard env visibility production <public|private>`), and stage gates on top of it — a draft serves nothing publicly however the environments are set.
+Every project has a stage that controls availability and pricing. New projects always start in `draft` and progress through stages **forward-only** — once advanced, a project can never go back. Stage is not the same thing as visibility: whether strangers may view the storefront at all is the Production **environment's** visibility (`yard env visibility production <public|private>`), and stage gates on top of it — a draft serves nothing publicly however the environments are set.
 
 | Stage | Description | Discount field |
 |---|---|---|
 | `draft` | Initial stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
-| `early_access` | Public, purchasable, but the seller signals the product is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
+| `early_access` | Public, purchasable, but the seller signals the project is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
 | `published` | General availability. Final stage. | — |
 | `archived` | No longer available for new purchases. (Existing buyers retain access.) | — |
 
 **Transition rules** (enforced server-side):
 
-- Order: `draft` → `early_access` → `published`. Going backwards is rejected with `Cannot move product stage backward`.
-- `published` is terminal — once there, the product cannot be moved again. The API returns `Product is already in the final 'published' stage and cannot be changed.`
+- Order: `draft` → `early_access` → `published`. Going backwards is rejected with `Cannot move project stage backward`.
+- `published` is terminal — once there, the project cannot be moved again. The API returns `Project is already in the final 'published' stage and cannot be changed.`
 - Skipping `early_access` is allowed — `draft` → `published` directly is valid.
 - Transitioning out of `draft` requires an active Stripe Connect seller account. Backend rejects the change otherwise.
 
 Stage discounts are applied before coupon discounts during checkout.
 
-**How to advance a stage:** the CLI does not currently surface stage transitions — `yard products edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance product stage from the Yard dashboard at `https://yard.sh/dashboard/products`. Direct REST `PUT /v1/products/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
+**How to advance a stage:** the CLI does not currently surface stage transitions — `yard projects edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance project stage from the Yard dashboard at `https://yard.sh/dashboard/projects`. Direct REST `PUT /v1/projects/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
 
 ---
 
@@ -117,8 +117,8 @@ Coupons depend on the plan's `coupons` permission — check with `yard me --json
 - `fixed_amount` — Fixed amount in cents subtracted from the price
 
 **Coupon scopes:**
-- `all_products` — Applies to all of the seller's products (including future ones)
-- `specific_products` — Applies only to selected products (via `coupon_products` junction table)
+- `all_projects` — Applies to all of the seller's projects (including future ones)
+- `specific_projects` — Applies only to selected projects (via `coupon_projects` junction table)
 
 **Coupon fields:**
 - `code` — The coupon code string (upper-cased, 4-50 alphanumeric characters)
@@ -128,7 +128,7 @@ Coupons depend on the plan's `coupons` permission — check with `yard me --json
 - `current_uses` — Current usage count
 - `valid_from` — Optional start date; before it, the code is rejected as not yet valid
 - `expires_at` — Optional expiration date
-- `subscription_duration` — For subscription products: `once` (first payment only, the default) or `forever` (every renewal). Ignored for one-time purchases.
+- `subscription_duration` — For subscription projects: `once` (first payment only, the default) or `forever` (every renewal). Ignored for one-time purchases.
 - `is_active` — Seller's on/off toggle
 
 A coupon is only usable when it is active, started, unexpired, and under its limit — `is_active: true` alone doesn't mean redeemable.
@@ -141,7 +141,7 @@ A coupon is only usable when it is active, started, unexpired, and under its lim
 
 ## Free Trials
 
-Free trials are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) configured **per tier**, not on the product. A product "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard products tiers edit <slug> <tier-name> --spec -` (later).
+Free trials are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) configured **per tier**, not on the project. A project "offers a trial" when at least one of its tiers has `free_trial_enabled: true`. Configure inside each tier object via `yard init --spec` (at creation) or with the dedicated subcommand `yard projects tiers edit <slug> <tier-name> --spec -` (later).
 
 Tier-level trial fields:
 
@@ -151,11 +151,11 @@ Tier-level trial fields:
 - Buyers can activate trials as guests (no account required) for one-time tiers; subscription tiers may also require a card up-front via the per-tier `trial_requires_card` setting
 - After trial expires, buyer must purchase the tier to continue access
 
-There is no product-level trial setting anymore — putting `free_trial_enabled` (or `trial_requires_card`) outside a tier in a spec is rejected with `unknown field`. Card collection is also configured per tier:
+There is no project-level trial setting anymore — putting `free_trial_enabled` (or `trial_requires_card`) outside a tier in a spec is rejected with `unknown field`. Card collection is also configured per tier:
 
-- `trial_requires_card` (per-tier, defaults to true) — When true, trials on that subscription tier route through Stripe Checkout so the buyer enters a payment method up-front. When false, trials on the tier start without a card and convert silently when the trial ends. Has no effect on one-time tiers. Toggle via `yard products tiers edit <slug> <tier> --spec -`.
+- `trial_requires_card` (per-tier, defaults to true) — When true, trials on that subscription tier route through Stripe Checkout so the buyer enters a payment method up-front. When false, trials on the tier start without a card and convert silently when the trial ends. Has no effect on one-time tiers. Toggle via `yard projects tiers edit <slug> <tier> --spec -`.
 
-**Adjusting a trial that's already running.** The tier setting only governs new trials. To change the time left for one buyer, use `yard transactions trial <order-id> --add-days N` (±365; `-3` shortens). Find the ids with `yard transactions list --trials`. Two things the command does that aren't obvious: the days are added to the trial's **current expiry rather than to today** — so extending an already-expired trial can still land in the past and restore nothing — and the **buyer is emailed** about the change. An expired trial whose new expiry lands in the future goes back to `active` and the buyer regains access (`"reactivated": true` in the response), unless they have since started another trial on that product. See [cli-commands.md](./cli-commands.md#yard-transactions).
+**Adjusting a trial that's already running.** The tier setting only governs new trials. To change the time left for one buyer, use `yard transactions trial <order-id> --add-days N` (±365; `-3` shortens). Find the ids with `yard transactions list --trials`. Two things the command does that aren't obvious: the days are added to the trial's **current expiry rather than to today** — so extending an already-expired trial can still land in the past and restore nothing — and the **buyer is emailed** about the change. An expired trial whose new expiry lands in the future goes back to `active` and the buyer regains access (`"reactivated": true` in the response), unless they have since started another trial on that project. See [cli-commands.md](./cli-commands.md#yard-transactions).
 
 ---
 
@@ -173,7 +173,7 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.tea
 
 ## License Keys
 
-License keys are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`). Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept the `license_key_enabled` flag.
+License keys are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`). Configure via `yard init --spec` (at creation) or `yard projects edit` (later) — both accept the `license_key_enabled` flag.
 
 Yard automatically generates license keys for each purchase.
 
@@ -185,16 +185,16 @@ Yard automatically generates license keys for each purchase.
 
 **Validation endpoint:** `POST /v1/licenses/validate`
 - Input: license key + optional device ID
-- Output: validation result with product/tier info
+- Output: validation result with project/tier info
 - **Requires an API key** with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). Embed it in the seller's software the same way you would for releases — see [api-reference.md](api-reference.md) for the endpoint definition and [releases-and-updates.md](releases-and-updates.md) for the embedded-API-key tradeoffs.
 
-**Test license key:** Every product with `license_key_enabled: true` has a sandbox key the seller can use to exercise validation/activation logic without buying their own product. The test key behaves identically to a real one against `POST /v1/licenses/validate`, but its activations live in a separate `test_activations` table and never collide with real buyers. Retrieve it with `yard licenses test-key`; manage its activations with `yard licenses test-activations list` and `yard licenses test-activations clear`. See [cli-commands.md](cli-commands.md#yard-licenses) for full flag reference.
+**Test license key:** Every project with `license_key_enabled: true` has a sandbox key the seller can use to exercise validation/activation logic without buying their own project. The test key behaves identically to a real one against `POST /v1/licenses/validate`, but its activations live in a separate `test_activations` table and never collide with real buyers. Retrieve it with `yard licenses test-key`; manage its activations with `yard licenses test-activations list` and `yard licenses test-activations clear`. See [cli-commands.md](cli-commands.md#yard-licenses) for full flag reference.
 
 ---
 
 ## Device Activations
 
-Device activations are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard products edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
+Device activations are a **Pro-only** feature (check with `yard me --json` → `.team_permissions`) and require license keys to be enabled. Configure via `yard init --spec` (at creation) or `yard projects edit` (later) — both accept `activations_enabled` and `max_activations` (1-10000).
 
 License keys can track device activations:
 
@@ -202,7 +202,7 @@ License keys can track device activations:
 - Sellers can configure a maximum activation limit per license key
 - Activations are tracked in the `license_activations` table
 - Buyers can view and manage their activations from the buyer dashboard
-- Test activations (created via the product's test license key) are isolated in a parallel `test_activations` table, count against `max_activations` independently, and can be wiped with `yard licenses test-activations clear`
+- Test activations (created via the project's test license key) are isolated in a parallel `test_activations` table, count against `max_activations` independently, and can be wiped with `yard licenses test-activations clear`
 
 ---
 
@@ -210,10 +210,10 @@ License keys can track device activations:
 
 The full price calculation during checkout (`CreatePaymentIntent`):
 
-1. **Resolve tier** — Use the specified tier or fall back to the product's default tier
+1. **Resolve tier** — Use the specified tier or fall back to the project's default tier
 2. **Validate quantity** — Check quantity against the tier's seat type constraints
 3. **Calculate base price** — `tier.GetPriceForQuantity(quantity)` (applies volume brackets if applicable)
-4. **Apply stage discount** — If product is in the early access stage, apply `early_access_discount_percent`
+4. **Apply stage discount** — If project is in the early access stage, apply `early_access_discount_percent`
 5. **Apply coupon discount** — If a valid coupon code is provided, apply percentage or fixed-amount discount
 6. **Calculate tax** — Via Stripe Tax API based on buyer's location
 7. **Calculate seller earnings**

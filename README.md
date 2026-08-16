@@ -4,7 +4,7 @@ The agent skill for [Yard](https://yard.sh) — knowledge files that teach AI co
 
 When this skill is installed, an agent gains awareness of:
 
-- The `yard` CLI (login, init, products, releases, keys, page, etc.)
+- The `yard` CLI (login, init, projects, releases, keys, page, etc.)
 - The `yard init --spec` and `yard releases publish --spec` JSON shapes for non-interactive use
 - The REST API endpoints for license validation, release downloads, subscriptions, and the license-key update server
 - Pricing model details (tiers, seat types, volume brackets, Pro-only features)

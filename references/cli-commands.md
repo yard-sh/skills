@@ -97,7 +97,7 @@ sell anything`, and every seller command will fail until they do.
     "role": "owner"
   },
   "team_permissions": {
-    "sell_products": { "granted": true, "value_type": "boolean" },
+    "sell_projects": { "granted": true, "value_type": "boolean" },
     "license_keys": { "granted": true, "value_type": "boolean" },
     "coupons": { "granted": true, "value_type": "boolean" },
     "max_pricing_tiers": {
@@ -105,7 +105,7 @@ sell anything`, and every seller command will fail until they do.
       "limit": 10,
       "value_type": "limit"
     },
-    "max_products": {
+    "max_projects": {
       "granted": true,
       "unlimited": true,
       "value_type": "limit"
@@ -118,10 +118,10 @@ sell anything`, and every seller command will fail until they do.
 
 There are **two** grant maps, and picking the wrong one gives the wrong answer:
 
-- **`team_permissions` is the source of truth for every seller feature** — products, tiers, coupons, license keys, custom pages, compute, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any product capability.
-- `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's products may do.
+- **`team_permissions` is the source of truth for every seller feature** — projects, tiers, coupons, license keys, custom pages, compute, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
+- `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's projects may do.
 
-The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's products, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
+The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's projects, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
 
 Each entry in either map is a merged grant — booleans carry `granted`; limits also carry `limit` (a number) or `unlimited: true`. Gating is entirely permission-based, so a feature isn't tied to a plan _name_ — a custom role could grant any subset. (The old `is_pro` field was removed; use `team_permissions` or `plan`.)
 
@@ -129,7 +129,7 @@ Each entry in either map is a merged grant — booleans carry `granted`; limits 
 
 ## yard team
 
-Show or switch the team the CLI acts as. **Products, coupons, affiliate links, payouts and API keys are owned by a team, never by a user**, so every seller command reads and writes the active team's data.
+Show or switch the team the CLI acts as. **Projects, coupons, affiliate links, payouts and API keys are owned by a team, never by a user**, so every seller command reads and writes the active team's data.
 
 **Usage:** `yard team [--json]` / `yard team use <username>`
 
@@ -140,7 +140,7 @@ Show or switch the team the CLI acts as. **Products, coupons, affiliate links, p
 ```
 Team:   Acme Corp (@acme)
 Role:   owner
-Products are published at https://yard.sh/@acme/<slug>
+Projects are published at https://yard.sh/@acme/<slug>
 
 Other teams (switch with 'yard team use <username>'):
   @side-project            Side Project
@@ -154,7 +154,7 @@ With no team, it prints where to create one instead. `--json` emits `{ active_te
 yard team use side-project     # the leading @ is optional
 ```
 
-The active team is stored **on the account, not in `~/.yard/config.json`** — the same setting the dashboard's team switcher writes. So switching in the browser changes what the CLI sees, switching here changes what the dashboard sees, and it follows the user across machines. An agent that has just run `yard team use` should not assume any earlier `yard products` output is still current.
+The active team is stored **on the account, not in `~/.yard/config.json`** — the same setting the dashboard's team switcher writes. So switching in the browser changes what the CLI sees, switching here changes what the dashboard sees, and it follows the user across machines. An agent that has just run `yard team use` should not assume any earlier `yard projects` output is still current.
 
 `use` rejects a username the user isn't a member of and lists the ones they are, rather than silently doing nothing.
 
@@ -166,9 +166,9 @@ Every seller-scoped endpoint answers `403` with `code: "NO_TEAM"` when the calle
 
 ## yard init
 
-Set up a Yard project in the current directory. Interactive flow that links the folder to a Yard product (new or existing) and optionally scaffolds a custom landing page.
+Set up a Yard project in the current directory. Interactive flow that links the folder to a Yard project (new or existing) and optionally scaffolds a custom landing page.
 
-**Prerequisites:** none. A Git repo with a GitHub remote enables the "link the repo to a new product" path, but is not required — outside of a git repo, `yard init` still creates products, they just won't be linked to a GitHub repository.
+**Prerequisites:** none. A Git repo with a GitHub remote enables the "link the repo to a new project" path, but is not required — outside of a git repo, `yard init` still creates projects, they just won't be linked to a GitHub repository.
 
 **Step-by-step flow:**
 
@@ -176,41 +176,41 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 2. **Login check** — Loads `~/.yard/config.json` and verifies the session is still valid via `GET /v1/me`. If not logged in or session expired, runs the login flow automatically.
 
-3. **Best-effort git context** — All three steps here are non-fatal; on any failure `init` prints a one-line stderr notice and proceeds to create a product without a linked repo.
+3. **Best-effort git context** — All three steps here are non-fatal; on any failure `init` prints a one-line stderr notice and proceeds to create a project without a linked repo.
    - Runs `git rev-parse --show-toplevel` + `git config --get remote.origin.url` and parses owner/repo. SSH and HTTPS GitHub URLs supported.
    - `GET /v1/github/installations` to check the Yard GitHub App. If absent, opens the install page and polls every 2 seconds (5-min timeout).
-   - `GET /v1/repos/verify?repo=owner/repo` to confirm access. If the repo is already listed as another product, an informational note is printed but selection is still up to the user.
+   - `GET /v1/repos/verify?repo=owner/repo` to confirm access. If the repo is already listed as another project, an informational note is printed but selection is still up to the user.
 
-4. **Product selection prompt** — Calls `GET /v1/products`. If the user has zero products, skips straight to the create-new branch. Otherwise prints a numbered list and asks `(n) new product, (1..N) select existing`. Invalid input re-prompts.
+4. **Project selection prompt** — Calls `GET /v1/projects`. If the user has zero projects, skips straight to the create-new branch. Otherwise prints a numbered list and asks `(n) new project, (1..N) select existing`. Invalid input re-prompts.
 
 5. **Create-new branch** (only when selected):
    - Title prompt (max 60 chars). Defaults to repo name if a git repo was detected.
    - Price prompt in dollars. Minimum $3.00, or $0 for free.
-   - `POST /v1/products`. If git context was fully collected and the repo isn't already listed, the request includes `github_repo_id` + `github_repo_name`; otherwise those fields are omitted (the backend accepts products with no linked repo).
-   - The wizard never blocks a choice by plan. If the assembled product uses something the team's plan doesn't include (e.g. multiple tiers or seat-based pricing), the create call returns `upgrade_required`; the CLI shows the generic upgrade link and then prompts _"Once you've upgraded, press Enter to retry"_ — pressing Enter resubmits the **same** request, so the user upgrades in the browser and retries without re-answering the wizard.
+   - `POST /v1/projects`. If git context was fully collected and the repo isn't already listed, the request includes `github_repo_id` + `github_repo_name`; otherwise those fields are omitted (the backend accepts projects with no linked repo).
+   - The wizard never blocks a choice by plan. If the assembled project uses something the team's plan doesn't include (e.g. multiple tiers or seat-based pricing), the create call returns `upgrade_required`; the CLI shows the generic upgrade link and then prompts _"Once you've upgraded, press Enter to retry"_ — pressing Enter resubmits the **same** request, so the user upgrades in the browser and retries without re-answering the wizard.
 
 6. **Scaffold `.yard/`** — Writes `./.yard/settings.json` via `EnsureYardProject`. Existing settings are preserved.
 
 7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
-   - Resolves the product's draft release (same logic as `yard init --page`) and pulls its landing-page files, or scaffolds the hello-world starter when it has none.
+   - Resolves the project's draft release (same logic as `yard init --page`) and pulls its landing-page files, or scaffolds the hello-world starter when it has none.
    - Uploads the local files into the draft and prints that the page is staged — going live requires publishing the draft (`yard releases publish <tag>`). If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr and the rest of `init` still succeeds.
 
-8. **Optional product-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
+8. **Optional project-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
 
-   Changes are applied via `PUT /v1/products/{id}`. If the team's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard products tiers`.)
+   Changes are applied via `PUT /v1/projects/{id}`. If the team's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard projects tiers`.)
 
-9. **Success output** — Prints the product display name, slug, and the buy / profile URLs (new products only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
+9. **Success output** — Prints the project display name, slug, and the buy / profile URLs (new projects only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
 **JSON output:** the current implementation is interactive-only; there's no `--json` variant yet.
 
 ---
 
-## yard products
+## yard projects
 
-List all your published products. With no subcommand, shows the same table as before; the `edit` subcommand modifies seller settings.
+List all your published projects. With no subcommand, shows the same table as before; the `edit` subcommand modifies seller settings.
 
 **Output format:**
 
@@ -220,74 +220,74 @@ NAME                                PRICE      RELEASES   SALES
 ✓ my-awesome-tool                   $9.99      3          12
 ✗ private-beta                      $29.00     1          0
 
-Total: 2 product(s)
+Total: 2 project(s)
 ```
 
 - `✓` = publicly visible (the Production environment's visibility is `public`), `✗` = not public — change it with `yard env visibility production <public|private>`
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
-- `--json` emits the underlying `ProductListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`). **Tiers are not included** — free trials, `trial_requires_card`, and `gift_enabled` are configured per tier, so use `yard products show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].trial_requires_card` / `tiers[].gift_enabled`.
+- `--json` emits the underlying `ProjectListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`). **Tiers are not included** — free trials, `trial_requires_card`, and `gift_enabled` are configured per tier, so use `yard projects show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].trial_requires_card` / `tiers[].gift_enabled`.
 
-**Discovering a product's slug.** The default table shows the _display name_ (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--product <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
+**Discovering a project's slug.** The default table shows the _display name_ (title → repo name → slug fallback), not the slug. Every other CLI command that takes `<slug-or-id>` or `--project <slug>` needs the raw slug, which the JSON output carries on `.slug`. Common ways to find it:
 
 ```sh
 # All slugs the active team owns
-yard products --json | jq -r '.[].slug'
+yard projects --json | jq -r '.[].slug'
 
 # Slug + title, tab-separated (handy when titles aren't unique)
-yard products --json | jq -r '.[] | "\(.slug)\t\(.title)"'
+yard projects --json | jq -r '.[] | "\(.slug)\t\(.title)"'
 
 # Find a slug by partial title match (case-insensitive)
-yard products --json | jq -r '.[] | select(.title | ascii_downcase | contains("simple")) | .slug'
+yard projects --json | jq -r '.[] | select(.title | ascii_downcase | contains("simple")) | .slug'
 
 # Slug for the project you're sitting in (set by `yard init` / `yard init --page`)
-jq -r .product_slug .yard/settings.json
+jq -r .project_slug .yard/settings.json
 ```
 
-If you only have the UUID, `yard products show <uuid> --json | jq -r .slug` resolves it. Slugs and UUIDs are interchangeable everywhere `<slug-or-id>` is accepted.
+If you only have the UUID, `yard projects show <uuid> --json | jq -r .slug` resolves it. Slugs and UUIDs are interchangeable everywhere `<slug-or-id>` is accepted.
 
-### yard products show <slug-or-id>
+### yard projects show <slug-or-id>
 
-Prints one product's full detail — the same shape the seller dashboard fetches via `GET /v1/products/{id}`, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets`, and per-tier `free_trial_enabled` / `free_trial_days`.
+Prints one project's full detail — the same shape the seller dashboard fetches via `GET /v1/projects/{id}`, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets`, and per-tier `free_trial_enabled` / `free_trial_days`.
 
 **Usage:**
 
 ```sh
-yard products show my-awesome-tool             # human-readable summary
-yard products show my-awesome-tool --json      # full ProductDetailResponse on stdout
+yard projects show my-awesome-tool             # human-readable summary
+yard projects show my-awesome-tool --json      # full ProjectDetailResponse on stdout
 ```
 
 **Typical agent flow** — gating a landing-page trial CTA on whether _any_ tier offers a trial:
 
 ```sh
-yard products show my-awesome-tool --json | jq '.tiers[] | select(.free_trial_enabled) | {id, name, free_trial_days}'
+yard projects show my-awesome-tool --json | jq '.tiers[] | select(.free_trial_enabled) | {id, name, free_trial_days}'
 ```
 
 If the output is empty, no tier offers a trial — the trial button on the landing page should stay hidden.
 
-**Resolution:** same as `yard products edit` — accepts either a slug or a UUID; resolves slugs through the seller's product list.
+**Resolution:** same as `yard projects edit` — accepts either a slug or a UUID; resolves slugs through the seller's project list.
 
-### yard products edit [slug-or-id]
+### yard projects edit [slug-or-id]
 
-Modify seller settings on an existing product: license keys and device activations (and the per-key limit). Whether the team's plan includes these is enforced by the server, not the CLI.
+Modify seller settings on an existing project: license keys and device activations (and the per-key limit). Whether the team's plan includes these is enforced by the server, not the CLI.
 
 **Resolution:**
 
-- Pass a slug or UUID as the first argument to target a specific product.
-- Without an argument, auto-selects when the user has only one product, prompts to pick from a numbered list otherwise.
-- In `--spec` mode with multiple products and no argument, errors out with the list of slugs.
+- Pass a slug or UUID as the first argument to target a specific project.
+- Without an argument, auto-selects when the user has only one project, prompts to pick from a numbered list otherwise.
+- In `--spec` mode with multiple projects and no argument, errors out with the list of slugs.
 
 **Interactive flow:**
 
 1. Prints `Editing settings for <title> (<slug>)`.
 2. Same prompt sequence as `yard init`'s settings step (no plan gate — every prompt is shown). Each prompt's default reflects the _current_ value, so pressing Enter is always a no-op.
-3. Calls `PUT /v1/products/{id}` with only the fields that changed.
+3. Calls `PUT /v1/projects/{id}` with only the fields that changed.
 
 **When the plan doesn't include a setting:** the CLI still attempts the update; the server returns `upgrade_required` and the CLI prints the server's reason plus the `https://yard.sh/pricing` link. Interactive mode exits 0 (nothing changed); `--spec` mode exits non-zero.
 
 **Spec mode:**
 
-- `--spec <file|->` — read JSON from a file or stdin. The JSON shape is `UpdateProductRequest`:
+- `--spec <file|->` — read JSON from a file or stdin. The JSON shape is `UpdateProjectRequest`:
   ```json
   {
     "license_key_enabled": true,
@@ -295,20 +295,20 @@ Modify seller settings on an existing product: license keys and device activatio
     "max_activations": 5
   }
   ```
-  Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials, `trial_requires_card`, and `gift_enabled` are per-tier** — they're not product-level settings; use `yard products tiers edit` (below) instead.
-- A `tiers` array MAY be included to replace the full tier list in one shot — every existing tier with a matching `id` is updated in place, new tiers (no `id`) are inserted, and tiers omitted from the array are deleted (or marked non-default if they have transactions/active subscriptions). Always read the current tiers first (`yard products show <slug> --json | jq '.tiers'`) and mutate before sending back, otherwise you'll accidentally drop tiers.
-- `--json` — emit `{ "product": {...}, "settings": {...} }` on stdout; logs go to stderr.
-- The CLI pre-checks the activations-needs-license-keys rule against the _effective_ state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the product already has license keys enabled.
+  Unknown fields are rejected. Missing fields are left untouched (the request is sparse). **Free trials, `trial_requires_card`, and `gift_enabled` are per-tier** — they're not project-level settings; use `yard projects tiers edit` (below) instead.
+- A `tiers` array MAY be included to replace the full tier list in one shot — every existing tier with a matching `id` is updated in place, new tiers (no `id`) are inserted, and tiers omitted from the array are deleted (or marked non-default if they have transactions/active subscriptions). Always read the current tiers first (`yard projects show <slug> --json | jq '.tiers'`) and mutate before sending back, otherwise you'll accidentally drop tiers.
+- `--json` — emit `{ "project": {...}, "settings": {...} }` on stdout; logs go to stderr.
+- The CLI pre-checks the activations-needs-license-keys rule against the _effective_ state, so a spec that flips activations on without restating `license_key_enabled` succeeds when the project already has license keys enabled.
 - A 403 with `error_code: "upgrade_required"` is rendered as a clean upgrade message rather than the raw HTTP error.
 
 **Typical agent flow:**
 
 ```sh
 # Discover what exists.
-yard products --json
+yard projects --json
 
-# Apply product-level settings to a known product.
-yard products edit my-awesome-tool --spec - --json <<'EOF'
+# Apply project-level settings to a known project.
+yard projects edit my-awesome-tool --spec - --json <<'EOF'
 {
   "license_key_enabled": true,
   "activations_enabled": true,
@@ -317,18 +317,18 @@ yard products edit my-awesome-tool --spec - --json <<'EOF'
 EOF
 
 # Enable a 14-day card-required free trial on the Base tier (per-tier settings).
-yard products tiers edit my-awesome-tool Base --spec - <<'EOF'
+yard projects tiers edit my-awesome-tool Base --spec - <<'EOF'
 { "free_trial_enabled": true, "free_trial_days": 14, "trial_requires_card": true }
 EOF
 ```
 
-### yard products tiers
+### yard projects tiers
 
-Manage pricing tiers (add, change, remove) without rebuilding the whole tier array yourself. The backend exposes tier mutations only through `PUT /v1/products/{id}` with a full-replace `tiers[]`; these subcommands do the read-modify-write for you so you don't accidentally drop tiers.
+Manage pricing tiers (add, change, remove) without rebuilding the whole tier array yourself. The backend exposes tier mutations only through `PUT /v1/projects/{id}` with a full-replace `tiers[]`; these subcommands do the read-modify-write for you so you don't accidentally drop tiers.
 
-For wholesale changes (multiple tiers at once, reorder, etc.) use `yard products edit <slug> --spec -` with the full `tiers[]` array directly.
+For wholesale changes (multiple tiers at once, reorder, etc.) use `yard projects edit <slug> --spec -` with the full `tiers[]` array directly.
 
-#### yard products tiers add <product-slug> --spec <file|->
+#### yard projects tiers add <project-slug> --spec <file|->
 
 Append a new tier. Spec shape:
 
@@ -350,28 +350,28 @@ Append a new tier. Spec shape:
 }
 ```
 
-How many tiers a product may have depends on the owning team's plan (server-enforced via the `max_pricing_tiers` permission — currently Basic: 2, Pro: 10). The CLI doesn't pre-check; if you exceed the plan's limit the add is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
+How many tiers a project may have depends on the owning team's plan (server-enforced via the `max_pricing_tiers` permission — currently Basic: 2, Pro: 10). The CLI doesn't pre-check; if you exceed the plan's limit the add is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
 
-#### yard products tiers edit <product-slug> <tier-id-or-name> --spec <file|->
+#### yard projects tiers edit <project-slug> <tier-id-or-name> --spec <file|->
 
 Apply a partial spec to one tier. Any field present in the spec replaces the current value; absent fields are left untouched. Match by UUID or case-insensitive name (UUID required when two tiers share a name).
 
 ```sh
 # Enable a 14-day trial on the Base tier
 echo '{"free_trial_enabled": true, "free_trial_days": 14}' \
-  | yard products tiers edit simple-note Base --spec -
+  | yard projects tiers edit simple-note Base --spec -
 
 # Drop a tier's price
 echo '{"price_cents": 1500}' \
-  | yard products tiers edit simple-note Base --spec -
+  | yard projects tiers edit simple-note Base --spec -
 ```
 
-#### yard products tiers rm <product-slug> <tier-id-or-name> [--yes] [--promote-default]
+#### yard projects tiers rm <project-slug> <tier-id-or-name> [--yes] [--promote-default]
 
 Remove a tier. Tiers with paid transactions or active subscriptions cannot be hard-deleted server-side — they are kept but marked non-default so new buyers won't see them. Refuses to remove the only remaining tier.
 
 - `--yes` — skip the confirmation prompt (required in scripts / non-TTY).
-- `--promote-default` — when removing the current default tier, auto-promote the first surviving tier to default. Without this flag, the command refuses to leave the product without a default.
+- `--promote-default` — when removing the current default tier, auto-promote the first surviving tier to default. Without this flag, the command refuses to leave the project without a default.
 
 All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
@@ -379,7 +379,7 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 ## yard releases
 
-Manage releases for a product. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
+Manage releases for a project. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
 **The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (drafts can never belong to an environment). With no `--release`, every CLI command that writes files — `yard push`, `yard releases publish` — targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and attaches the release to an environment — attaching is the deploy moment. Environments hold a **set** of releases and serve the newest member unless pinned.
 
@@ -393,13 +393,13 @@ Publish a draft release under a tag, with optional file assets. Files upload int
 
 **Flags:**
 
-- `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode. Tags are unique per product across non-archived releases — a collision is a `409`.
-- `--product <slug-or-uuid>` — target product. Required only if you have multiple products.
+- `[tag]` positional — the tag name (e.g. `v1.4.0`). Required in `--spec` mode (read from spec); optional and prompted in interactive mode. Tags are unique per project across non-archived releases — a collision is a `409`.
+- `--project <slug-or-uuid>` — target project. Required only if you have multiple projects.
 - `--name <string>` — optional human-readable release name.
 - `--notes <string>` — short release notes (markdown).
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
-- `--env <slug>` — environment the release deploys to. Defaults to **production**, the one environment every product has, so a release published without this flag is live to customers. Pass `--env <your-env>` to deploy it somewhere only you can see first.
+- `--env <slug>` — environment the release deploys to. Defaults to **production**, the one environment every project has, so a release published without this flag is live to customers. Pass `--env <your-env>` to deploy it somewhere only you can see first.
 - `--release <id|tag>` — the draft to publish. Defaults to your open draft (creating one from what `--env` serves if none exists); required when multiple drafts are open. Must still be a draft: publishing is one-way, so an already-published release is refused here (edit it with `yard push --release <id|tag>` instead).
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
@@ -408,7 +408,7 @@ Publish a draft release under a tag, with optional file assets. Files upload int
 
 ```jsonc
 {
-  "product": "my-slug", // optional if user has only one product
+  "project": "my-slug", // optional if user has only one project
   "tag_name": "v1.4.0", // required
   "release_name": "Late April fixes", // optional, ≤255 chars
   "release_notes": "## Highlights\n…", // optional, markdown, ≤125,000 chars
@@ -426,7 +426,7 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 **Two-step publish flow:**
 
 1. The draft is resolved (`--release` → sole open draft → new draft seeded from what `--env` serves), and each `files[]` entry streams into it as `multipart/form-data`.
-2. The draft is published (`POST /v1/products/{id}/product-releases/{rid}/publish`) — the tag is stamped, the release is attached to the target environment, and the environment deploys it.
+2. The draft is published (`POST /v1/projects/{id}/project-releases/{rid}/publish`) — the tag is stamped, the release is attached to the target environment, and the environment deploys it.
 3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
 4. Exit code is non-zero if any uploads failed; if at least one file uploaded the draft was still published (without the failed files), and missing assets can be added from the dashboard. If every file failed, nothing is published and the draft stays open.
 
@@ -470,10 +470,10 @@ Attach an already-published release to another environment, which then serves ex
 
 **Flags:**
 
-- `<tag>` positional — the tag to promote, e.g. `v1.4.0`. There is no `--from`: releases belong to the product, so the tag alone identifies one.
+- `<tag>` positional — the tag to promote, e.g. `v1.4.0`. There is no `--from`: releases belong to the project, so the tag alone identifies one.
 - `--to <slug>` — target environment. Required.
-- `--product <slug-or-uuid>` — target product.
-- `--project <path>` — project root override.
+- `--project <slug-or-uuid>` — target project.
+- `--dir <path>` — directory containing `.yard/`.
 - `--json` — emit a single JSON result on stdout.
 
 ```sh
@@ -482,7 +482,7 @@ yard releases publish v1.4.0 --file dist/app.zip   # publishes + deploys to prod
 yard releases promote v1.4.0 --to production       # ships it
 ```
 
-**Nothing is copied**: a release is one product-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op. Because both environments now serve the same release, a later edit to it shows up in both.
+**Nothing is copied**: a release is one project-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op. Because both environments now serve the same release, a later edit to it shows up in both.
 
 **`--json` output** (the membership-change result):
 
@@ -516,7 +516,7 @@ Lists the **active team's** API keys with the same columns the dashboard shows (
 NAME                     PREFIX             SCOPES                                   LAST USED      CREATED
 --------------------------------------------------------------------------------------------------------------
 ci-runner                yard_a1b2c3d       licenses:validate, licenses:activate     2 hours ago    2026-04-12
-local-dev                yard_e5f6789       products:read                            never          2026-03-30
+local-dev                yard_e5f6789       projects:read                            never          2026-03-30
 
 Total: 2 / 100 keys
 ```
@@ -545,11 +545,11 @@ Mints a new API key **for the active team**. **The full secret is shown only onc
 
 | Scope                 | Description                                           |
 | --------------------- | ----------------------------------------------------- |
-| `products:read`       | Read product metadata                                 |
+| `projects:read`       | Read project metadata                                 |
 | `licenses:validate`   | Validate license keys (called from your own software) |
 | `licenses:activate`   | Activate / deactivate license keys                    |
-| `subscriptions:read`  | Read product subscription status                      |
-| `subscriptions:write` | Create / cancel / reactivate product subscriptions    |
+| `subscriptions:read`  | Read project subscription status                      |
+| `subscriptions:write` | Create / cancel / reactivate project subscriptions    |
 
 Backend caps each user at 100 API keys; on `403` from the create endpoint the CLI prints the reached-limit message.
 
@@ -567,24 +567,24 @@ For end-user-shipped software, downloads authenticate with license keys against 
 
 ## yard licenses
 
-Test license-key validation and inspect test device activations. All three subcommands accept `--product <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only product if you have one. All three accept `--json`.
+Test license-key validation and inspect test device activations. All three subcommands accept `--project <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only project if you have one. All three accept `--json`.
 
-Every product with `license_key_enabled: true` has a sandbox **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
+Every project with `license_key_enabled: true` has a sandbox **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
 
 ### yard licenses test-key
 
-Print the test license key for a product. Plain output is the bare key (one line, suitable for `$(...)` capture); `--json` emits an object with `product_id`, `product_slug`, and `test_license_key`.
+Print the test license key for a project. Plain output is the bare key (one line, suitable for `$(...)` capture); `--json` emits an object with `project_id`, `project_slug`, and `test_license_key`.
 
 **Errors:**
 
-- Product doesn't have license keys enabled — surfaces a hint to run `yard products edit <slug>` (needs the license_keys permission).
-- Product has no test key recorded — rare; usually means license keys were never toggled on.
+- Project doesn't have license keys enabled — surfaces a hint to run `yard projects edit <slug>` (needs the license_keys permission).
+- Project has no test key recorded — rare; usually means license keys were never toggled on.
 
 **Typical use:**
 
 ```sh
 # Capture the test key for use in a curl/integration test.
-KEY=$(yard licenses test-key --product my-app)
+KEY=$(yard licenses test-key --project my-app)
 
 # POST /v1/licenses/validate requires an API key with licenses:validate scope —
 # the license key being validated goes in the body, the API key goes in the header.
@@ -596,7 +596,7 @@ curl -X POST https://api.yard.sh/v1/licenses/validate \
 
 ### yard licenses test-activations list
 
-List active test device activations attached to the product's test license key.
+List active test device activations attached to the project's test license key.
 
 **Output (table):**
 
@@ -608,11 +608,11 @@ ID                                   DEVICE ID                      DEVICE NAME 
 2 active / 5 max (3 slots remaining)
 ```
 
-`--json` emits the raw `ActivationsListResponse` (`{ "activations": [...], "settings": { "enabled", "max_activations", "current_count", "remaining_slots" } }`). When `activations_enabled` is false on the product, the list is empty and the table form prints a one-liner explaining why.
+`--json` emits the raw `ActivationsListResponse` (`{ "activations": [...], "settings": { "enabled", "max_activations", "current_count", "remaining_slots" } }`). When `activations_enabled` is false on the project, the list is empty and the table form prints a one-liner explaining why.
 
 ### yard licenses test-activations clear
 
-Deactivate every test device on the product's test license key. **Real customer activations are not touched** — the call only resets `test_activations` rows.
+Deactivate every test device on the project's test license key. **Real customer activations are not touched** — the call only resets `test_activations` rows.
 
 **Flags:**
 
@@ -625,7 +625,7 @@ Deactivate every test device on the product's test license key. **Real customer 
 yard licenses test-activations clear --yes
 ```
 
-`--json` emits `{ "product_id", "product_slug", "cleared": true }`.
+`--json` emits `{ "project_id", "project_slug", "cleared": true }`.
 
 ---
 
@@ -655,8 +655,8 @@ Sort columns: `createdAt` (default), `lastModified`, `code`, `discountValue`, `s
 ```
 CODE                   DISCOUNT   SCOPE              USES             STATUS     EXPIRES
 --------------------------------------------------------------------------------------------
-LAUNCH20               20%        all products       3 / 100          active     2026-12-31
-INFL7K2M               15%        2 product(s)       0 / unlimited    scheduled  —
+LAUNCH20               20%        all projects       3 / 100          active     2026-12-31
+INFL7K2M               15%        2 project(s)       0 / unlimited    scheduled  —
 
 2 coupons (1 active), 3 redemptions, $15.00 saved for buyers
 ```
@@ -669,11 +669,11 @@ Coupon detail plus redemption analytics. `--json` emits one object: `{ "coupon":
 
 ### yard coupons create \<code\>
 
-**Flags:** `--percent N` | `--amount D`, `--products <csv>`, `--max-uses N`, `--expires <date>`, `--valid-from <date>`, `--subscription-duration <once|forever>`, `--spec <file|->`, `--json`.
+**Flags:** `--percent N` | `--amount D`, `--projects <csv>`, `--max-uses N`, `--expires <date>`, `--valid-from <date>`, `--subscription-duration <once|forever>`, `--spec <file|->`, `--json`.
 
-The code is upper-cased and must be 4-50 alphanumeric characters. `--products` takes slugs **or** UUIDs and implies `scope=specific_products`; without it a coupon applies to everything the seller sells, including products created later.
+The code is upper-cased and must be 4-50 alphanumeric characters. `--projects` takes slugs **or** UUIDs and implies `scope=specific_projects`; without it a coupon applies to everything the seller sells, including projects created later.
 
-`--subscription-duration` only matters for subscription products: `once` discounts the first payment (default), `forever` discounts every renewal.
+`--subscription-duration` only matters for subscription projects: `once` discounts the first payment (default), `forever` discounts every renewal.
 
 **Spec shape:**
 
@@ -681,8 +681,8 @@ The code is upper-cased and must be 4-50 alphanumeric characters. `--products` t
 {
   "discount_type":         "percentage",           // or "fixed_amount"
   "discount_value":        20,                     // percent, or CENTS for fixed_amount
-  "scope":                 "all_products",         // or "specific_products"
-  "product_ids":           ["<uuid>"],             // required for specific_products
+  "scope":                 "all_projects",         // or "specific_projects"
+  "project_ids":           ["<uuid>"],             // required for specific_projects
   "max_uses":              100,                    // omit for unlimited
   "expires_at":            "2026-12-31T23:59:59Z",
   "valid_from":            "2026-12-01T00:00:00Z",
@@ -706,7 +706,7 @@ Partial update: only the fields passed change. Clearing is explicit, because an 
 - `--no-valid-from` — remove the start date
 - `--unlimited-uses` — remove the redemption limit
 
-Also accepts `--activate` / `--deactivate`, `--scope <all_products|specific_products>`, and every `create` flag. `--products` alone re-scopes a coupon; no need to resend `--scope`.
+Also accepts `--activate` / `--deactivate`, `--scope <all_projects|specific_projects>`, and every `create` flag. `--projects` alone re-scopes a coupon; no need to resend `--scope`.
 
 In a spec, `null` clears the same three fields — `{"expires_at": null}` — while omitting a key leaves it alone.
 
@@ -722,11 +722,11 @@ The purchases a coupon was redeemed on. **Flags:** `--json`, `--page N`, `--limi
 
 ### yard coupons validate \<code\>
 
-Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this product — and reports what the buyer would pay. **Flags:** `--product <slug>`, `--tier <uuid>`, `--team <username>` (the team that owns the product; defaults to your active team), `--json`.
+Runs the code through the same check the checkout page performs — active, in date, under its limit, applicable to this project — and reports what the buyer would pay. **Flags:** `--project <slug>`, `--tier <uuid>`, `--team <username>` (the team that owns the project; defaults to your active team), `--json`.
 
-The product is resolved under the team's username, so validating a coupon on another team's public product means naming it: `--team acme`.
+The project is resolved under the team's username, so validating a coupon on another team's public project means naming it: `--team acme`.
 
-The product must be **public** (its Production environment's visibility): checkout never sees drafts or private products, so either answers `PRODUCT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
+The project must be **public** (its Production environment's visibility): checkout never sees drafts or private projects, so either answers `PROJECT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
 
 **Typical agent flows:**
 
@@ -746,16 +746,16 @@ yard coupons list --json \
 echo '{"max_uses": 250, "expires_at": null}' | yard coupons update LAUNCH20 --spec - --json
 
 # Confirm a code works before sending it to customers
-yard coupons validate LAUNCH20 --product my-tool --json | jq '{valid, final_price_cents}'
+yard coupons validate LAUNCH20 --project my-tool --json | jq '{valid, final_price_cents}'
 ```
 
 ---
 
 ## yard customers
 
-Read-only view of the people who bought the seller's products. Without a subcommand, runs `customers list`.
+Read-only view of the people who bought the seller's projects. Without a subcommand, runs `customers list`.
 
-A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear. With `--product`, the aggregation narrows to that one product: the rows are its buyers, and each customer's order count and spend cover only their orders of it.
+A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear. With `--project`, the aggregation narrows to that one project: the rows are its buyers, and each customer's order count and spend cover only their orders of it.
 
 Buyers are identified by an opaque id: `cust_` plus the first 8 characters of their account id. That id is what `customers show` takes; there is no email lookup.
 
@@ -763,7 +763,7 @@ Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is
 
 ### yard customers list
 
-**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--product <slug-or-uuid>`, `--page N`, `--limit N` (max 100).
+**Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--project <slug-or-uuid>`, `--page N`, `--limit N` (max 100).
 
 Sort columns: `lastTransaction` (default), `email`, `username`, `orderCount`, `totalSpent`, `buyerId`.
 
@@ -776,9 +776,9 @@ cust_c0ffee11    bob@example.com                1        $29.00       2026-07-18
 2 customers (1 new this month), $58.00 avg spend, 50.0% repeat rate
 ```
 
-The summary line doesn't move with pagination. It is team-wide by default, and product-wide under `--product`.
+The summary line doesn't move with pagination. It is team-wide by default, and project-wide under `--project`.
 
-Unlike `yard transactions --product` — where the filters narrow the rows but the earnings summary stays team-wide — `yard customers --product` narrows the summary too, because "customers of this product" is a different set from "customers", not a filtered view of it.
+Unlike `yard transactions --project` — where the filters narrow the rows but the earnings summary stays team-wide — `yard customers --project` narrows the summary too, because "customers of this project" is a different set from "customers", not a filtered view of it.
 
 ### yard customers show \<customer-id\>
 
@@ -795,10 +795,10 @@ Two customers can share an 8-character id prefix. The server answers `409` rathe
 yard customers --json | jq -r '.customers | sort_by(.order_count) | reverse | .[:5] | .[] | "\(.email) \(.total_spent_display)"'
 
 # Everything one buyer owns
-yard customers show cust_deadbeef --json | jq -r '.transactions[] | "\(.product_name) \(.created_at)"'
+yard customers show cust_deadbeef --json | jq -r '.transactions[] | "\(.project_name) \(.created_at)"'
 
-# Who bought one specific product, biggest spenders first
-yard customers --product my-tool --sort totalSpent --direction desc --json | jq -r '.customers[] | "\(.email) \(.total_spent_display)"'
+# Who bought one specific project, biggest spenders first
+yard customers --project my-tool --sort totalSpent --direction desc --json | jq -r '.customers[] | "\(.email) \(.total_spent_display)"'
 
 # Who bought in the last month
 yard customers --json | jq -r --arg since "$(date -u -d '30 days ago' +%Y-%m-%d)" \
@@ -817,12 +817,12 @@ Refunds are **not** exposed here — issuing one stays in the dashboard.
 
 ### yard transactions list
 
-**Flags:** `--json`, `--trials`, `--product <slug-or-id>`, `--start <date>`, `--end <date>`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
+**Flags:** `--json`, `--trials`, `--project <slug-or-id>`, `--start <date>`, `--end <date>`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
 
-Sort columns: `date` (default), `amount`, `sellerEarnings`, `productName`. Dates take `YYYY-MM-DD` or RFC3339; a bare `--end` date covers that whole day.
+Sort columns: `date` (default), `amount`, `sellerEarnings`, `projectName`. Dates take `YYYY-MM-DD` or RFC3339; a bare `--end` date covers that whole day.
 
 ```
-ORDER            DATE         PRODUCT                    CUSTOMER              TOTAL       EARNINGS    TYPE           STATUS
+ORDER            DATE         PROJECT                    CUSTOMER              TOTAL       EARNINGS    TYPE           STATUS
 -----------------------------------------------------------------------------------------------------------------------------
 order_1a2b3c4d   2026-07-20   My Tool                    @alice                $29.99      $26.99      purchase       completed
 order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com       $0.00       $0.00       trial          completed
@@ -830,7 +830,7 @@ order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com       $
 2 of 97 transactions · $2699.00 earned, 97 sales, $27.81 avg order, 3 active trials
 ```
 
-`--trials` and the date/product filters narrow the rows **and** the total; the summary figures stay team-wide, matching the dashboard. `TYPE` is derived: `gift`, `trial`, `trial upgrade`, `subscription`, or `purchase`. `STATUS` shows the refund state when there is one, because a refunded sale still has `status: "completed"`.
+`--trials` and the date/project filters narrow the rows **and** the total; the summary figures stay team-wide, matching the dashboard. `TYPE` is derived: `gift`, `trial`, `trial upgrade`, `subscription`, or `purchase`. `STATUS` shows the refund state when there is one, because a refunded sale still has `status: "completed"`.
 
 ### yard transactions show \<order-id\>
 
@@ -845,11 +845,11 @@ Two behaviours to state plainly before running it:
 - **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days still leaves it in the past — add enough days to land in the future. When the new expiry *is* in the future, an expired trial is set back to `active` and the buyer has access again; the response reports this as `"reactivated": true`. If the trial stays expired, the CLI says why.
 - **The buyer is emailed** about the change, same as adjusting it from the dashboard.
 
-A revival is refused in one case: the buyer already has another pending or active trial on that product. The expiry still moves, `reactivated` comes back `false`, and the status stays `expired`.
+A revival is refused in one case: the buyer already has another pending or active trial on that project. The expiry still moves, `reactivated` comes back `false`, and the status stays `expired`.
 
-Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard products tiers edit`.
+Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard projects tiers edit`.
 
-Requires a plan that can sell products (`yard me --json` → `.team_permissions.sell_products`).
+Requires a plan that can sell projects (`yard me --json` → `.team_permissions.sell_projects`).
 
 **Typical agent flows:**
 
@@ -867,8 +867,8 @@ yard transactions list --trials --json \
       '.transactions[] | select(.trial_expires_at != null and .trial_expires_at <= $cutoff) | .id' \
   | xargs -r -n1 -I{} yard transactions trial {} --add-days 3
 
-# What one product earned this month
-yard transactions list --product my-tool --start 2026-07-01 --json \
+# What one project earned this month
+yard transactions list --project my-tool --start 2026-07-01 --json \
   | jq '[.transactions[].seller_earnings_cents] | add'
 
 # Which sales used a coupon
@@ -929,8 +929,8 @@ settings.json, since it is the project's identity.
 
 Common flags:
 
-- `--product <slug-or-uuid>` — identify the product explicitly (otherwise read from `.yard/settings.json`; if that's missing and the user has exactly one product, it's auto-selected)
-- `--project <path>` — project root override (defaults to walking up from cwd for a `.yard/` directory)
+- `--project <slug-or-uuid>` — identify the project explicitly (otherwise read from `.yard/settings.json`; if that's missing and the user has exactly one project, it's auto-selected)
+- `--dir <path>` — directory containing `.yard/` (defaults to walking up from cwd)
 - `--release <id|tag>` — which release to act on (defaults to your open draft)
 - `--json` — emit a single machine-readable JSON object on stdout; logs go to stderr
 - `--yes`, `-y` — skip confirmation prompts (`push --prune`, and pushing into a release attached to an environment)
@@ -952,7 +952,7 @@ environment is already serving is live on save.
 - `1` — fatal error (auth, network, validation, API error)
 - `2` — partial success (only produced by `push` when some files uploaded and others failed)
 
-**Project discovery:** every project command walks upward from cwd looking for `.yard/settings.json` (same mechanism as `git`'s `.git` lookup). The directory containing it is the project root. The CLI's own config dir at `~/.yard/` is not matched because it only holds `config.json`, never `settings.json`. `--project <path>` overrides this.
+**Project discovery:** every project command walks upward from cwd looking for `.yard/settings.json` (same mechanism as `git`'s `.git` lookup). That directory is the working directory the command runs against. The CLI's own config dir at `~/.yard/` is not matched because it only holds `config.json`, never `settings.json`. `--dir <path>` overrides this.
 
 **Landing-page constraints enforced client-side before any HTTP:**
 
@@ -976,9 +976,9 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 
 **Behavior:**
 
-1. Resolves the product (flag → existing settings → sole product → error).
-2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 2, "product_slug": "<slug>", "ignore_files": []}`.
-3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh product starts from what shipped rather than from a blank page).
+1. Resolves the project (flag → existing settings → sole project → error).
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 2, "project_slug": "<slug>", "ignore_files": []}`.
+3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh project starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.
 6. Prints next steps (edit → `yard push` → `yard releases publish <tag>`) and the preview URL.
@@ -990,12 +990,12 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 ```json
 {
   "project_root": "/home/alice/my-landing",
-  "product": "my-slug",
+  "project": "my-slug",
   "source": "draft 9f3e1c2a",
   "release": "9f3e1c2a-…",
   "written": ["index.html", "styles.css"],
   "skipped": [],
-  "preview_url": "https://yard.sh/dashboard/products/my-slug/landing-page",
+  "preview_url": "https://yard.sh/dashboard/projects/my-slug/landing-page",
   "live_url": null
 }
 ```
@@ -1023,7 +1023,7 @@ whether a redeploy is still catching up.
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
   "draft": true,
@@ -1058,7 +1058,7 @@ List a release's files, grouped by bundle. Defaults to your open draft;
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
   "page": [
@@ -1117,7 +1117,7 @@ GitHub_.
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
   "page": {
@@ -1134,7 +1134,7 @@ GitHub_.
     "deleted": [],
     "remote_only": []
   },
-  "preview_url": "https://yard.sh/dashboard/products/my-slug/releases/9f3e1c2a-…/landing-page",
+  "preview_url": "https://yard.sh/dashboard/projects/my-slug/releases/9f3e1c2a-…/landing-page",
   "live_url": null,
   "errors": []
 }
@@ -1169,7 +1169,7 @@ open draft; pass `--release <id|tag>` for a specific release.
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
   "page": {
@@ -1195,9 +1195,9 @@ environment is serving it.
 
 ## yard env
 
-Manage a product's environments and choose what each one serves.
+Manage a project's environments and choose what each one serves.
 
-A **release** is one product-wide snapshot — landing page, pricing, downloads,
+A **release** is one project-wide snapshot — landing page, pricing, downloads,
 and the web-app bundle. An **environment** is a *set* of releases serving one of
 them: the newest member, unless a pointer says otherwise. Attaching a release to
 an environment is the deploy moment. Only `production` always exists, and only
@@ -1212,7 +1212,7 @@ are how it moves between them:
 | deployed | `env deploy` | takes over |
 | pinned | `env pin` | joins the set, does **not** take over |
 
-Shared flags: `--product <slug-or-uuid>`, `--project <path>`, `--json`. Every
+Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--json`. Every
 `<release>` argument accepts a version tag or a release UUID. Mutations need the
 `environments` permission — check `yard me --json` → `.team_permissions`.
 
@@ -1233,10 +1233,10 @@ warning line after the table with its error. JSON:
 
 ```json
 {
-  "product": "my-slug",
+  "project": "my-slug",
   "environments": [
     {
-      "id": "<uuid>", "product_id": "<uuid>", "slug": "production",
+      "id": "<uuid>", "project_id": "<uuid>", "slug": "production",
       "protected": true, "visibility": "public",
       "active_release_id": "<uuid>", "pinned": true,
       "created_at": "…", "compute_status": "up_to_date",
@@ -1267,7 +1267,7 @@ changed.
 
 Creates an environment. Names are 2-60 characters: letters, digits, and hyphens,
 starting with a letter, compared case-insensitively. `production` always exists
-and cannot be recreated. How many environments a product may have is
+and cannot be recreated. How many environments a project may have is
 server-enforced via `max_environments`, counting `production` (currently Basic:
 1 — no environments of your own; Pro: 10).
 
@@ -1283,16 +1283,16 @@ resolving. `production` refuses (400); an existing name conflicts (409).
 Sets who may view the environment's URLs. `private` (the default for custom
 environments) is owner-only: the edge sends everyone else through sign-in.
 `public` means anyone with the URL can view the environment's landing page and
-app — no sign-in, no purchase. `production` works too, and is how a product
-goes private: its visibility is the storefront's. The product's stage still
-trumps — a draft product serves nothing publicly regardless. The seller gets
+app — no sign-in, no purchase. `production` works too, and is how a project
+goes private: its visibility is the storefront's. The project's stage still
+trumps — a draft project serves nothing publicly regardless. The seller gets
 an in-app + email notification on every flip.
 
 ### yard env delete \<env\> [-y]
 
 Deletes the environment and everything scoped to it: its files, its app Worker,
 and its app database (immediately — no grace window). Releases are
-product-scoped, so they survive. Prompts first; pass `-y`/`--yes` in scripts.
+project-scoped, so they survive. Prompts first; pass `-y`/`--yes` in scripts.
 `production` is protected and refuses.
 
 ### yard env attach \<env\> \<release\> [--no-serve]
@@ -1307,7 +1307,7 @@ Attaching the newest release also clears an unpinned pointer left by an earlier
 ### yard env detach \<env\> \<release\>
 
 Removes a release from the set — "stop serving this". The release survives; it
-belongs to the product. Refused (409) when it would leave the environment with
+belongs to the project. Refused (409) when it would leave the environment with
 nothing to serve.
 
 ### yard env deploy \<env\> \<release\>
@@ -1370,11 +1370,11 @@ yard env list --json | jq '.environments[] | {slug, serving: .serving_release.ve
 
 ## yard app
 
-Manage a product's running app — its URL, logs, secrets and database (see
+Manage a project's running app — its URL, logs, secrets and database (see
 `compute-and-database.md` for the runtime model). App CODE is not managed here: `yard push`
 uploads it into a release, and attaching that release to an environment is what
 deploys it. Requires the `compute` permission (Pro). Shared flags:
-`--product <slug-or-uuid>`, `--project <path>`, `--env <slug>` (default
+`--project <slug-or-uuid>`, `--dir <path>`, `--env <slug>` (default
 `production`), `--json`.
 
 **Bundle constraints enforced client-side before any HTTP:** ≤200 files,
@@ -1389,8 +1389,8 @@ them inside the bundle still deploy.
 ### yard app init
 
 Scaffolds a zero-dependency working app (notes API + vanilla frontend +
-first migration) into `./app` (`--dir <name>` to change). A `README.md`
-describing the workflow is written at the **project root**, never inside the
+first migration) into `./app` (`--app-dir <name>` to change). A `README.md`
+describing the workflow is written at the top of the **working directory**, never inside the
 bundle, and is write-if-absent (an existing file is skipped and reported).
 Records the bundle dir and deploy settings in the `app` block of
 `.yard/settings.json` — `{"dir": "app", "access": "authenticated",
