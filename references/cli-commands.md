@@ -1281,7 +1281,8 @@ resolving. `production` refuses (400); an existing name conflicts (409).
 ### yard env visibility \<env\> \<public|private\>
 
 Sets who may view the environment's URLs. `private` (the default for custom
-environments) is owner-only: the edge sends everyone else through sign-in.
+environments) admits every member of the owning team — `owner` and `admin`
+alike — and nobody else: the edge sends everyone else through sign-in.
 `public` means anyone with the URL can view the environment's landing page and
 app — no sign-in, no purchase. `production` works too, and is how a project
 goes private: its visibility is the storefront's. The project's stage still
@@ -1401,8 +1402,8 @@ project isn't yard-initialized (a note says to run `yard init`). JSON:
 
 ### yard app open
 
-Prints the environment's URL and opens it in a browser. Non-production URLs
-are owner-only previews (sign-in enforced at the edge). JSON:
+Prints the environment's URL and opens it in a browser. A private
+environment's URL is a team-only preview (sign-in enforced at the edge). JSON:
 `{"environment": "...", "url": "...", "deployed": true}`.
 
 ### yard app check

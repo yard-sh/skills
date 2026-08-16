@@ -199,7 +199,7 @@ yard app check                                 # validate bundle + lint (no netw
 yard push                                      # uploads the bundle into your draft release
 yard env create preview                        # once — production is the only built-in environment
 yard releases publish v1.0.0 --env preview     # tag the draft and deploy it to your environment
-yard app open --env preview                    # browse it (owner-only)
+yard app open --env preview                    # browse it (your team only)
 yard app logs --env preview                    # console output + exceptions
 yard releases promote v1.0.0 --to production   # go live
 ```
@@ -221,9 +221,10 @@ up to date while it catches up.
 
 Every environment has a real, browsable URL. Opening
 `https://<username>.yard.sh/<slug>/@preview/app/` signs the visitor in (if
-needed), verifies they **own the project**, and serves the `preview`
-environment's app. Drop the `/@preview` segment to go back to production.
-Non-owners get an explanatory 403 — these URLs are safe to have in scrollback
+needed), verifies they **belong to the team that owns the project**, and serves
+the `preview` environment's app. Drop the `/@preview` segment to go back to
+production. Everyone outside the team gets an explanatory 403 — these URLs are
+safe to have in scrollback
 and, by default, not shareable. `yard env visibility <env> public` opens an
 environment to anyone with the URL (no sign-in, no purchase); `private` closes
 it again.
@@ -234,10 +235,11 @@ without switching environments, and a URL always says which environment it
 serves. An environment with no app deployed says so rather than quietly
 serving production's.
 
-A `draft` (or archived) project's `/app/` works the same way **for the
-owner** — as does a project whose Production environment is private
+A `draft` (or archived) project's `/app/` works the same way **for the owning
+team** — as does a project whose Production environment is private
 (`yard env visibility production private`): anonymous visitors are sent
-through sign-in, non-owners get an explanatory 403, the owner gets the app.
+through sign-in, everyone outside the team gets an explanatory 403, and any
+team member gets the app.
 You can build and verify everything before ever advancing the project stage
 (stage changes are one-way).
 
