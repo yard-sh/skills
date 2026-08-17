@@ -267,11 +267,15 @@ the live build:
 GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&environment=beta
 ```
 
-Any valid license key for the project can read any of its environments — that is
-how beta channels work: hand testers the license key they already have and point
-their updater at a beta environment. Unpublished work is never reachable: draft
-releases can't belong to any environment, and each environment only serves
-releases attached to it. A slug that doesn't exist returns `404`.
+Environment **visibility** decides who can read a channel. A `public`
+environment answers any valid license key for the project — that is how open
+beta channels work: hand testers the license key they already have and point
+their updater at the beta environment. A `private` environment — Production
+included — answers only license keys held by a member of the owning team (and
+the project's test license key); everyone else gets the same `404` an unknown
+slug gets, so a private channel's existence never leaks. Unpublished work is
+never reachable: draft releases can't belong to any environment, and each
+environment only serves releases attached to it.
 
 **Response** (shape mirrors the GitHub Releases API for easy adoption of
 existing tooling):
@@ -306,8 +310,10 @@ Errors:
 - `400 Invalid license key format` — the key doesn't match the expected format.
 - `403 Purchase not completed` — the license exists but the buyer's payment hasn't finalized.
 - `403 License has been refunded` — the seller refunded the buyer; access revoked.
+- `403 Trial period has expired` — the key came from a trial that has ended.
 - `404 No releases found` — the project has no synced, non-archived release yet.
 - `404 License key not found` — the key isn't in our system.
+- `404 Environment "…" not found` — the slug doesn't exist, or the environment is private and the key's holder is not a member of the owning team (deliberately indistinguishable).
 
 ### Download a release file
 
@@ -320,6 +326,49 @@ GET https://api.yard.sh/v1/updates/latest/download/{filename}?license_key=<licen
 The endpoint returns `302 Found` with a presigned URL pointing to the storage
 bucket; follow the redirect (most HTTP clients do this automatically). The
 presigned URL expires after 5 minutes.
+
+### List environments (update channels)
+
+```
+GET https://api.yard.sh/v1/updates/environments?license_key=<license_key>
+```
+
+Lists the environments the key may see, so an app can offer a channel picker.
+Private environments are simply omitted for non-members; the list can be empty.
+
+```json
+{
+  "environments": [
+    { "slug": "Production", "visibility": "public", "protected": true,
+      "current_version": "v1.4.0", "current_published_at": "2026-04-28T16:32:11Z" },
+    { "slug": "beta", "visibility": "public", "protected": false,
+      "current_version": "v1.5.0-beta.1", "current_published_at": "2026-05-02T09:00:00Z" }
+  ]
+}
+```
+
+### List releases in an environment
+
+```
+GET https://api.yard.sh/v1/updates/releases?license_key=<license_key>&environment=beta
+```
+
+Returns a **bare JSON array** of releases attached to the environment, newest
+first, each in the same GitHub-Release shape as `/v1/updates/latest`. Archived
+releases are excluded (that is also what keeps versions unique in download
+URLs). Paginate with `page` (default 1) and `limit` (default 50, max 100).
+Every asset's `browser_download_url` already carries the license key, version,
+and environment — use it verbatim.
+
+### Download a file from a specific release
+
+```
+GET https://api.yard.sh/v1/updates/releases/{version}/download/{filename}?license_key=<license_key>&environment=beta
+```
+
+Downloads by version rather than "latest". The release must be attached to the
+requested environment, or the endpoint returns `404 Release not found`. Same
+`302`-to-presigned-URL behavior as the latest-download endpoint.
 
 ---
 

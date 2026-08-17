@@ -88,6 +88,11 @@ Built-in updaters in the seller's software can reach these directly with just a 
 |---|---|---|
 | `GET` | `/v1/updates/latest?license_key={key}` | Check for the latest release by license key |
 | `GET` | `/v1/updates/latest/download/{filename}?license_key={key}` | Download the latest release file by license key |
+| `GET` | `/v1/updates/environments?license_key={key}` | List the environments (update channels) the key may see |
+| `GET` | `/v1/updates/releases?license_key={key}` | List an environment's releases (GitHub Releases list shape) |
+| `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release in an environment |
+
+All of these accept an optional `environment` parameter (default `production`). Private environments answer only license keys held by a member of the project's owning team (the project's test key always passes); everyone else gets a 404, as if the environment doesn't exist.
 
 ---
 
