@@ -220,8 +220,10 @@ Notes:
   (tier count, seat-based pricing, trials — all plan-gated as usual); existing
   subscribers get the standard 30-day price-change notice when a sync changes
   their tier's price.
-- Emptying `tiers` on a project that's charging customers fails the sync
-  rather than taking the project off sale.
+- Emptying `tiers` takes the project off sale and applies like any other
+  change — a project with no tiers is a landing page that isn't for sale, which
+  is a supported state. Existing purchases and subscriptions keep resolving
+  against the tiers they were bought on.
 - Tag content is immutable, so a settings.json change lands with the **next**
   release (or via Re-sync after force-moving a tag).
 - `yard push` applies the `pricing` section the same way — CLI and GitHub sync
