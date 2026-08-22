@@ -395,7 +395,8 @@ For everything an agent needs to **author** the page itself — how to read proj
   "ignore_files": ["*.bak", "drafts/**"],
   "app": { "dir": "app", "access": "authenticated", "database": true },
   "landing_page": { "dir": ".yard/landing-page" },
-  "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] }
+  "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] },
+  "downloads": { "buttons": [{ "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" }] }
 }
 ```
 
@@ -406,6 +407,7 @@ For everything an agent needs to **author** the page itself — how to read proj
 - `app.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
 - `landing_page.dir` — landing-page directory relative to the working directory (default `.yard/landing-page`).
 - `pricing.tiers` — optional; when present, `yard push` and GitHub release sync replace the release's pricing tiers to match the array exactly (tiers missing from the file are removed). Absent = pricing is managed from the dashboard as usual. Full shape and rules: [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_.
+- `downloads.buttons` — optional; when present, `yard push` and GitHub release sync replace the release's download buttons to match the array exactly. Each rule matches release files by `condition` (`contains` | `starts_with` | `ends_with` | `has_extension`) and `value` (1-255 chars) and labels the button (`label`, 1-50 chars); max 10 rules. Absent = download buttons are managed from the dashboard as usual.
 
 All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. A leftover `yard.json` (the retired app manifest) in the bundle is skipped. Settings files below `"version": 3` are rejected, not upgraded: they name the entity `product_slug`, which no longer binds to anything — rename the key to `project_slug` and set `"version": 3`, or re-run `yard init`.
 

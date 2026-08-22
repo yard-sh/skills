@@ -185,6 +185,7 @@ that file declares:
 | `app.dir` | The web-app bundle in that directory (must contain `_worker.js`) becomes the release's app |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
+| `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |
 
 Each section is independent, and **absent means "not managed from GitHub"**:
 the release carries that part forward unchanged, and removing it stays a
@@ -210,6 +211,12 @@ The `pricing` section uses the release-document tier shape (note the nested
         "seat_type": "per_seat", "min_seats": 2, "yearly_discount_percent": 20,
         "free_trial": { "enabled": true, "days": 14, "requires_card": true } }
     ]
+  },
+  "downloads": {
+    "buttons": [
+      { "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" },
+      { "condition": "has_extension", "value": "exe", "label": "Download for Windows" }
+    ]
   }
 }
 ```
@@ -226,8 +233,13 @@ Notes:
   against the tiers they were bought on.
 - Tag content is immutable, so a settings.json change lands with the **next**
   release (or via Re-sync after force-moving a tag).
-- `yard push` applies the `pricing` section the same way — CLI and GitHub sync
-  read the same file identically.
+- `downloads.buttons` rules match release files by `condition`
+  (`contains` | `starts_with` | `ends_with` | `has_extension`, case-insensitive)
+  and `value` (1-255 chars), and label the button (`label`, 1-50 chars); max 10
+  rules. Rules that match none of the release's files trigger the standard
+  unmatched-button warning email on publish or sync.
+- `yard push` applies the `pricing` and `downloads` sections the same way — CLI
+  and GitHub sync read the same file identically.
 
 ### Local edits and Re-sync
 
