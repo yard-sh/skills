@@ -118,7 +118,7 @@ sell anything`, and every seller command will fail until they do.
 
 There are **two** grant maps, and picking the wrong one gives the wrong answer:
 
-- **`team_permissions` is the source of truth for every seller feature** — projects, tiers, coupons, license keys, custom pages, compute, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
+- **`team_permissions` is the source of truth for every seller feature** — projects, tiers, coupons, license keys, custom pages, service, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
 - `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's projects may do.
 
 The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's projects, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
@@ -389,7 +389,7 @@ Manage releases for a project. The CLI exposes `publish` and `promote` — list/
 
 ### yard releases publish [tag]
 
-Publish a draft release under a tag, with optional file assets. Files upload into the draft first, then the draft is published and deployed — so a single failed asset never leaves a half-described release, and anything `yard push` already staged in the draft — landing page and app bundle alike — ships with it.
+Publish a draft release under a tag, with optional file assets. Files upload into the draft first, then the draft is published and deployed — so a single failed asset never leaves a half-described release, and anything `yard push` already staged in the draft, landing page and service bundle alike, ships with it.
 
 **Flags:**
 
@@ -466,7 +466,7 @@ EOF
 
 ### yard releases promote <tag>
 
-Attach an already-published release to another environment, which then serves exactly what that release holds — landing page, pricing, download buttons, app bundle, and downloadable files.
+Attach an already-published release to another environment, which then serves exactly what that release holds — landing page, pricing, download buttons, service bundle, and downloadable files.
 
 **Flags:**
 
@@ -487,7 +487,7 @@ yard releases promote v1.4.0 --to production       # ships it
 **`--json` output** (the membership-change result):
 
 ```json
-{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["pricing", "identity", "page", "app", "releases"]}
+{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["pricing", "identity", "page", "service", "releases"]}
 ```
 
 For full download server schemas (license-key path and API-key path), see [references/releases-and-updates.md](releases-and-updates.md).
@@ -919,11 +919,11 @@ Update the CLI to the latest version.
 
 The project sync commands. One set covers **everything** a project sends to
 Yard — three bundles: the landing page in its directory (`landing_page.dir`
-in `.yard/settings.json`, default `.yard/landing-page/`), the web app in the
-directory `yard app init` recorded (`app.dir`, else `./dist`), and
-`.yard/settings.json` itself (the `config` bundle — how deploys read the
-app's `access`/`database`, so an app-settings change is a settings edit plus
-a push). A project with only some of the bundles simply syncs what it has.
+in `.yard/settings.json`, default `.yard/landing-page/`), the service bundle
+in the directory `yard service init` recorded (`service.dir`, else `./dist`),
+and `.yard/settings.json` itself (the `config` bundle — how deploys read the
+service's `access`/`database`, so a service-settings change is a settings
+edit plus a push). A project with only some of the bundles simply syncs what it has.
 The config bundle is **push-only**: `yard pull` never overwrites your local
 settings.json, since it is the project's identity.
 
@@ -961,7 +961,7 @@ environment is already serving is live on save.
 - Per-file ≤ 1 MB, bundle ≤ 5 MB total, ≤ 20 files
 - `index.html` required when publishing
 
-**App-bundle constraints:** ≤200 files, ≤5 MB per file, ≤25 MB total, paths nest
+**Service-bundle constraints:** ≤200 files, ≤5 MB per file, ≤25 MB total, paths nest
 ≤8 levels, extensions in `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp
 .gif .woff2 .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus
 `_worker.js`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
@@ -977,7 +977,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 **Behavior:**
 
 1. Resolves the project (flag → existing settings → sole project → error).
-2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 2, "project_slug": "<slug>", "ignore_files": []}`.
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 4, "project_slug": "<slug>", "ignore_files": []}`.
 3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh project starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.
@@ -1009,7 +1009,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 Print the diff between local files and a release without writing anything, per
 bundle — the exact set `yard push` would upload. Defaults to your open draft.
 
-Also lists the environments serving that release, with each one's compute
+Also lists the environments serving that release, with each one's deploy
 status (`up_to_date`, `stale`, `updating`, `failed`), so an agent can tell
 whether a redeploy is still catching up.
 
@@ -1033,14 +1033,14 @@ whether a redeploy is still catching up.
     "unchanged": ["styles.css"],
     "remote_only": ["old.html"]
   },
-  "app": {
-    "dir": "/home/alice/proj/app",
+  "service": {
+    "dir": "/home/alice/proj/service",
     "to_upload": [],
     "unchanged": ["_worker.js"],
     "remote_only": []
   },
   "serving": [
-    {"environment": "Production", "compute": "stale"}
+    {"environment": "production", "deploy": "stale"}
   ]
 }
 ```
@@ -1071,10 +1071,10 @@ List a release's files, grouped by bundle. Defaults to your open draft;
       "content_hash": "…"
     }
   ],
-  "app": [
+  "service": [
     {
       "id": "…",
-      "artifact": "app",
+      "artifact": "service",
       "path": "_worker.js",
       "content_type": "application/javascript; charset=utf-8",
       "size_bytes": 2048,
@@ -1102,7 +1102,7 @@ published release.
 
 1. Walk each bundle directory that exists, skipping dotfiles and (for the landing page) `ignore_files` patterns from `settings.json`.
 2. Validate every bundle client-side. Validation happens for all bundles before any upload, so a bad file never leaves the release half-updated.
-3. Compare each local file's SHA-256 against the release's; upload the ones that differ (`PUT …/custom-page/files/{path}?release=` and `PUT …/app/files/{path}?release=`).
+3. Compare each local file's SHA-256 against the release's; upload the ones that differ (`PUT …/custom-page/files/{path}?release=` and `PUT …/service/files/{path}?release=`).
 4. If `--prune`, `DELETE` release files not present locally (one confirmation covering every bundle, unless `--yes` or `--json`).
 5. Print `Preview:`. Going live is a separate step: `yard releases publish <tag>`.
 
@@ -1127,8 +1127,8 @@ GitHub_.
     "deleted": [],
     "remote_only": []
   },
-  "app": {
-    "dir": "/home/alice/proj/app",
+  "service": {
+    "dir": "/home/alice/proj/service",
     "uploaded": ["_worker.js"],
     "skipped": [],
     "deleted": [],
@@ -1152,8 +1152,8 @@ removed paths appear in `deleted`.
 ### yard pull
 
 Download a release's files into the project — the landing page into
-`.yard/landing-page/` and the app into the recorded bundle dir. Defaults to your
-open draft; pass `--release <id|tag>` for a specific release.
+`.yard/landing-page/` and the service bundle into the recorded bundle dir.
+Defaults to your open draft; pass `--release <id|tag>` for a specific release.
 
 **Flags:**
 
@@ -1163,7 +1163,7 @@ open draft; pass `--release <id|tag>` for a specific release.
 
 1. Resolves project root (with `.yard/` discovery allowed to be missing — `pull` is useful for bootstrapping a fresh checkout).
 2. For each bundle, downloads and writes each file unless the local file already has the same SHA-256 (skipped). Subdirectories are created as needed.
-3. The landing-page directory is created on demand; an app directory is not invented, since it belongs to the seller's build.
+3. The landing-page directory is created on demand; a service directory is not invented, since it belongs to the seller's build.
 
 **JSON output:**
 
@@ -1198,7 +1198,7 @@ environment is serving it.
 Manage a project's environments and choose what each one serves.
 
 A **release** is one project-wide snapshot — landing page, pricing, downloads,
-and the web-app bundle. An **environment** is a *set* of releases serving one of
+and the service bundle. An **environment** is a *set* of releases serving one of
 them: the newest member, unless a pointer says otherwise. Attaching a release to
 an environment is the deploy moment. Only `production` always exists, and only
 it is protected.
@@ -1221,14 +1221,14 @@ Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--json`. Every
 Lists the environments with what each serves and why.
 
 ```
-ENVIRONMENT          SERVING                  RELEASES  VISIBILITY  COMPUTE    PROTECTED
+ENVIRONMENT          SERVING                  RELEASES  VISIBILITY  DEPLOY     PROTECTED
 ------------------------------------------------------------------------------------------
 production           1.4.0 (pinned)           3         public                 yes
 staging              1.3.0 (deployed)         2         private     stale
 preview              -                        0         public
 ```
 
-`COMPUTE` is blank when the app is up to date; a `failed` environment gets a
+`DEPLOY` is blank when the service is up to date; a `failed` environment gets a
 warning line after the table with its error. JSON:
 
 ```json
@@ -1239,9 +1239,9 @@ warning line after the table with its error. JSON:
       "id": "<uuid>", "project_id": "<uuid>", "slug": "production",
       "protected": true, "visibility": "public",
       "active_release_id": "<uuid>", "pinned": true,
-      "created_at": "…", "compute_status": "up_to_date",
+      "created_at": "…", "deploy_status": "up_to_date",
       "page_url": "https://acme.yard.sh/my-slug/",
-      "app_url": "https://acme.yard.sh/my-slug/app/",
+      "service_url": "https://acme.yard.sh/my-slug/service/",
       "serving_release": { "id": "<uuid>", "version": "v1.4.0", "published_at": "…" },
       "releases": [
         { "id": "<uuid>", "version": "v1.4.0", "published_at": "…", "is_archived": false, "attached_at": "…" }
@@ -1256,12 +1256,12 @@ newest-wins; set with `pinned: false` means deployed; set with `pinned: true`
 means pinned. `serving_release` is what it serves right now (null when nothing
 has been deployed), and `releases` is the membership set, newest first.
 
-`compute_status` reports how the environment's running app compares to that
+`deploy_status` reports how the environment's running service compares to that
 release: `up_to_date`, `stale` (the release changed and the redeploy hasn't
-finished), `updating`, or `failed` (with `compute_error` saying why; the
-environment keeps serving what it had). Yard drives this itself — editing a
-release an environment serves triggers exactly one redeploy, however many files
-changed.
+finished), `updating`, or `failed` (with `deploy_error` saying why; the
+environment keeps serving what it had). `deploy_synced_at` is when the last
+redeploy settled as up to date. Yard drives this itself — editing a release an
+environment serves triggers exactly one redeploy, however many files changed.
 
 ### yard env create \<env\>
 
@@ -1284,15 +1284,15 @@ Sets who may view the environment's URLs. `private` (the default for custom
 environments) admits every member of the owning team — `owner` and `admin`
 alike — and nobody else: the edge sends everyone else through sign-in.
 `public` means anyone with the URL can view the environment's landing page and
-app — no sign-in, no purchase. `production` works too, and is how a project
+service, with no sign-in and no purchase. `production` works too, and is how a project
 goes private: its visibility is the storefront's. The project's stage still
 trumps — a draft project serves nothing publicly regardless. The seller gets
 an in-app + email notification on every flip.
 
 ### yard env delete \<env\> [-y]
 
-Deletes the environment and everything scoped to it: its files, its app Worker,
-and its app database (immediately — no grace window). Releases are
+Deletes the environment and everything scoped to it: its files, its service,
+and its service database (immediately, with no grace window). Releases are
 project-scoped, so they survive. Prompts first; pass `-y`/`--yes` in scripts.
 `production` is protected and refuses.
 
@@ -1339,7 +1339,7 @@ Prefer `env deploy` when you can name the release.
 JSON:
 `{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": [...]}`.
 Human output ends with what the environment now serves, plus the live and
-`/app/` URLs when the target was `production`.
+`/service/` URLs when the target was `production`.
 
 ### Recipes
 
@@ -1364,19 +1364,19 @@ yard releases publish v1.5.0-rc1 --env preview
 yard env visibility preview public   # anyone with the URL can now view it
 
 # What is each environment serving, and why?
-yard env list --json | jq '.environments[] | {slug, serving: .serving_release.version, pinned, compute_status}'
+yard env list --json | jq '.environments[] | {slug, serving: .serving_release.version, pinned, deploy_status}'
 ```
 
 ---
 
-## yard app
+## yard service
 
-Manage a project's running app — its URL, logs, secrets and database (see
-`compute-and-database.md` for the runtime model). App CODE is not managed here: `yard push`
-uploads it into a release, and attaching that release to an environment is what
-deploys it. Requires the `compute` permission (Pro). Shared flags:
-`--project <slug-or-uuid>`, `--dir <path>`, `--env <slug>` (default
-`production`), `--json`.
+Manage a project's running service: its URL, logs, secrets and database (see
+`service-and-database.md` for the runtime model). Service CODE is not managed
+here: `yard push` uploads it into a release, and attaching that release to an
+environment is what deploys it. Requires the `service` permission (Pro).
+Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--env <slug>`
+(default `production`), `--json`.
 
 **Bundle constraints enforced client-side before any HTTP:** ≤200 files,
 ≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
@@ -1387,53 +1387,54 @@ bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
 manifest) are skipped (reported as ignored), so old scaffolds that carried
 them inside the bundle still deploy.
 
-### yard app init
+### yard service init
 
-Scaffolds a zero-dependency working app (notes API + vanilla frontend +
-first migration) into `./app` (`--app-dir <name>` to change). A `README.md`
-describing the workflow is written at the top of the **working directory**, never inside the
-bundle, and is write-if-absent (an existing file is skipped and reported).
-Records the bundle dir and deploy settings in the `app` block of
-`.yard/settings.json` — `{"dir": "app", "access": "authenticated",
-"database": true}` — bootstrapping an unlinked settings file first when the
-project isn't yard-initialized (a note says to run `yard init`). JSON:
-`{"dir": "app", "written": [...], "skipped": [...], "app_dir_recorded": true,
+Scaffolds a zero-dependency working service (notes API + vanilla frontend +
+first migration) into `./service` (`--service-dir <name>` to change). A
+`README.md` describing the workflow is written at the top of the **working
+directory**, never inside the bundle, and is write-if-absent (an existing
+file is skipped and reported). Records the bundle dir and deploy settings in
+the `service` block of `.yard/settings.json`, as `{"dir": "service",
+"access": "authenticated", "database": true}`, bootstrapping an unlinked
+settings file first when the project isn't yard-initialized (a note says to
+run `yard init`). JSON: `{"dir": "service", "written": [...],
+"skipped": [...], "service_dir_recorded": true,
 "settings_bootstrapped": false}`.
 
-### yard app open
+### yard service open
 
 Prints the environment's URL and opens it in a browser. A private
 environment's URL is a team-only preview (sign-in enforced at the edge). JSON:
 `{"environment": "...", "url": "...", "deployed": true}`.
 
-### yard app check
+### yard service check
 
 Validates the local bundle exactly like a deploy would (limits, extensions,
-`_worker.js` presence, the `app` block of `.yard/settings.json`) plus lint
+`_worker.js` presence, the `service` block of `.yard/settings.json`) plus lint
 warnings for root-absolute `href`/`src`/`fetch("/…")` URLs — no network, no
 login. JSON: `{"dir": "...", "files": 7, "total_bytes": 5494, "ignored": [...],
 "warnings": [...], "access": "authenticated", "database": true}`.
 
-### yard app secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
+### yard service secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
 
 Per-environment secrets that become `env.<NAME>` bindings on the **next
 deploy**. Names UPPER_SNAKE (≤32 per environment, ≤4 KB each; `DB` and
 `ASSETS` reserved). Write-only: `list` shows names and timestamps, never
 values. Secrets don't promote between environments.
 
-### yard app db query [sql]
+### yard service db query [sql]
 
 Runs SQL against the environment's database and prints rows as JSON. SQL
 from the inline argument, `--file <path>`, or stdin (`-`). Caps: 10 kB SQL,
 1000 rows returned. The `_yard_migrations` table records applied
 migrations.
 
-### yard app logs
+### yard service logs
 
-Recent Worker output (console lines, uncaught exceptions, abnormal request
+Recent service output (console lines, uncaught exceptions, abnormal request
 outcomes), newest window ≤24 h. `--limit <n>` (cap 500), `--since <dur>`
-(e.g. `30m`, `2h`). An app that has never logged returns an empty list, not
-an error. Logs appear a few seconds after the request.
+(e.g. `30m`, `2h`). A service that has never logged returns an empty list,
+not an error. Logs appear a few seconds after the request.
 
 ---
 

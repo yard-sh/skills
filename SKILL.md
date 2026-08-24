@@ -9,7 +9,7 @@ metadata:
     - references/api-reference.md
     - references/landing-pages.md
     - references/releases-and-updates.md
-    - references/compute-and-database.md
+    - references/service-and-database.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
@@ -75,7 +75,7 @@ When a user asks to get onboarded to Yard, set up a new project, run `yard init`
       - Recommend a **launch stage**. Every new project is created in `draft` (not visible to buyers). After setup, the seller advances the stage from the Yard dashboard — stage transitions are **forward-only** (`draft` → `early_access` → `published`) and `published` is final. Two reasonable launch paths:
         - **Straight to `published`** — for finished projects with no soft-launch period. Skip `early_access` entirely.
         - **`early_access` first, then `published` later** — for projects the seller wants to ship but signal as still being polished. Optionally pair with `early_access_discount_percent` (1–100) so early adopters get a launch discount that disappears when the project moves to `published`. The discount field is set in the dashboard; `yard init`/`yard projects edit` don't surface it today.
-   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.team_permissions` before suggesting Pro-only items), and the recommended launch stage (and any early-access discount). **If the project is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). **If the project is a web app / SaaS** (the buyer uses it in the browser), verify the `compute` permission in `yard me --json` → `.team_permissions` **now, at planning time** — web-app hosting is Pro-only and failing later at `yard push` wastes the whole build; the plan must follow ["Web app / SaaS scope"](#web-app--saas-scope) below. Then ask the user to **accept**, **edit**, or **switch to guided mode**.
+   3. Present the recommendation as a short plan: title, pricing model, tier(s), seat type, price(s), any Pro requirements (check with `yard me --json` → `.team_permissions` before suggesting Pro-only items), and the recommended launch stage (and any early-access discount). **If the project is locally-installed software** (desktop app, CLI tool, native binary), the plan must also include (a) running `yard releases publish` for each shipped version and (b) wiring `GET /v1/updates/latest` into the app's update path — otherwise the buy page sells nothing and the installed app has no update channel. See ["Desktop / CLI app integration scope"](#desktop--cli-app-integration-scope) below and [references/releases-and-updates.md](references/releases-and-updates.md). **If the project is a web app / SaaS** (the buyer uses it in the browser), verify the `service` permission in `yard me --json` → `.team_permissions` **now, at planning time**: hosted services are Pro-only and failing later at `yard push` wastes the whole build; the plan must follow ["Hosted service scope"](#hosted-service-scope-service--database) below. Then ask the user to **accept**, **edit**, or **switch to guided mode**.
    4. On accept: run `yard projects --json` first to see what already exists (avoids accidentally creating a duplicate after a failed attempt) — each entry's `.slug` is what the rest of the CLI takes as `<slug-or-id>` or `--project`; see [references/cli-commands.md#yard-projects](references/cli-commands.md#yard-projects) ("Discovering a project's slug") for the common `jq` recipes. Then run `yard init --spec - --json` with the accepted plan encoded as JSON on stdin. **Do not** pipe answers to the interactive wizard — the CLI ships a non-interactive spec mode specifically for agents. See ["Autopilot: non-interactive `yard init`"](#autopilot-non-interactive-yard-init) below.
    5. On edit: adjust the plan and re-confirm before running anything.
 
@@ -196,17 +196,17 @@ Scope is deliberately narrow: this section covers **publish + updates only**. Li
 
 For content projects or anything static the buyer does not install locally, skip this section — the default `yard init` + landing-page flow is sufficient. For **anything Yard runs itself — a SaaS, a web app, an API or hosted backend** — see the next section.
 
-### Hosted app scope (compute + database)
+### Hosted service scope (service + database)
 
-If the project runs on Yard — the buyer uses it in the browser, or an installed project calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `compute` permission (Pro; check `yard me --json` → `.team_permissions`). Whenever you detect this project type, the plan you present must cover:
+If the project runs on Yard — the buyer uses it in the browser, or an installed project calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `service` permission (Pro; check `yard me --json` → `.team_permissions`). Whenever you detect this project type, the plan you present must cover:
 
-1. **Scaffold and build.** `yard app init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration) and records the app's deploy settings in the `app` block of `.yard/settings.json`. Build the user's actual app inside that contract. **No ports, no `listen()`, no Express** — the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/compute-and-database.md](references/compute-and-database.md).
-2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `app.access: "customers"` in `.yard/settings.json` is a complete paywall with zero app code. Building your own login/OAuth/session layer is a bug.
-3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so to test it before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard app open --env preview` — visible to your team only by default; `yard env visibility preview public` makes the URL shareable with testers). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments — set production secrets explicitly.
-4. **Draft projects serve the app to the owning team only.** You can deploy, promote, and fully verify `/app/` while the project is still `draft` — any member of the team signs in and gets through; everyone else sees an explanatory 403. Never advance the project stage just to test (stage changes are one-way).
-5. **Pricing still applies.** The app is gated by normal Yard pricing (tiers, trials, subscriptions) — configure it as for any project; the project page remains the sales surface and the app lives under `/app/`. Every member of the owning team passes the paywall with `X-Yard-Entitlement: owner`.
+1. **Scaffold and build.** `yard service init` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend, first migration) and records the service's deploy settings in the `service` block of `.yard/settings.json`. Build the user's actual service inside that contract. **No ports, no `listen()`, no Express**: the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/service-and-database.md](references/service-and-database.md).
+2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `service.access: "customers"` in `.yard/settings.json` is a complete paywall with zero service code. Building your own login/OAuth/session layer is a bug.
+3. **Push → test → publish.** `yard push` uploads the bundle into a **draft release**. Nothing serves a draft, so to test it before customers see it, create an environment of your own (`yard env create preview`) and publish there first (`yard releases publish <tag> --env preview`, then `yard service open --env preview`, visible to your team only by default; `yard env visibility preview public` makes the URL shareable with testers). Go live with `yard releases publish <tag>`, which defaults to production. Data and secrets never move between environments, so set production secrets explicitly.
+4. **Draft projects serve the service to the owning team only.** You can deploy, promote, and fully verify `/service/` while the project is still `draft`: any member of the team signs in and gets through; everyone else sees an explanatory 403. Never advance the project stage just to test (stage changes are one-way).
+5. **Pricing still applies.** The service is gated by normal Yard pricing (tiers, trials, subscriptions), configured as for any project; the project page remains the sales surface and the service lives under `/service/`. Every member of the owning team passes the paywall with `X-Yard-Entitlement: owner`.
 
-A hosted-app release carries the app bundle and landing page, not downloadable files — there is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
+A hosted-service release carries the service bundle and landing page, not downloadable files. There is nothing to wire into `GET /v1/updates/latest` here; publishing/promoting the release **is** the deploy.
 
 ### Testing license-key validation
 
@@ -325,23 +325,23 @@ The interactive flow:
 | `yard transactions show <order-id> [--json]`                                  | One sale in full — tier, coupon, refund state, trial expiry. Takes the short `order_xxxxxxxx` id or the full UUID.                                                                                                                                                      |
 | `yard transactions trial <order-id> --add-days N [--json]`                    | Lengthen (`7`) or shorten (`-3`) a free trial, ±365. Days are added to the **current expiry, not today**; an expired trial whose new expiry is in the future goes back to active (`reactivated: true`). The buyer is emailed. Needs `.team_permissions.sell_projects`. |
 | `yard init --page`                                                             | Scaffold `.yard/landing-page/` inside a Yard project, pulling the draft release's page files (or a hello-world starter) |
-| `yard status`                                                                  | Diff every local bundle (landing page + app) against your draft release — what `yard push` would change (no writes) |
+| `yard status`                                                                  | Diff every local bundle (landing page + service) against your draft release — what `yard push` would change (no writes) |
 | `yard ls [--release <id\|tag>]`                                                | List a release's files, grouped by bundle (defaults to your open draft) |
-| `yard push [--prune] [--release <id\|tag>]`                                    | Upload every changed local file — landing page and app — into your draft release; go live with `yard releases publish <tag>`. `--release` can name a published release, which is edited in place |
+| `yard push [--prune] [--release <id\|tag>]`                                    | Upload every changed local file — landing page and service — into your draft release; go live with `yard releases publish <tag>`. `--release` can name a published release, which is edited in place |
 | `yard pull [--release <id\|tag>]`                                              | Download a release's files into the project |
-| `yard env list [--json]`                                                      | List the environments with what each serves and **why** — `(newest)`, `(deployed)` or `(pinned)` — plus its release set and whether its running app is up to date (only `production` always exists, and only it is protected)                                            |
-| `yard env create <env>` / `yard env rename <env> <new-name>` / `yard env delete <env> [-y]` | Add / rename / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.team_permissions`). Renaming keeps its releases, files, secrets and database but changes its `/@<env>/` URL. Deleting removes its files, app Worker, and app database immediately, and prompts unless `-y`. |
-| `yard env visibility <env> <public\|private>`                                  | Set who may view the environment's URLs. `private` (custom-env default) is the owning team only — every member, `owner` and `admin` alike; `public` lets anyone with the URL view its page and app. Works on `production` — that is how a project goes private (there is no project-level visibility setting any more). Stage still trumps: drafts serve nothing publicly. |
+| `yard env list [--json]`                                                      | List the environments with what each serves and **why** — `(newest)`, `(deployed)` or `(pinned)` — plus its release set and whether its running service is up to date (only `production` always exists, and only it is protected)                                            |
+| `yard env create <env>` / `yard env rename <env> <new-name>` / `yard env delete <env> [-y]` | Add / rename / remove a custom environment (plan-gated via `max_environments` — check `yard me --json` → `.team_permissions`). Renaming keeps its releases, files, secrets and database but changes its `/@<env>/` URL. Deleting removes its files, service, and service database immediately, and prompts unless `-y`. |
+| `yard env visibility <env> <public\|private>`                                  | Set who may view the environment's URLs. `private` (custom-env default) is the owning team only — every member, `owner` and `admin` alike; `public` lets anyone with the URL view its page and service. Works on `production` — that is how a project goes private (there is no project-level visibility setting any more). Stage still trumps: drafts serve nothing publicly. |
 | `yard env deploy <env> <release>`                                             | **Serve this release here now**, attaching it first if needed. Works with any release, however old — this is the rollback and the ship command. Not frozen: the next release attached on top takes over.                                                                |
 | `yard env pin <env> [release]` / `yard env unpin <env>`                       | Freeze what the environment serves so later attaches join its set without taking over (no release named = pin what it serves now); `unpin` hands the choice back to the newest member.                                                                                  |
 | `yard env attach <env> <release> [--no-serve]` / `yard env detach <env> <release>` | Add a release to the environment's set — as the newest member it starts serving, so attaching is the deploy moment; `--no-serve` stages it instead. `detach` stops serving it, and is refused if nothing would be left to serve.                                    |
 | `yard env promote <from> <to>`                                                | Attach the release `<from>` currently serves to `<to>`; promoting to `production` takes it live. Nothing is copied; data and secrets never promote. Prefer `env deploy` when you can name the release.                                                                  |
-| `yard app init [--app-dir NAME]`                                                  | Scaffold a zero-dependency web app bundle (worker + frontend + migration); local-dev files land at the top of the working directory and the bundle dir + deploy settings are recorded in the `app` block of `.yard/settings.json`                                                       |
-| `yard app open [--env SLUG]`                                                  | Print and open the environment's app URL                                                                                                                                                                                                                                |
-| `yard app check`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
-| `yard app secrets set/list/rm [--env SLUG]`                                   | Per-environment `env.<NAME>` bindings; write-only; apply on the next deploy                                                                                                                                                                                             |
-| `yard app db query [sql] [--file PATH] [--env SLUG]`                          | Run SQL against the environment's app database (`-` for stdin; `_yard_migrations` records applied migrations)                                                                                                                                                          |
-| `yard app logs [--env SLUG] [--limit N] [--since 2h]`                         | Recent Worker console output + exceptions (empty list for a fresh app, not an error)                                                                                                                                                                                    |
+| `yard service init [--service-dir NAME]`                                          | Scaffold a zero-dependency service bundle (backend + frontend + migration); local-dev files land at the top of the working directory and the bundle dir + deploy settings are recorded in the `service` block of `.yard/settings.json`                                                       |
+| `yard service open [--env SLUG]`                                              | Print and open the environment's service URL                                                                                                                                                                                                                            |
+| `yard service check`                                                 | Validate the bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs                                                                                                                                                                                |
+| `yard service secrets set/list/rm [--env SLUG]`                               | Per-environment `env.<NAME>` bindings; write-only; apply on the next deploy                                                                                                                                                                                             |
+| `yard service db query [sql] [--file PATH] [--env SLUG]`                      | Run SQL against the environment's service database (`-` for stdin; `_yard_migrations` records applied migrations)                                                                                                                                                      |
+| `yard service logs [--env SLUG] [--limit N] [--since 2h]`                     | Recent service console output + exceptions (empty list for a fresh service, not an error)                                                                                                                                                                               |
 | `yard version`                                                                | Show version, commit hash, platform, Go version                                                                                                                                                                                                                         |
 | `yard update`                                                                 | Download and install the latest CLI version                                                                                                                                                                                                                             |
 | `yard update --check`                                                         | Check for updates without installing                                                                                                                                                                                                                                    |
@@ -353,7 +353,7 @@ See [references/cli-commands.md](references/cli-commands.md) for detailed comman
 
 1. **Seller** installs the Yard GitHub App on their repository
 2. **Seller** runs `yard init` to create a project with pricing (and optionally a custom landing page)
-3. When the seller publishes a **GitHub release**, Yard automatically captures it via webhook — the release assets always, plus the app bundle, landing page, and pricing tiers when the repo has a `.yard/settings.json` at the tag (see [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_)
+3. When the seller publishes a **GitHub release**, Yard automatically captures it via webhook — the release assets always, plus the service bundle, landing page, and pricing tiers when the repo has a `.yard/settings.json` at the tag (see [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_)
 4. **Buyers** visit the project page, pay via Stripe, and get instant download access
 5. Seller earnings are tracked and paid out by admin
 
@@ -383,17 +383,17 @@ For everything an agent needs to **author** the page itself — how to read proj
 │   └── landing-page/         # landing page (default location, configurable)
 │       ├── index.html
 │       └── ...
-└── app/                      # web app bundle, wherever app.dir points
+└── service/                  # service bundle, wherever service.dir points
 ```
 
-`.yard/settings.json` schema (v2):
+`.yard/settings.json` schema (v4):
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "project_slug": "my-project",
   "ignore_files": ["*.bak", "drafts/**"],
-  "app": { "dir": "app", "access": "authenticated", "database": true },
+  "service": { "dir": "service", "access": "authenticated", "database": true },
   "landing_page": { "dir": ".yard/landing-page" },
   "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] },
   "downloads": { "buttons": [{ "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" }] }
@@ -402,14 +402,14 @@ For everything an agent needs to **author** the page itself — how to read proj
 
 - `project_slug` — which project this working directory belongs to.
 - `ignore_files` — shell-style globs relative to the landing-page directory; `**` matches any depth. Dotfiles are always ignored.
-- `app.dir` — web-app bundle directory relative to the working directory (recorded by `yard app init`; default `dist`).
-- `app.access` — who can reach the deployed app: `public` | `authenticated` | `customers` (default `public`).
-- `app.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
+- `service.dir` — service bundle directory relative to the working directory (recorded by `yard service init`; default `service`).
+- `service.access` — who can reach the deployed service: `public` | `authenticated` | `customers` (default `public`).
+- `service.database` — `true` provisions a per-environment SQLite database bound as `env.DB`.
 - `landing_page.dir` — landing-page directory relative to the working directory (default `.yard/landing-page`).
 - `pricing.tiers` — optional; when present, `yard push` and GitHub release sync replace the release's pricing tiers to match the array exactly (tiers missing from the file are removed). Absent = pricing is managed from the dashboard as usual. Full shape and rules: [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_.
 - `downloads.buttons` — optional; when present, `yard push` and GitHub release sync replace the release's download buttons to match the array exactly. Each rule matches release files by `condition` (`contains` | `starts_with` | `ends_with` | `has_extension`) and `value` (1-255 chars) and labels the button (`label`, 1-50 chars); max 10 rules. Absent = download buttons are managed from the dashboard as usual.
 
-All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the app settings, so an app-settings change is a settings edit plus a push. A leftover `yard.json` (the retired app manifest) in the bundle is skipped. Settings files below `"version": 3` are rejected, not upgraded: they name the entity `product_slug`, which no longer binds to anything — rename the key to `project_slug` and set `"version": 3`, or re-run `yard init`.
+All blocks are optional. `yard push` uploads `settings.json` itself as the release's `config` artifact — that is how deploys read the service settings, so a service-settings change is a settings edit plus a push. A leftover `yard.json` (the retired bundle manifest) in the bundle is skipped. Settings files below `"version": 3` are rejected, not upgraded: they name the entity `product_slug`, which no longer binds to anything — rename the key to `project_slug` and set `"version": 4`, or re-run `yard init`.
 
 ### Typical Flow
 
@@ -431,7 +431,7 @@ All project sync commands (`push`, `pull`, `status`, `ls`) accept:
 
 Exit codes: `0` = success, `1` = fatal (auth/validation/network), `2` = partial success (`push` only).
 
-Example `push --json` output (one object per bundle the project has — `page`, `app`, `config`):
+Example `push --json` output (one object per bundle the project has — `page`, `service`, `config`):
 
 ```json
 {
@@ -503,6 +503,6 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Pricing, licensing, coupons, trials                                                 | [references/pricing-and-licensing.md](references/pricing-and-licensing.md) |
 | REST API (integration endpoints for license validation, releases, subscriptions)    | [references/api-reference.md](references/api-reference.md)                 |
 | Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md)                 |
-| Compute & database — runtime contract, `yard app` workflow, auth headers, database  | [references/compute-and-database.md](references/compute-and-database.md)   |
+| Service & database - runtime contract, `yard service` workflow, auth headers, database | [references/service-and-database.md](references/service-and-database.md)   |
 | Publishing releases, downloading updates, API keys                                  | [references/releases-and-updates.md](references/releases-and-updates.md)   |
 | Troubleshooting common issues                                                       | [references/troubleshooting.md](references/troubleshooting.md)             |

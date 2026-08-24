@@ -21,7 +21,7 @@ not grant release access.
 ## What a release is
 
 A Yard release is a **project-wide snapshot** — landing page, pricing, download
-buttons, web-app bundle, and file assets all live in one release. It consists
+buttons, service bundle, and file assets all live in one release. It consists
 of:
 
 - **`tag_name`** (version) — ≤255 chars (e.g. `v1.4.0`). Required to publish; a
@@ -61,8 +61,8 @@ patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 `--release <id|tag>` names one explicitly), then publishes the draft
 under the tag and attaches it to the target environment (`--env` /
 `environment`, default `production` — live to customers). Anything `yard push`
-already staged in that draft — landing page and app bundle alike — ships with
-it.
+already staged in that draft, landing page and service bundle alike, ships
+with it.
 
 ### Spec mode (recommended for agents)
 
@@ -182,7 +182,7 @@ that file declares:
 
 | settings.json section | What syncs |
 |---|---|
-| `app.dir` | The web-app bundle in that directory (must contain `_worker.js`) becomes the release's app |
+| `service.dir` | The service bundle in that directory (must contain `_worker.js`) becomes the release's service |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
 | `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |
@@ -191,7 +191,7 @@ Each section is independent, and **absent means "not managed from GitHub"**:
 the release carries that part forward unchanged, and removing it stays a
 dashboard/CLI operation. A repo with no `.yard/settings.json` syncs assets,
 name, and notes only. A section that IS declared must resolve — a declared dir
-with no files at the tag fails the sync (typo protection), as does an app
+with no files at the tag fails the sync (typo protection), as does a service
 bundle without `_worker.js`.
 
 The `pricing` section uses the release-document tier shape (note the nested
@@ -200,9 +200,9 @@ The `pricing` section uses the release-document tier shape (note the nested
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "project_slug": "my-project",
-  "app": { "dir": "app" },
+  "service": { "dir": "service" },
   "pricing": {
     "tiers": [
       { "name": "Personal", "price_cents": 900, "is_default": true,
