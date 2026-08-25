@@ -918,12 +918,13 @@ Update the CLI to the latest version.
 ## yard push / pull / status / ls
 
 The project sync commands. One set covers **everything** a project sends to
-Yard — three bundles: the landing page in its directory (`landing_page.dir`
-in `.yard/settings.json`, default `.yard/landing-page/`), the service bundle
-in the directory `yard service init` recorded (`service.dir`, else `./dist`),
-and `.yard/settings.json` itself (the `config` bundle — how deploys read the
-service's `access`/`database`, so a service-settings change is a settings
-edit plus a push). A project with only some of the bundles simply syncs what it has.
+Yard: the landing page in its directory (`landing_page.dir` in
+`.yard/settings.json`, default `.yard/landing-page/`), one bundle per service
+listed in `services` (each carrying its own `settings.json`, which is how
+deploys read that service's `name`/`url`/`access`/`database`, so a
+service-settings change is an edit in that file plus a push), and
+`.yard/settings.json` itself (the `config` bundle). A project with only some
+of the bundles simply syncs what it has.
 The config bundle is **push-only**: `yard pull` never overwrites your local
 settings.json, since it is the project's identity.
 
@@ -977,7 +978,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 **Behavior:**
 
 1. Resolves the project (flag → existing settings → sole project → error).
-2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 4, "project_slug": "<slug>", "ignore_files": []}`.
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 5, "project_slug": "<slug>", "ignore_files": []}`.
 3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh project starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.
@@ -1102,7 +1103,7 @@ published release.
 
 1. Walk each bundle directory that exists, skipping dotfiles and (for the landing page) `ignore_files` patterns from `settings.json`.
 2. Validate every bundle client-side. Validation happens for all bundles before any upload, so a bad file never leaves the release half-updated.
-3. Compare each local file's SHA-256 against the release's; upload the ones that differ (`PUT …/custom-page/files/{path}?release=` and `PUT …/service/files/{path}?release=`).
+3. Compare each local file's SHA-256 against the release's; upload the ones that differ (`PUT …/custom-page/files/{path}?release=` and `PUT …/services/{name}/files/{path}?release=`).
 4. If `--prune`, `DELETE` release files not present locally (one confirmation covering every bundle, unless `--yes` or `--json`).
 5. Print `Preview:`. Going live is a separate step: `yard releases publish <tag>`.
 
@@ -1127,12 +1128,14 @@ GitHub_.
     "deleted": [],
     "remote_only": []
   },
-  "service": {
-    "dir": "/home/alice/proj/service",
-    "uploaded": ["_worker.js"],
-    "skipped": [],
-    "deleted": [],
-    "remote_only": []
+  "services": {
+    "api": {
+      "dir": "/home/alice/proj/api",
+      "uploaded": ["_worker.js"],
+      "skipped": ["settings.json"],
+      "deleted": [],
+      "remote_only": []
+    }
   },
   "preview_url": "https://yard.sh/dashboard/projects/my-slug/releases/9f3e1c2a-…/landing-page",
   "live_url": null,
@@ -1140,7 +1143,8 @@ GitHub_.
 }
 ```
 
-A bundle the project doesn't have is simply absent from the output. When
+A bundle the project doesn't have is simply absent from the output; every
+service is keyed by name under `services`. When
 `--prune` is not passed, `remote_only` lists paths in the release that don't
 exist locally (informational); with `--prune` it is emitted empty and the
 removed paths appear in `deleted`.
@@ -1152,7 +1156,7 @@ removed paths appear in `deleted`.
 ### yard pull
 
 Download a release's files into the project — the landing page into
-`.yard/landing-page/` and the service bundle into the recorded bundle dir.
+`.yard/landing-page/` and each service into its recorded bundle dir.
 Defaults to your open draft; pass `--release <id|tag>` for a specific release.
 
 **Flags:**
@@ -1390,51 +1394,59 @@ them inside the bundle still deploy.
 ### yard service init
 
 Scaffolds a zero-dependency working service (notes API + vanilla frontend +
-first migration) into `./service` (`--service-dir <name>` to change). A
-`README.md` describing the workflow is written at the top of the **working
-directory**, never inside the bundle, and is write-if-absent (an existing
-file is skipped and reported). Records the bundle dir and deploy settings in
-the `service` block of `.yard/settings.json`, as `{"dir": "service",
-"access": "authenticated", "database": true}`, bootstrapping an unlinked
+first migration) into `./<name>` (`--service-dir <dir>` to change the
+directory, `--url <path>` the path it serves under, default `/<name>`). The
+bundle's own `settings.json` is written alongside it as `{"name": "<name>",
+"url": "/<name>", "access": "authenticated", "database": true}` — that file
+is what names the service. A `README.md` describing the workflow is written
+at the top of the **working directory**, never inside the bundle, and is
+write-if-absent (an existing file is skipped and reported). Adds the bundle
+dir to `services` in `.yard/settings.json`, bootstrapping an unlinked
 settings file first when the project isn't yard-initialized (a note says to
-run `yard init`). JSON: `{"dir": "service", "written": [...],
-"skipped": [...], "service_dir_recorded": true,
-"settings_bootstrapped": false}`.
+run `yard init`). Run it once per service. JSON: `{"dir": "api",
+"service": "api", "url": "/api", "written": [...], "skipped": [...],
+"service_dir_recorded": true, "settings_bootstrapped": false}`.
 
 ### yard service open
 
-Prints the environment's URL and opens it in a browser. A private
-environment's URL is a team-only preview (sign-in enforced at the edge). JSON:
-`{"environment": "...", "url": "...", "deployed": true}`.
+Prints a service's URL for the environment and opens it in a browser.
+`--service <name>` picks one when the project declares several; with exactly
+one it is inferred. A private environment's URL is a team-only preview
+(sign-in enforced at the edge). JSON: `{"environment": "...", "service":
+"api", "url": "...", "deployed": true}`.
 
 ### yard service check
 
-Validates the local bundle exactly like a deploy would (limits, extensions,
-`_worker.js` presence, the `service` block of `.yard/settings.json`) plus lint
-warnings for root-absolute `href`/`src`/`fetch("/…")` URLs — no network, no
-login. JSON: `{"dir": "...", "files": 7, "total_bytes": 5494, "ignored": [...],
-"warnings": [...], "access": "authenticated", "database": true}`.
+Validates every declared bundle exactly like a deploy would (limits,
+extensions, `_worker.js` presence, each bundle's own `settings.json`) and
+checks that no two services share a name or a mount path, plus lint warnings
+for root-absolute `href`/`src`/`fetch("/…")` URLs — no network, no login.
+JSON: `{"services": [{"name": "api", "dir": "api", "mount_path": "/api",
+"files": 7, "total_bytes": 5494, "ignored": [...], "warnings": [...],
+"access": "authenticated", "database": true}]}`.
 
 ### yard service secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
 
 Per-environment secrets that become `env.<NAME>` bindings on the **next
-deploy**. Names UPPER_SNAKE (≤32 per environment, ≤4 KB each; `DB` and
-`ASSETS` reserved). Write-only: `list` shows names and timestamps, never
-values. Secrets don't promote between environments.
+deploy**, in every service of that environment. Names UPPER_SNAKE (≤32 per
+environment, ≤4 KB each; `DB` and `ASSETS` reserved). Write-only: `list` shows
+names and timestamps, never values. Secrets don't promote between
+environments.
 
 ### yard service db query [sql]
 
-Runs SQL against the environment's database and prints rows as JSON. SQL
-from the inline argument, `--file <path>`, or stdin (`-`). Caps: 10 kB SQL,
-1000 rows returned. The `_yard_migrations` table records applied
-migrations.
+Runs SQL against the environment's database — the one every service there
+shares — and prints rows as JSON. SQL from the inline argument, `--file
+<path>`, or stdin (`-`). Caps: 10 kB SQL, 1000 rows returned. The
+`_yard_migrations` table records applied migrations as `<service>/<file>`.
 
 ### yard service logs
 
-Recent service output (console lines, uncaught exceptions, abnormal request
-outcomes), newest window ≤24 h. `--limit <n>` (cap 500), `--since <dur>`
-(e.g. `30m`, `2h`). A service that has never logged returns an empty list,
-not an error. Logs appear a few seconds after the request.
+Recent output from one service (console lines, uncaught exceptions, abnormal
+request outcomes), newest window ≤24 h. `--service <name>` picks one when the
+project declares several. `--limit <n>` (cap 500), `--since <dur>` (e.g.
+`30m`, `2h`). A service that has never logged returns an empty list, not an
+error. Logs appear a few seconds after the request.
 
 ---
 

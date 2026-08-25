@@ -182,7 +182,7 @@ that file declares:
 
 | settings.json section | What syncs |
 |---|---|
-| `service.dir` | The service bundle in that directory (must contain `_worker.js`) becomes the release's service |
+| `services[].dir` | Each listed directory (must contain `_worker.js` and its own `settings.json`) becomes one of the release's services. The list is the whole set: a service the tag drops loses its Worker on the next deploy |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
 | `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |
@@ -192,7 +192,8 @@ the release carries that part forward unchanged, and removing it stays a
 dashboard/CLI operation. A repo with no `.yard/settings.json` syncs assets,
 name, and notes only. A section that IS declared must resolve — a declared dir
 with no files at the tag fails the sync (typo protection), as does a service
-bundle without `_worker.js`.
+bundle without `_worker.js` or without its own `settings.json`, or two
+services claiming the same name or path.
 
 The `pricing` section uses the release-document tier shape (note the nested
 `free_trial` object — this differs from the flat `free_trial_enabled` fields in
@@ -200,9 +201,9 @@ The `pricing` section uses the release-document tier shape (note the nested
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "project_slug": "my-project",
-  "service": { "dir": "service" },
+  "services": [{ "dir": "api" }, { "dir": "jobs" }],
   "pricing": {
     "tiers": [
       { "name": "Personal", "price_cents": 900, "is_default": true,

@@ -172,3 +172,23 @@ When running in a Coder workspace, the CLI automatically detects the `VSCODE_PRO
 1. Verify `VSCODE_PROXY_URI` is set: `echo $VSCODE_PROXY_URI`
 2. Ensure the workspace proxy allows traffic on port 9876
 3. Try the URL printed in the terminal manually
+
+---
+
+## `.yard/settings.json` has a "service" block
+
+Services are a list now: one project can host several, each on its own path
+and each deployed on its own. A settings file carrying the old single
+`service` block is rejected rather than upgraded, because reading it would
+have to guess the service's name and URL.
+
+To convert it by hand:
+
+1. Move the `service` block's `dir` into a `services` list:
+   `"services": [{ "dir": "service" }]`.
+2. Create `<dir>/settings.json` naming the service and the path it serves
+   under, carrying the old `access` and `database` values:
+   `{ "name": "service", "url": "/service", "access": "public", "database": true }`.
+3. Set `"version": 5`.
+
+Or start over with `yard service init <name>`, which writes both files.

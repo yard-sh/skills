@@ -2,7 +2,8 @@
 
 A Yard Service runs a project's server-side code, with an optional
 per-environment database, secrets, and buyer sign-in, using the same CLI you
-already have. It powers full web apps, but the same feature hosts any HTTP
+already have. A release can carry several, each on its own path and each
+deployed on its own. It powers full web apps, but the same feature hosts any HTTP
 workload: a JSON API, a webhook receiver, or the backend an installed project
 calls home to. A bundle with no frontend at all (just `_worker.js`) is valid.
 Requires the `service` permission (Pro; check `yard me --json` →
@@ -37,58 +38,77 @@ for root-absolute URLs.
 
 ## The bundle contract
 
-A deployable service is one directory (build output or hand-written):
+A deployable service is one directory (build output or hand-written). A
+release can carry several, each its own directory and its own Worker:
 
 | Path | Meaning |
 |---|---|
 | `_worker.js` | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
+| `settings.json` | This service's name, URL, access and database settings. Required; deploy input, never served. |
 | `migrations/*.sql` | Database schema migrations, applied in filename order at deploy. Never served publicly. |
 | everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`). |
 
-Limits: 200 files, 5 MB per file, 25 MB total, paths nest up to 8 levels.
-Start from a working scaffold with `yard service init`: it records the bundle
-directory in `.yard/settings.json` as `service.dir`, so plain `yard push`
-needs no override. The deploy walker skips dotfiles and known local-config
-files at the bundle root (e.g. `README.md`, the retired `yard.json`
-manifest) — they're reported as skipped, never uploaded.
+Limits are per service: 200 files, 5 MB per file, 25 MB total, paths nest up
+to 8 levels. Start from a working scaffold with `yard service init <name>`: it
+writes the bundle plus its `settings.json` and adds the directory to
+`services` in `.yard/settings.json`, so plain `yard push` finds it. The deploy
+walker skips dotfiles and known local-config files at the bundle root (e.g.
+`README.md`, the retired `yard.json` manifest) — they're reported as skipped,
+never uploaded.
 
-## Service settings (`.yard/settings.json`)
+## Service settings
 
-How the service deploys is the `service` block of the project's
-`.yard/settings.json` (pushed with everything else as the release's `config`
-artifact, so a settings change is an edit plus a `yard push`):
+Two files, at two levels. The project's `.yard/settings.json` lists which
+directories are services:
 
 ```json
-{ "version": 4, "service": { "dir": "service", "access": "authenticated", "database": true } }
+{ "version": 5, "services": [{ "dir": "api" }, { "dir": "jobs" }] }
 ```
 
+Each of those directories carries its own `settings.json` at its root, which
+travels with the bundle — so changing how a service deploys is an edit in that
+file plus a `yard push`:
+
+```json
+{ "name": "api", "url": "/api", "access": "authenticated", "database": true }
+```
+
+- `name`: 1-30 lowercase letters, digits and inner hyphens. Unique within the
+  release; it also names the service everywhere the CLI and dashboard show it.
+- `url`: the path the service serves under. Default `/<name>`. `/` gives the
+  service the whole site (the landing page then serves nothing). Unique within
+  the release; `/__yard` and `/@…` are reserved. Nesting is allowed —
+  `/api` and `/api/v2` can be two services, and the longer path wins.
 - `access`: `public` (everyone) · `authenticated` (Yard sign-in required —
   the edge redirects anonymous visitors to login) · `customers` (the edge
   paywall: non-customers are redirected to the project's sales page; only
-  buyers/trialers/subscribers get in). Default `public`.
-- `database`: `true` provisions a per-environment SQLite database bound as
-  `env.DB`.
+  buyers/trialers/subscribers get in). Default `public`. Per service, so one
+  release can put a paywalled app next to a public API.
+- `database`: `true` binds the environment's SQLite database as `env.DB`. The
+  database belongs to the environment, so every service that asks for one
+  shares it.
 
 **The project owner always gets in**, whatever the access mode, with
 `X-Yard-Entitlement: owner`. A seller never needs to buy their own project
 to use (or test) their own service.
 
-## URLs: where the service serves
+## URLs: where a service serves
 
-Production serves at `https://<username>.yard.sh/<slug>/service/` (on a
-custom domain: `https://<customdomain>/service/`). Every other environment
-serves one path segment down, at
-`https://<username>.yard.sh/<slug>/@<env>/service/`. Never construct these
-URLs by hand: `yard service open [--env <slug>]` prints and opens the
-environment's `url` (also in `--json`).
+Production serves each service at `https://<username>.yard.sh/<slug><url>/`
+(on a custom domain: `https://<customdomain><url>/`). Every other environment
+serves the same paths one segment down, at
+`https://<username>.yard.sh/<slug>/@<env><url>/`. Never construct these URLs
+by hand: `yard service open [--env <slug>] [--service <name>]` prints and
+opens the environment's `url` (also in `--json`).
 
-The service never takes over the project root: `<username>.yard.sh/<slug>`
-stays the landing/sales page, and pricing, trials, subscriptions, coupons,
-and checkout are standard Yard, configured as for any project. To send a
-buyer to purchase or upgrade from inside the service, link to the sales page
-(relative `../` from `/service/`, or the project's `buy_url`).
+A path no service claims is the landing page's, so
+`<username>.yard.sh/<slug>` stays the sales page unless a service declares
+`"url": "/"`. Pricing, trials, subscriptions, coupons, and checkout are
+standard Yard, configured as for any project. To send a buyer to purchase or
+upgrade from inside a service, link to the sales page (relative `../` from a
+one-segment mount, or the project's `buy_url`).
 
-`__yard/` is a reserved path prefix, so don't use it in the service's own
+`__yard/` is a reserved path prefix, so don't use it in a service's own
 URLs. A path segment beginning with `@` directly after the slug names an
 environment and is likewise reserved, though the bundle path rules already
 prevent a collision: every segment of a file you ship must start with a
@@ -138,7 +158,8 @@ to `__yard/auth/login?return=/` and `__yard/auth/logout`.
 `email` can be `""`; `tier` is **omitted** (not null) when empty. Note
 `authenticated: true` with `entitlement: "none"` is a real state (signed-in
 non-customer on a `public` or `authenticated` service). Sessions are
-per-project: signing in to one seller's service grants nothing anywhere else.
+per-project: signing in to one seller's project grants nothing anywhere else,
+and covers every service of that project.
 
 Do not implement OAuth, sessions, or password storage — with
 `access: customers` even the paywall is enforced before your code runs.
@@ -155,8 +176,9 @@ const { results } = await env.DB.prepare(
 
 Schema changes go in `migrations/` as new numbered files
 (`0002_add_column.sql`, …) — never edit an applied migration; deploys apply
-pending files in order. Each environment has its own database, so test data
-never touches production. Inspect any environment's data with
+pending files in order. Each environment has its own database, shared by every
+service there that asks for one, so two services can read each other's tables
+and test data never touches production. Inspect any environment's data with
 `yard service db query "select ..." --env preview --json` (or
 `--file schema.sql`, `-` for stdin). Query limits: SQL up to 10 000 bytes,
 up to 100 bind params, results truncated past 1000 rows.
@@ -164,9 +186,10 @@ up to 100 bind params, results truncated past 1000 rows.
 ### The migration ledger
 
 Applied migrations are recorded in `_yard_migrations (name, applied_at)`
-inside the service's own database; query it to answer "did my migration
-run?". Underscore-prefixed table names are reserved for Yard; don't create
-your own.
+inside the environment's database; query it to answer "did my migration
+run?". Names are recorded as `<service>/<file>`, so two services are free to
+both ship a `0001_init.sql`. Underscore-prefixed table names are reserved for
+Yard; don't create your own.
 
 ### Failed migrations — read before writing multi-statement files
 
@@ -177,7 +200,7 @@ earlier statements applied and the file unrecorded in the ledger. The next
 deploy re-runs the whole file from the top, which then typically fails on
 the already-created objects. Recovery: fix the file so it can re-run from
 the top (e.g. `CREATE TABLE IF NOT EXISTS`), or mark it applied manually:
-`yard service db query "INSERT INTO _yard_migrations (name) VALUES ('0002_x.sql')"`.
+`yard service db query "INSERT INTO _yard_migrations (name) VALUES ('api/0002_x.sql')"`.
 Best practice: keep each migration file to a single statement, or make every
 statement idempotent.
 
@@ -191,19 +214,20 @@ yard service secrets set OPENAI_API_KEY=sk-... --env production
 ```
 
 Values are write-only and take effect on the **next deploy** of that
-environment. Secrets never promote between environments. Never commit keys
-into the bundle.
+environment. They belong to the environment, so every service deployed there
+sees the same set. Secrets never promote between environments. Never commit
+keys into a bundle.
 
 ## The workflow loop
 
 ```
-yard service init                              # scaffold (once)
-yard service check                             # validate bundle + lint (no network)
-yard push                                      # uploads the bundle into your draft release
+yard service init api                          # scaffold (once per service)
+yard service check                             # validate every bundle + lint (no network)
+yard push                                      # uploads every bundle into your draft release
 yard env create preview                        # once; production is the only built-in environment
 yard releases publish v1.0.0 --env preview     # tag the draft and deploy it to your environment
-yard service open --env preview                # browse it (your team only)
-yard service logs --env preview                # console output + exceptions
+yard service open --env preview --service api  # browse it (your team only)
+yard service logs --env preview --service api  # console output + exceptions
 yard releases promote v1.0.0 --to production   # go live
 ```
 
