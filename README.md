@@ -4,10 +4,11 @@ The agent skill for [Yard](https://yard.sh) — knowledge files that teach AI co
 
 When this skill is installed, an agent gains awareness of:
 
-- The `yard` CLI (login, init, projects, releases, keys, page, etc.)
+- The `yard` CLI (login, init, projects, releases, sandboxes, channels, service, keys, page, etc.)
 - The `yard init --spec` and `yard releases publish --spec` JSON shapes for non-interactive use
 - The REST API endpoints for license validation, release downloads, subscriptions, and the license-key update server
 - Pricing model details (tiers, seat types, volume brackets, Pro-only features)
+- Scopes: a project's global data versus its sandboxes, release channels, and the simulated commerce a sandbox carries
 - Custom landing-page authoring (`window.yard`, `data-yard` / `data-action`)
 - Common troubleshooting steps
 
@@ -16,7 +17,7 @@ When this skill is installed, an agent gains awareness of:
 - `SKILL.md` — entry point loaded into the agent's context
 - `references/` — deeper docs the agent loads on demand:
   - `cli-commands.md` — full CLI reference
-  - `pricing-and-licensing.md` — pricing model, license keys, trials, coupons
+  - `pricing-and-licensing.md` - pricing model, license keys, trials, coupons, sandbox commerce
   - `api-reference.md` — REST API endpoints
   - `landing-pages.md` — custom landing-page runtime and conventions
   - `service-and-database.md` - hosted Yard Service + database runtime contract and workflow

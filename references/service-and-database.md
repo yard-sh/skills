@@ -1,7 +1,7 @@
 # Service and database on Yard
 
 A Yard Service runs a project's server-side code, with an optional
-per-environment database, secrets, and buyer sign-in, using the same CLI you
+per-scope database, secrets, and buyer sign-in, using the same CLI you
 already have. A release can carry several, each on its own path and each
 deployed on its own. It powers full web apps, but the same feature hosts any HTTP
 workload: a JSON API, a webhook receiver, or the backend an installed project
@@ -39,7 +39,7 @@ for root-absolute URLs.
 ## The bundle contract
 
 A deployable service is one directory (build output or hand-written). A
-release can carry several, each its own directory and its own Worker:
+release can carry several, each its own directory and its own deployment:
 
 | Path | Meaning |
 |---|---|
@@ -84,8 +84,8 @@ file plus a `yard push`:
   paywall: non-customers are redirected to the project's sales page; only
   buyers/trialers/subscribers get in). Default `public`. Per service, so one
   release can put a paywalled app next to a public API.
-- `database`: `true` binds the environment's SQLite database as `env.DB`. The
-  database belongs to the environment, so every service that asks for one
+- `database`: `true` binds the scope's SQLite database as `env.DB`. The
+  database belongs to the scope, so every service that asks for one
   shares it.
 
 **The project owner always gets in**, whatever the access mode, with
@@ -94,12 +94,14 @@ to use (or test) their own service.
 
 ## URLs: where a service serves
 
-Production serves each service at `https://<username>.yard.sh/<slug><url>/`
-(on a custom domain: `https://<customdomain><url>/`). Every other environment
-serves the same paths one segment down, at
-`https://<username>.yard.sh/<slug>/@<env><url>/`. Never construct these URLs
-by hand: `yard service open [--env <slug>] [--service <name>]` prints and
-opens the environment's `url` (also in `--json`).
+The project's global data serves each service at
+`https://<username>.yard.sh/<slug><url>/` (on a custom domain:
+`https://<customdomain><url>/`). A sandbox serves the same paths one segment
+down, at `https://<username>.yard.sh/<slug>/@<sandbox><url>/`. Never construct
+these URLs by hand: `yard service open [--sandbox <slug>] [--service <name>]`
+prints and opens the scope's `url` (also in `--json`, as
+`{"sandbox": "...", "service": "...", "url": "...", "deployed": true}`).
+Omitting `--sandbox` targets the project's global data.
 
 A path no service claims is the landing page's, so
 `<username>.yard.sh/<slug>` stays the sales page unless a service declares
@@ -109,8 +111,8 @@ upgrade from inside a service, link to the sales page (relative `../` from a
 one-segment mount, or the project's `buy_url`).
 
 `__yard/` is a reserved path prefix, so don't use it in a service's own
-URLs. A path segment beginning with `@` directly after the slug names an
-environment and is likewise reserved, though the bundle path rules already
+URLs. A path segment beginning with `@` directly after the slug names a
+sandbox and is likewise reserved, though the bundle path rules already
 prevent a collision: every segment of a file you ship must start with a
 letter or digit.
 
@@ -124,7 +126,7 @@ The Yard edge signs buyers in and hands your code trusted headers:
 | `X-Yard-Email` | Buyer email (may be empty) |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
 | `X-Yard-Tier` | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price projects never send it. |
-| `X-Yard-Environment` | Which environment is serving: `production`, or one of your own |
+| `X-Yard-Sandbox` | Which scope is serving: a sandbox name, or empty for the project's global data |
 
 Absent identity headers = anonymous visitor (`public` services only; gated
 modes never reach your code anonymously). Clients can never spoof these —
@@ -176,17 +178,17 @@ const { results } = await env.DB.prepare(
 
 Schema changes go in `migrations/` as new numbered files
 (`0002_add_column.sql`, …) — never edit an applied migration; deploys apply
-pending files in order. Each environment has its own database, shared by every
+pending files in order. Each scope has its own database, shared by every
 service there that asks for one, so two services can read each other's tables
-and test data never touches production. Inspect any environment's data with
-`yard service db query "select ..." --env preview --json` (or
+while a sandbox's test data never reaches the storefront. Inspect any scope's
+data with `yard service db query "select ..." --sandbox preview --json` (or
 `--file schema.sql`, `-` for stdin). Query limits: SQL up to 10 000 bytes,
 up to 100 bind params, results truncated past 1000 rows.
 
 ### The migration ledger
 
 Applied migrations are recorded in `_yard_migrations (name, applied_at)`
-inside the environment's database; query it to answer "did my migration
+inside the scope's database; query it to answer "did my migration
 run?". Names are recorded as `<service>/<file>`, so two services are free to
 both ship a `0001_init.sql`. Underscore-prefixed table names are reserved for
 Yard; don't create your own.
@@ -206,65 +208,76 @@ statement idempotent.
 
 ## Secrets
 
-Third-party API keys go in per-environment secrets, exposed as `env.<NAME>`:
+Third-party API keys go in per-scope secrets, exposed as `env.<NAME>`:
 
 ```
-yard service secrets set OPENAI_API_KEY=sk-... --env preview
-yard service secrets set OPENAI_API_KEY=sk-... --env production
+yard service secrets set OPENAI_API_KEY=sk-... --sandbox preview
+yard service secrets set OPENAI_API_KEY=sk-...                    # the global scope
 ```
 
 Values are write-only and take effect on the **next deploy** of that
-environment. They belong to the environment, so every service deployed there
-sees the same set. Secrets never promote between environments. Never commit
+scope. They belong to the scope, so every service deployed there
+sees the same set. Secrets never promote between scopes. Never commit
 keys into a bundle.
 
 ## The workflow loop
 
 ```
-yard service init api                          # scaffold (once per service)
-yard service check                             # validate every bundle + lint (no network)
-yard push                                      # uploads every bundle into your draft release
-yard env create preview                        # once; production is the only built-in environment
-yard releases publish v1.0.0 --env preview     # tag the draft and deploy it to your environment
-yard service open --env preview --service api  # browse it (your team only)
-yard service logs --env preview --service api  # console output + exceptions
-yard releases promote v1.0.0 --to production   # go live
+yard service init api                              # scaffold (once per service)
+yard service check                                 # validate every bundle + lint (no network)
+yard push                                          # uploads every bundle into your draft release
+yard releases publish v1.0.0                       # tag the draft; this is the go-live step
+yard sandbox create preview                        # a scope of your own (a project starts with none)
+yard sandbox deploy preview v1.0.0                 # serve the same release there
+yard service open --sandbox preview --service api  # browse it (your team only)
+yard service logs --sandbox preview --service api  # console output + exceptions
 ```
 
 `yard push` uploads the bundle into your **draft release** and deploys nothing:
-nothing serves a draft. An environment only ever runs what its serving release
-holds, so going live is always a release operation — publish the draft
-(`yard releases publish v1.0.0`, which defaults to production), or publish it
-to an environment of your own first and promote when it looks right
-(`yard env promote preview production` also works). The release carries the
-landing page too, if one exists. Environments beyond the built-in
-`production` are created with `yard env create` and are plan-gated.
+nothing serves a draft. A scope only ever runs what its serving release
+holds, so going live is always a release operation. Publishing the draft
+(`yard releases publish v1.0.0`) adds it to the `Production` channel, which the
+project's global data follows, so it ships to buyers; `yard sandbox deploy
+global v1.0.0` ships a release by name, and `yard sandbox promote preview
+global` ships whatever the sandbox is serving. To keep a new release off the
+storefront while you try it in a sandbox, run `yard sandbox pin global` first
+and `yard sandbox unpin global` when it looks right. The release carries the
+landing page too, if one exists. Sandboxes are created with
+`yard sandbox create` and are plan-gated.
 
-Editing a release an environment already serves is live: Yard redeploys that
-environment automatically, and `yard status` reports it as stale → updating →
+Editing a release a scope already serves is live: Yard redeploys that
+scope automatically, and `yard status` reports it as stale, then updating, then
 up to date while it catches up.
+
+A sandbox isolates more than the database and secrets: it carries its own
+customers, transactions, subscriptions, trials and license keys, simulated by
+the platform rather than charged through Stripe. So a paywalled service
+(`"access": "customers"`) can be exercised end to end in a sandbox: buy it
+there, and the buyer reaches the service with a real entitlement header and a
+real license key, without any money moving. See
+[pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
 ## Testing before customers see it
 
-Every environment has a real, browsable URL. Opening
+Every scope has a real, browsable URL. Opening
 `https://<username>.yard.sh/<slug>/@preview/service/` signs the visitor in (if
 needed), verifies they **belong to the team that owns the project**, and serves
-the `preview` environment's service. Drop the `/@preview` segment to go back to
-production. Everyone outside the team gets an explanatory 403 — these URLs are
-safe to have in scrollback
-and, by default, not shareable. `yard env visibility <env> public` opens an
-environment to anyone with the URL (no sign-in, no purchase); `private` closes
+the `preview` sandbox's service. Drop the `/@preview` segment to go back to the
+project's global data. Everyone outside the team gets an explanatory 403, so
+these URLs are safe to have in scrollback
+and, by default, not shareable. `yard sandbox visibility <sandbox> public` opens
+a sandbox to anyone with the URL (no sign-in, no purchase); `private` closes
 it again.
 
-The environment lives in the path rather than in a query parameter, so it is
+The sandbox lives in the path rather than in a query parameter, so it is
 scoped to the one request: your service can carry whatever query string it
-likes without switching environments, and a URL always says which environment
-it serves. An environment with no service deployed says so rather than quietly
-serving production's.
+likes without switching scopes, and a URL always says which scope
+it serves. A scope with no service deployed says so rather than quietly
+serving another scope's.
 
 A `draft` (or archived) project's `/service/` works the same way **for the
-owning team**, as does a project whose Production environment is private
-(`yard env visibility production private`): anonymous visitors are sent
+owning team**, as does a project whose global data is private
+(`yard sandbox visibility global private`): anonymous visitors are sent
 through sign-in, everyone outside the team gets an explanatory 403, and any
 team member gets the service.
 You can build and verify everything before ever advancing the project stage
@@ -272,12 +285,12 @@ You can build and verify everything before ever advancing the project stage
 
 ## Debugging deployed services
 
-`yard service logs [--env <slug>] [--limit n] [--since 2h]` returns the
+`yard service logs [--sandbox <slug>] [--limit n] [--since 2h]` returns the
 service's `console.log` output, uncaught exceptions, and abnormal request
 outcomes (e.g. CPU limit exceeded), newest ~24h, up to 500 entries. A
 brand-new service with no traffic returns an empty list, not an error. Logs
 appear a few seconds after the request. `yard service db query` against the
-live environment answers data questions directly.
+live scope answers data questions directly.
 
 There is no `window.yard` runtime inside a service; that exists only on
 landing pages (see landing-pages.md).

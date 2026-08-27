@@ -118,7 +118,7 @@ sell anything`, and every seller command will fail until they do.
 
 There are **two** grant maps, and picking the wrong one gives the wrong answer:
 
-- **`team_permissions` is the source of truth for every seller feature** — projects, tiers, coupons, license keys, custom pages, service, environments, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
+- **`team_permissions` is the source of truth for every seller feature**: projects, tiers, coupons, license keys, custom pages, service, sandboxes, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
 - `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's projects may do.
 
 The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's projects, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
@@ -223,7 +223,7 @@ NAME                                PRICE      RELEASES   SALES
 Total: 2 project(s)
 ```
 
-- `✓` = publicly visible (the Production environment's visibility is `public`), `✗` = not public — change it with `yard env visibility production <public|private>`
+- `✓` = publicly visible (the project's global data has visibility `public`), `✗` = not public. Change it with `yard sandbox visibility global <public|private>`
 - Names truncated to 32 characters with `...` suffix
 - Requires login; prompts to run `yard login` if not authenticated
 - `--json` emits the underlying `ProjectListItem` array (including `license_key_enabled`, `activations_enabled`, `max_activations`). **Tiers are not included** — free trials, `trial_requires_card`, and `gift_enabled` are configured per tier, so use `yard projects show <slug> --json` (below) to inspect `tiers[].free_trial_enabled` / `tiers[].trial_requires_card` / `tiers[].gift_enabled`.
@@ -381,9 +381,9 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 Manage releases for a project. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
-**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (drafts can never belong to an environment). With no `--release`, every CLI command that writes files — `yard push`, `yard releases publish` — targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and attaches the release to an environment — attaching is the deploy moment. Environments hold a **set** of releases and serve the newest member unless pinned.
+**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (drafts can never belong to a scope). With no `--release`, every CLI command that writes files (`yard push`, `yard releases publish`) targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and puts the release in its target channel, and every scope connected to that channel attaches it: attaching is the deploy moment. Every published release belongs to exactly one channel; a draft belongs to none, which is what makes it a draft. A scope holds a **set** of releases and serves the newest member unless pinned.
 
-**Published releases stay editable.** Publishing is one-way, but the release it produces is not frozen: `--release <id|tag>` names any release, draft or published, and `yard push` edits it in place. Editing a release nothing serves has no deploy side effects; editing one an environment is serving is live the moment it saves, which is why `yard push` names the environments a release belongs to and asks before uploading (`--yes` skips the prompt).
+**Published releases stay editable.** Publishing is one-way, but the release it produces is not frozen: `--release <id|tag>` names any release, draft or published, and `yard push` edits it in place. Editing a release nothing serves has no deploy side effects; editing one a scope is serving is live the moment it saves, which is why `yard push` names the scopes a release belongs to and asks before uploading (`--yes` skips the prompt).
 
 **`--release` takes a tag or a UUID.** `--release v1.4.0` and `--release <release-uuid>` resolve to the same release; the CLI picks the right lookup from the shape of the value.
 
@@ -399,8 +399,8 @@ Publish a draft release under a tag, with optional file assets. Files upload int
 - `--notes <string>` — short release notes (markdown).
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
-- `--env <slug>` — environment the release deploys to. Defaults to **production**, the one environment every project has, so a release published without this flag is live to customers. Pass `--env <your-env>` to deploy it somewhere only you can see first.
-- `--release <id|tag>` — the draft to publish. Defaults to your open draft (creating one from what `--env` serves if none exists); required when multiple drafts are open. Must still be a draft: publishing is one-way, so an already-published release is refused here (edit it with `yard push --release <id|tag>` instead).
+- `--channel <name>`: the one release channel the release lands in. Defaults to **Production**, the protected channel every project has and the one the project's global data follows, so a release published without this flag is live to customers. Every scope connected to that channel attaches the release and deploys it. `yard channels list` shows the project's channels and which scopes follow each one; a name that doesn't exist is rejected before anything is published. Channels are created in the dashboard, not from the CLI, so a custom `--channel` target has to exist first.
+- `--release <id|tag>`: the draft to publish. Defaults to your open draft (creating one seeded from your newest published release if none exists); required when multiple drafts are open. Must still be a draft: publishing is one-way, so an already-published release is refused here (edit it with `yard push --release <id|tag>` instead).
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
 
@@ -412,7 +412,7 @@ Publish a draft release under a tag, with optional file assets. Files upload int
   "tag_name": "v1.4.0", // required
   "release_name": "Late April fixes", // optional, ≤255 chars
   "release_notes": "## Highlights\n…", // optional, markdown, ≤125,000 chars
-  "environment": "production", // optional; defaults to production
+  "channel": "Production", // optional; defaults to "Production", live to customers
   "files": [
     // optional; absolute or relative paths
     "./dist/yard-darwin-arm64.tar.gz",
@@ -425,8 +425,8 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 
 **Two-step publish flow:**
 
-1. The draft is resolved (`--release` → sole open draft → new draft seeded from what `--env` serves), and each `files[]` entry streams into it as `multipart/form-data`.
-2. The draft is published (`POST /v1/projects/{id}/project-releases/{rid}/publish`) — the tag is stamped, the release is attached to the target environment, and the environment deploys it.
+1. The draft is resolved (`--release` → sole open draft → new draft seeded from your newest published release), and each `files[]` entry streams into it as `multipart/form-data`.
+2. The draft is published (`POST /v1/projects/{id}/project-releases/{rid}/publish`): the tag is stamped, the release lands in its target channel, and every scope following that channel attaches and deploys it.
 3. The CLI prints `✓ <path>` or `✗ <path>: <error>` per file on stderr, then a summary like `Release "v1.4.0" published. Uploaded 2/3 file(s).`
 4. Exit code is non-zero if any uploads failed; if at least one file uploaded the draft was still published (without the failed files), and missing assets can be added from the dashboard. If every file failed, nothing is published and the draft stays open.
 
@@ -436,7 +436,7 @@ Unknown fields are rejected. Each file path must exist and be a regular file.
 {
   "release":  { "id":"…", "version":"v1.4.0", "is_draft":false, "published_at":"…", "files":[...], ... },
   "deployed": [
-    {"release_id":"…", "version":"v1.4.0", "to":"production", "action":"attach", "artifacts":["page","releases"]}
+    {"release_id":"…", "version":"v1.4.0", "to":"", "action":"attach", "artifacts":["page","releases"]}
   ],
   "files": [
     {"path":"./dist/a.tar.gz", "status":"uploaded", "size_bytes":12345678},
@@ -466,31 +466,78 @@ EOF
 
 ### yard releases promote <tag>
 
-Attach an already-published release to another environment, which then serves exactly what that release holds — landing page, pricing, download buttons, service bundle, and downloadable files.
+Move an already-published release into a **release channel**, out of whichever one it is in. Every scope connected to the new channel attaches it and then serves exactly what that release holds: landing page, pricing, download buttons, service bundle, and downloadable files; scopes connected to the old channel detach it and fall back to their next newest release. A channel is a project-wide category of releases, not a scope: `Production` is the protected one every project has, and a new project's global data follows it.
 
 **Flags:**
 
 - `<tag>` positional — the tag to promote, e.g. `v1.4.0`. There is no `--from`: releases belong to the project, so the tag alone identifies one.
-- `--to <slug>` — target environment. Required.
+- `--to <channel>`: target channel. Required. It has to already exist: channels are created in the dashboard, and the CLI only reads them (`yard channels list`). The one exception is `Production`, which every project has.
 - `--project <slug-or-uuid>` — target project.
 - `--dir <path>` — directory containing `.yard/`.
 - `--json` — emit a single JSON result on stdout.
 
 ```sh
-yard releases publish v1.4.0 --file dist/app.zip   # publishes + deploys to production
+yard releases publish v1.4.0 --file dist/app.zip   # publishes into the Production channel
 # …verify the download works…
-yard releases promote v1.4.0 --to production       # ships it
+yard releases promote v1.4.0 --to Beta             # move it into Beta, out of Production
 ```
 
-**Nothing is copied**: a release is one project-wide snapshot, and an environment is a set of releases — promoting adds the release to the target's set, where as the newest member it starts serving (unless the environment is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting the same release again is a no-op. Because both environments now serve the same release, a later edit to it shows up in both.
+**Nothing is copied**: a release is one project-wide snapshot, and it belongs to exactly one channel. Promoting moves it, so the channel it came from no longer has it. Each scope connected to the new channel takes it into its own set, where as the newest member it starts serving (unless that scope is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting a release into the channel it is already in is a no-op. Because the scopes now serve the same release, a later edit to it shows up in all of them. To attach a release to one scope by hand, use `yard sandbox attach` or `yard sandbox deploy`.
 
-**`--json` output** (the membership-change result):
+**`--json` output** (the channel-membership result, plus what it deployed):
 
 ```json
-{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["pricing", "identity", "page", "service", "releases"]}
+{"channel": "Beta", "deployed": [{"release_id": "…", "version": "v1.4.0", "to": "beta", "action": "attach", "artifacts": ["pricing", "identity", "page", "service", "releases"]}]}
 ```
 
+Each `deployed` entry's `to` is the scope the mirror shipped to: `""` is the project's global data, any other value is a sandbox slug.
+
 For full download server schemas (license-key path and API-key path), see [references/releases-and-updates.md](releases-and-updates.md).
+
+---
+
+## yard channels
+
+Read the project's **release channels**. A channel is a project-wide category of
+releases: every published release belongs to exactly one, and a draft belongs to
+none, which is what makes it a draft. Scopes connect to a channel and mirror its
+membership, so a channel is how a release reaches several scopes at once without
+naming any of them.
+
+Every project has a protected `Production` channel, created with the project and
+impossible to rename or delete. Publishing and GitHub release sync default to it,
+and a new project's global data follows it, which is why `yard releases publish
+<tag>` goes live.
+
+**The CLI only reads channels.** Creating, renaming, deleting and reordering them
+is done from the dashboard (Releases page). A name that doesn't exist yet is
+rejected wherever it is used (`yard releases publish --channel`, `yard releases
+promote --to`, `yard sandbox channel`), so create the channel in the dashboard
+before scripting against it. The commands that *do* move releases and scopes
+between channels are `yard releases promote` and `yard sandbox channel`.
+
+### yard channels list
+
+**Flags:** `--json`, `--project <slug-or-uuid>`, `--dir <path>`.
+
+```
+CHANNEL              RELEASES  LATEST                   SCOPES                         PROTECTED
+-----------------------------------------------------------------------------------------------
+Production           7         v1.4.0                   global                         yes
+Beta                 2         v1.5.0-beta.1            preview, staging
+```
+
+- `RELEASES` counts every release the channel holds, archived ones included.
+- `LATEST` is the narrower question: the newest published, non-archived, healthy
+  release, the one a scope connecting to this channel would start serving. `-`
+  when the channel has nothing to serve.
+- `SCOPES` lists the scopes following the channel, the project's global data
+  first as `global`; `-` when nothing follows it.
+
+`--json` emits `{ "project": "<slug>", "channels": [...] }`, each channel with
+`id`, `name`, `protected`, `position`, `created_at`, `release_count`,
+`latest_version`, and `scopes` (an array of scope names, `""` for the global
+scope).
 
 ---
 
@@ -569,7 +616,7 @@ For end-user-shipped software, downloads authenticate with license keys against 
 
 Test license-key validation and inspect test device activations. All three subcommands accept `--project <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only project if you have one. All three accept `--json`.
 
-Every project with `license_key_enabled: true` has a sandbox **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
+Every project with `license_key_enabled: true` has a **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. It belongs to the project rather than to any one scope, so it validates with an empty `sandbox` field; it is not a sandbox's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
 
 ### yard licenses test-key
 
@@ -726,7 +773,7 @@ Runs the code through the same check the checkout page performs — active, in d
 
 The project is resolved under the team's username, so validating a coupon on another team's public project means naming it: `--team acme`.
 
-The project must be **public** (its Production environment's visibility): checkout never sees drafts or private projects, so either answers `PROJECT_NOT_FOUND`. Exit status is 0 whenever the check ran — read `.valid` for the answer.
+The project must be **public** (the visibility of its global data): checkout never sees drafts or private projects, so either answers `PROJECT_NOT_FOUND`. Exit status is 0 whenever the check ran, so read `.valid` for the answer.
 
 **Typical agent flows:**
 
@@ -760,6 +807,9 @@ A "customer" is a buyer with at least one **completed, unrefunded** purchase, ag
 Buyers are identified by an opaque id: `cust_` plus the first 8 characters of their account id. That id is what `customers show` takes; there is no email lookup.
 
 Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is no cents field on these responses — use `yard transactions` when you need to do arithmetic.
+
+**Sandbox commerce is not here.** These rows are the seller's real books: simulated purchases made inside a sandbox are excluded from the list and from the summary figures, and there is no `--sandbox` flag to reach them. A sandbox's customers live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+
 
 ### yard customers list
 
@@ -814,6 +864,9 @@ The seller's sales, plus the one write in this area: adjusting a buyer's free-tr
 Every sale has a full UUID and a short **order id** — `order_` plus the first 8 characters, which is what the dashboard and receipts show. Both are accepted anywhere a transaction id is taken; an ambiguous short id is answered with `409` rather than a guess.
 
 Refunds are **not** exposed here — issuing one stays in the dashboard.
+
+**Sandbox commerce is not here.** Simulated transactions made inside a sandbox never appear in this list, in the summary figures, or in earnings and payouts, and there is no `--sandbox` flag to reach them. A sandbox's transactions live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+
 
 ### yard transactions list
 
@@ -934,18 +987,18 @@ Common flags:
 - `--dir <path>` — directory containing `.yard/` (defaults to walking up from cwd)
 - `--release <id|tag>` — which release to act on (defaults to your open draft)
 - `--json` — emit a single machine-readable JSON object on stdout; logs go to stderr
-- `--yes`, `-y` — skip confirmation prompts (`push --prune`, and pushing into a release attached to an environment)
+- `--yes`, `-y`: skip confirmation prompts (`push --prune`, and pushing into a release attached to a scope)
 
-**Everything targets a release, never an environment.** With no `--release`,
-writes go to a draft — your open one, or a new draft seeded from your newest
-published release when none exists — and reads (`status`, `ls`, `pull`) default
+**Everything targets a release, never a scope.** With no `--release`,
+writes go to a draft (your open one, or a new draft seeded from your newest
+published release when none exists) and reads (`status`, `ls`, `pull`) default
 to that same draft, which keeps `yard status` describing exactly what `yard
 push` would change. With multiple drafts open, `--release` is required.
 `--release <id|tag>` names any release explicitly, published ones included:
 reads inspect it, writes edit it in place. Editing a draft touches no live
-environment — content goes live when the draft is published (`yard releases
-publish <tag>`), which attaches it to an environment — but editing a release an
-environment is already serving is live on save.
+scope, since content goes live when the draft is published (`yard releases
+publish <tag>`), which attaches it to every scope following a target channel.
+Editing a release a scope is already serving is live on save.
 
 **Exit codes:**
 
@@ -1001,7 +1054,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 }
 ```
 
-`source` is `"starter"` when the draft had no page files and the starter was written; otherwise a label for the release it pulled from (its tag, or `draft <short-id>` for an untagged draft). `live_url` is only non-null when production actually serves a release.
+`source` is `"starter"` when the draft had no page files and the starter was written; otherwise a label for the release it pulled from (its tag, or `draft <short-id>` for an untagged draft). `live_url` is only non-null when the project's global data actually serves a release.
 
 ---
 
@@ -1010,9 +1063,10 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 Print the diff between local files and a release without writing anything, per
 bundle — the exact set `yard push` would upload. Defaults to your open draft.
 
-Also lists the environments serving that release, with each one's deploy
+Also lists the scopes serving that release, with each one's deploy
 status (`up_to_date`, `stale`, `updating`, `failed`), so an agent can tell
-whether a redeploy is still catching up.
+whether a redeploy is still catching up. `global` names the project's global
+data; anything else is a sandbox.
 
 **Per-bundle categories:**
 
@@ -1041,7 +1095,7 @@ whether a redeploy is still catching up.
     "remote_only": []
   },
   "serving": [
-    {"environment": "production", "deploy": "stale"}
+    {"scope": "global", "deploy": "stale"}
   ]
 }
 ```
@@ -1187,188 +1241,235 @@ Defaults to your open draft; pass `--release <id|tag>` for a specific release.
 ---
 
 There is **no publish flag on `push`**: everything ships inside a release, so
-going live is `yard releases publish <tag>` (then `yard releases promote <tag>
---to production` if you published somewhere else first). To discard draft
+going live is `yard releases publish <tag>` (or `yard sandbox deploy global
+<tag>` for a release that is already published). To discard draft
 changes, delete the draft from the dashboard and pull afresh
 (`yard pull --release <last-published-tag> --force`). To correct something
 already shipped, either publish a new release or edit the published one in
-place with `yard push --release <tag>` — the latter is live immediately if an
-environment is serving it.
+place with `yard push --release <tag>`; the latter is live immediately if a
+scope is serving it.
 
 ---
 
-## yard env
+## yard sandbox
 
-Manage a project's environments and choose what each one serves.
+Manage a project's scopes and choose what each one serves.
 
-A **release** is one project-wide snapshot — landing page, pricing, downloads,
-and the service bundle. An **environment** is a *set* of releases serving one of
-them: the newest member, unless a pointer says otherwise. Attaching a release to
-an environment is the deploy moment. Only `production` always exists, and only
-it is protected.
+A **release** is one project-wide snapshot: landing page, pricing, downloads,
+and the service bundle. A **scope** is a *set* of releases serving one of
+them: the newest member, unless a pointer says otherwise. Attaching a release
+to a scope is the deploy moment. Every project has its **global data**, which
+is what buyers reach at the project's plain URL; a **sandbox** is an optional
+extra scope of your own, private by default, at `/@<sandbox>/`. A project
+starts with zero sandboxes. Commands that take a `<scope>` accept the literal
+`global` for the project's own data; anything else names a sandbox.
 
-An environment is always in one of three serving states, and the commands below
+
+A sandbox is not only a deployment target: it carries its own **customers,
+transactions, subscriptions, trials and license keys**, all simulated by the
+platform rather than run through Stripe. That commerce is reachable from the
+sandbox's pages in the dashboard and from the buyer-facing endpoints with a
+`sandbox` parameter; the CLI does not read it, and it is excluded from
+`yard transactions`, `yard customers`, earnings and payouts. See
+[pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+
+A scope is always in one of three serving states, and the commands below
 are how it moves between them:
 
 | State | Reached by | Next attach |
 |---|---|---|
-| newest-wins | `env unpin`, or `env attach` of the newest release | takes over |
-| deployed | `env deploy` | takes over |
-| pinned | `env pin` | joins the set, does **not** take over |
+| newest-wins | `sandbox unpin`, or `sandbox attach` of the newest release | takes over |
+| deployed | `sandbox deploy` | takes over |
+| pinned | `sandbox pin` | joins the set, does **not** take over |
 
 Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--json`. Every
-`<release>` argument accepts a version tag or a release UUID. Mutations need the
-`environments` permission — check `yard me --json` → `.team_permissions`.
+`<release>` argument accepts a version tag or a release UUID. Sandbox
+mutations need the `sandboxes` permission, check `yard me --json` →
+`.team_permissions`; writes to the global scope need only the ordinary
+project-write permission.
 
-### yard env list
+### yard sandbox list
 
-Lists the environments with what each serves and why.
+Lists the project's scopes with what each serves and why, its global data
+first.
 
 ```
-ENVIRONMENT          SERVING                  RELEASES  VISIBILITY  DEPLOY     PROTECTED
-------------------------------------------------------------------------------------------
-production           1.4.0 (pinned)           3         public                 yes
-staging              1.3.0 (deployed)         2         private     stale
-preview              -                        0         public
+SCOPE                SERVING                  RELEASES  CHANNEL        VISIBILITY  DEPLOY
+-----------------------------------------------------------------------------------------------
+global               1.4.0 (pinned)           3         Production     public
+staging              1.3.0 (deployed)         2         -              private     stale
+preview              -                        0         -              public
 ```
 
-`DEPLOY` is blank when the service is up to date; a `failed` environment gets a
+`DEPLOY` is blank when the service is up to date; a `failed` scope gets a
 warning line after the table with its error. JSON:
 
 ```json
 {
   "project": "my-slug",
-  "environments": [
+  "global": {
+    "slug": "", "visibility": "public",
+    "active_release_id": "<uuid>", "pinned": true,
+    "created_at": "…", "deploy_status": "up_to_date",
+    "channel": "Production",
+    "page_url": "https://acme.yard.sh/my-slug/",
+    "serving_release": { "id": "<uuid>", "version": "v1.4.0", "published_at": "…" },
+    "releases": [
+      { "id": "<uuid>", "version": "v1.4.0", "published_at": "…", "is_archived": false, "attached_at": "…" }
+    ]
+  },
+  "sandboxes": [
     {
-      "id": "<uuid>", "project_id": "<uuid>", "slug": "production",
-      "protected": true, "visibility": "public",
-      "active_release_id": "<uuid>", "pinned": true,
-      "created_at": "…", "deploy_status": "up_to_date",
-      "page_url": "https://acme.yard.sh/my-slug/",
-      "service_url": "https://acme.yard.sh/my-slug/service/",
-      "serving_release": { "id": "<uuid>", "version": "v1.4.0", "published_at": "…" },
-      "releases": [
-        { "id": "<uuid>", "version": "v1.4.0", "published_at": "…", "is_archived": false, "attached_at": "…" }
-      ]
+      "id": "<uuid>", "project_id": "<uuid>", "slug": "staging",
+      "visibility": "private", "active_release_id": "<uuid>", "pinned": false,
+      "created_at": "…", "deploy_status": "stale",
+      "page_url": "https://acme.yard.sh/my-slug/@staging/",
+      "serving_release": { "id": "<uuid>", "version": "v1.3.0", "published_at": "…" },
+      "releases": [ /* … */ ]
     }
   ]
 }
 ```
 
+The global scope has no id and no name: on the wire it is the empty slug, and
+an absent `?sandbox=` parameter names it.
+
 Read the serving state from two fields: `active_release_id` null means
 newest-wins; set with `pinned: false` means deployed; set with `pinned: true`
-means pinned. `serving_release` is what it serves right now (null when nothing
-has been deployed), and `releases` is the membership set, newest first.
+means pinned. `serving_release` is what the scope serves right now (absent when
+nothing has been deployed), and `releases` is the membership set, newest first.
 
-`deploy_status` reports how the environment's running service compares to that
+`deploy_status` reports how the scope's running service compares to that
 release: `up_to_date`, `stale` (the release changed and the redeploy hasn't
 finished), `updating`, or `failed` (with `deploy_error` saying why; the
-environment keeps serving what it had). `deploy_synced_at` is when the last
-redeploy settled as up to date. Yard drives this itself — editing a release an
-environment serves triggers exactly one redeploy, however many files changed.
+scope keeps serving what it had). `deploy_synced_at` is when the last
+redeploy settled as up to date. Yard drives this itself: editing a release a
+scope serves triggers exactly one redeploy, however many files changed.
 
-### yard env create \<env\>
+### yard sandbox create \<sandbox\>
 
-Creates an environment. Names are 2-60 characters: letters, digits, and hyphens,
-starting with a letter, compared case-insensitively. `production` always exists
-and cannot be recreated. How many environments a project may have is
-server-enforced via `max_environments`, counting `production` (currently Basic:
-1 — no environments of your own; Pro: 10).
+Creates a sandbox. Names are 2-60 characters: letters, digits, and hyphens,
+starting with a letter, compared case-insensitively. How many sandboxes a
+project may have is server-enforced via `max_sandboxes` (currently Basic: 1,
+Pro: 10); over the cap the API answers `403` with error code
+`sandbox_limit_reached`. A new sandbox is private and holds nothing until you
+attach a release.
 
-### yard env rename \<env\> \<new-name\>
+### yard sandbox rename \<sandbox\> \<new-name\>
 
 Renames in place. Only the name moves: releases, files, secrets and the database
-follow it, because the environment keeps its id. Its URLs change with the name —
-the `/@<env>/` segment *is* the name — so anything pointing at the old one stops
-resolving. `production` refuses (400); an existing name conflicts (409).
+follow it, because the sandbox keeps its id. Its URLs change with the name,
+since the `/@<sandbox>/` segment *is* the name, so anything pointing at the old
+one stops resolving. An existing name conflicts (409). The project's global data
+has no name to change.
 
-### yard env visibility \<env\> \<public|private\>
+### yard sandbox visibility \<scope\> \<public|private\>
 
-Sets who may view the environment's URLs. `private` (the default for custom
-environments) admits every member of the owning team — `owner` and `admin`
-alike — and nobody else: the edge sends everyone else through sign-in.
-`public` means anyone with the URL can view the environment's landing page and
-service, with no sign-in and no purchase. `production` works too, and is how a project
-goes private: its visibility is the storefront's. The project's stage still
-trumps — a draft project serves nothing publicly regardless. The seller gets
-an in-app + email notification on every flip.
+Sets who may view the scope's URLs. `private` (the default for a sandbox)
+admits every member of the owning team, `owner` and `admin` alike, and nobody
+else: the edge sends everyone else through sign-in.
+`public` means anyone with the URL can view the scope's landing page and
+service, with no sign-in and no purchase. `global` works too, and is how a
+project goes private: the visibility of its global data is the storefront's.
+The project's stage still trumps, so a draft project serves nothing publicly
+regardless. The seller gets an in-app + email notification on every flip.
 
-### yard env delete \<env\> [-y]
+### yard sandbox delete \<sandbox\> [-y]
 
-Deletes the environment and everything scoped to it: its files, its service,
-and its service database (immediately, with no grace window). Releases are
-project-scoped, so they survive. Prompts first; pass `-y`/`--yes` in scripts.
-`production` is protected and refuses.
+Deletes the sandbox and everything scoped to it: its files, its service,
+its service database, and its whole simulated commerce chain: transactions,
+subscriptions, trials, license keys, device activations, coupon usages, gifts
+and affiliate commissions (immediately, with no grace window). Releases are
+project-scoped, so they survive, and the project's real books are untouched.
+Prompts first; pass `-y`/`--yes` in scripts.
 
-### yard env attach \<env\> \<release\> [--no-serve]
+### yard sandbox channel \<scope\> \<channel|none\>
 
-Adds a release to the environment's set. As the newest member it starts serving
+Connects the scope to a release channel, so it mirrors that channel's
+membership: releases moved into the channel attach and deploy here
+automatically, and releases removed from it detach. Manual attaches are left
+alone, and a pin still freezes what serves. `none` disconnects the scope and
+leaves its releases attached. A new project's global data follows the
+protected `Production` channel, which is why publishing goes live. See
+`yard channels list` for the project's channels; a channel other than
+`Production` has to be created in the dashboard before a scope can follow it.
+
+### yard sandbox attach \<scope\> \<release\> [--no-serve]
+
+Adds a release to the scope's set. As the newest member it starts serving
 there; an older one joins the set without taking over. `--no-serve` holds what
-the environment serves today, staging the release for a later `env deploy`.
+the scope serves today, staging the release for a later `sandbox deploy`.
 
 Attaching the newest release also clears an unpinned pointer left by an earlier
-`env deploy` — newest-wins resuming. A pinned environment is unmoved.
+`sandbox deploy`, which is newest-wins resuming. A pinned scope is unmoved.
 
-### yard env detach \<env\> \<release\>
+### yard sandbox detach \<scope\> \<release\>
 
-Removes a release from the set — "stop serving this". The release survives; it
-belongs to the project. Refused (409) when it would leave the environment with
-nothing to serve.
+Removes a release from the set, the "stop serving this" action. The release
+survives; it belongs to the project. Refused (409) when it would leave the
+scope with nothing to serve.
 
-### yard env deploy \<env\> \<release\>
+### yard sandbox deploy \<scope\> \<release\>
 
-Points the environment at a release and checks it out, attaching it first when
+Points the scope at a release and checks it out, attaching it first when
 it is not already a member. This is how you ship a specific release, however
 old. The choice is **not** frozen: the next release attached on top takes over.
 
-### yard env pin \<env\> [release]
+### yard sandbox pin \<scope\> [release]
 
-Pins the environment to a release, so later attaches join the set without taking
-over. Naming no release pins what it serves right now — how a rollback is held.
+Pins the scope to a release, so later attaches join the set without taking
+over. Naming no release pins what it serves right now, which is how a rollback
+is held.
 
-### yard env unpin \<env\>
+### yard sandbox unpin \<scope\>
 
 Clears the pointer, so the newest member serves again and every later attach
 takes over.
 
-### yard env promote \<from\> \<to\>
+### yard sandbox promote \<from\> \<to\>
 
 Attaches the release `<from>` currently serves to `<to>`, so the two serve
 identical content. **Nothing is copied**: promote adds the release to the
 target's set, where as the newest member it starts serving. **Data and secrets
-never promote**; each environment keeps its own. `<from>` must serve a release.
-Prefer `env deploy` when you can name the release.
+never promote**; each scope keeps its own. `<from>` must serve a release.
+Prefer `sandbox deploy` when you can name the release.
 
 `attach`, `detach`, `deploy`, `pin`, `unpin` and `promote` all answer the same
 JSON:
-`{"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": [...]}`.
-Human output ends with what the environment now serves, plus the live and
-`/service/` URLs when the target was `production`.
+`{"release_id": "…", "version": "v1.4.0", "to": "", "action": "attach", "artifacts": [...]}`,
+where `to` is the wire slug of the scope acted on and `""` is the project's
+global data.
+Human output ends with what the scope now serves, plus the live and
+`/service/` URLs when the target was the global scope.
 
 ### Recipes
 
 ```sh
-# Ship to staging, check it, then to production
-yard releases publish v1.4.0 --env staging
-yard env deploy production v1.4.0
+# Try a release in a sandbox, then ship it
+yard sandbox create staging
+yard sandbox deploy staging v1.4.0
+yard sandbox deploy global v1.4.0
 
-# Roll back production and hold it there through later publishes
-yard env pin production v1.3.0
+# Roll back the storefront and hold it there through later publishes
+yard sandbox pin global v1.3.0
 
 # Resume newest-wins once the fix ships
-yard env unpin production
+yard sandbox unpin global
 
 # Stage a release without serving it, deploy on your own schedule
-yard env attach production v1.5.0 --no-serve
-yard env deploy production v1.5.0
+yard sandbox attach global v1.5.0 --no-serve
+yard sandbox deploy global v1.5.0
 
 # Share a work-in-progress preview with someone who has no Yard account
-yard env create preview
-yard releases publish v1.5.0-rc1 --env preview
-yard env visibility preview public   # anyone with the URL can now view it
+yard sandbox create preview
+yard sandbox deploy preview v1.5.0-rc1
+yard sandbox visibility preview public   # anyone with the URL can now view it
 
-# What is each environment serving, and why?
-yard env list --json | jq '.environments[] | {slug, serving: .serving_release.version, pinned, deploy_status}'
+# Let a sandbox follow a channel instead of attaching by hand
+yard sandbox channel preview Beta
+
+# What is each scope serving, and why?
+yard sandbox list --json | jq '[.global] + .sandboxes | .[] | {slug, serving: .serving_release.version, pinned, deploy_status}'
 ```
 
 ---
@@ -1377,10 +1478,10 @@ yard env list --json | jq '.environments[] | {slug, serving: .serving_release.ve
 
 Manage a project's running service: its URL, logs, secrets and database (see
 `service-and-database.md` for the runtime model). Service CODE is not managed
-here: `yard push` uploads it into a release, and attaching that release to an
-environment is what deploys it. Requires the `service` permission (Pro).
-Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--env <slug>`
-(default `production`), `--json`.
+here: `yard push` uploads it into a release, and attaching that release to a
+scope is what deploys it. Requires the `service` permission (Pro).
+Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--sandbox <slug>`
+(omitted = the project's global data), `--json`.
 
 **Bundle constraints enforced client-side before any HTTP:** ≤200 files,
 ≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
@@ -1409,11 +1510,12 @@ run `yard init`). Run it once per service. JSON: `{"dir": "api",
 
 ### yard service open
 
-Prints a service's URL for the environment and opens it in a browser.
+Prints a service's URL for the scope and opens it in a browser.
 `--service <name>` picks one when the project declares several; with exactly
-one it is inferred. A private environment's URL is a team-only preview
-(sign-in enforced at the edge). JSON: `{"environment": "...", "service":
-"api", "url": "...", "deployed": true}`.
+one it is inferred. A private sandbox's URL is a team-only preview
+(sign-in enforced at the edge). JSON: `{"sandbox": "...", "service":
+"api", "url": "...", "deployed": true}`, where `sandbox` is `""` for the
+project's global data.
 
 ### yard service check
 
@@ -1427,16 +1529,16 @@ JSON: `{"services": [{"name": "api", "dir": "api", "mount_path": "/api",
 
 ### yard service secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
 
-Per-environment secrets that become `env.<NAME>` bindings on the **next
-deploy**, in every service of that environment. Names UPPER_SNAKE (≤32 per
-environment, ≤4 KB each; `DB` and `ASSETS` reserved). Write-only: `list` shows
+Per-scope secrets that become `env.<NAME>` bindings on the **next
+deploy**, in every service of that scope. Names UPPER_SNAKE (≤32 per
+scope, ≤4 KB each; `DB` and `ASSETS` reserved). Write-only: `list` shows
 names and timestamps, never values. Secrets don't promote between
-environments.
+scopes.
 
 ### yard service db query [sql]
 
-Runs SQL against the environment's database — the one every service there
-shares — and prints rows as JSON. SQL from the inline argument, `--file
+Runs SQL against the scope's database, the one every service there
+shares, and prints rows as JSON. SQL from the inline argument, `--file
 <path>`, or stdin (`-`). Caps: 10 kB SQL, 1000 rows returned. The
 `_yard_migrations` table records applied migrations as `<service>/<file>`.
 

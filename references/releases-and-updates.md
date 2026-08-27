@@ -35,15 +35,16 @@ been published yet. A draft can never be deployed anywhere, so editing one has
 no side effects. Publishing stamps the tag and makes the release deployable —
 publishing itself is **one-way**, but the release stays editable afterwards.
 Editing a published release nothing serves is still side-effect free; editing
-one an environment is serving is live the moment it saves. A project can hold
+one a scope is serving is live the moment it saves. A project can hold
 at most **10 open drafts**.
 
-Releases belong to the **project**, not to any environment. Each environment
-holds a **set** of releases and serves the newest member of that set, unless
-the seller explicitly pins an older one. **Attaching a release to an
-environment is the deploy moment.** Buyers only ever see what **production**
-serves — attach a release there (`yard releases promote <tag> --to
-production`, or publish with `--env production`) to make it live.
+Releases belong to the **project**, not to any scope. A **scope** is the
+project's global data or one of its sandboxes. Each scope holds a **set** of
+releases and serves the newest member of that set, unless the seller
+explicitly pins an older one. **Attaching a release to a scope is the deploy
+moment.** Buyers only ever see what the project's **global data** serves, so
+attach a release there (`yard sandbox deploy global <tag>`, or publish it into
+a channel the global scope follows) to make it live.
 
 Version tags are **unique per project** across all non-archived releases —
 publishing under an existing tag (or tagging a draft with one) is rejected
@@ -59,10 +60,11 @@ patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 `publish` works on a **draft**: it uploads each file into your open draft
 (creating one seeded from your newest published release if you have none;
 `--release <id|tag>` names one explicitly), then publishes the draft
-under the tag and attaches it to the target environment (`--env` /
-`environment`, default `production` — live to customers). Anything `yard push`
-already staged in that draft, landing page and service bundle alike, ships
-with it.
+under the tag into a release channel (`--channel` / `channel`, default the
+`Production` channel, which the project's global data follows, so publishing is
+live to customers). Every published release belongs to exactly one channel, and
+every scope connected to it attaches the release and deploys it. Anything `yard push` already staged in
+that draft, landing page and service bundle alike, ships with it.
 
 ### Spec mode (recommended for agents)
 
@@ -87,7 +89,7 @@ Spec field rules:
 | `tag_name` | string | Yes | ≤255 chars |
 | `release_name` | string | No | ≤255 chars |
 | `release_notes` | string | No | markdown, ≤125,000 chars |
-| `environment` | string | No | environment the release deploys to; defaults to `production` |
+| `channel` | string | No | the release channel the release lands in; defaults to `"Production"` |
 | `files` | array of paths | No | absolute or relative; each path must exist and be a regular file |
 
 `--json` prints a single object on stdout (logs go to stderr):
@@ -96,7 +98,7 @@ Spec field rules:
 {
   "release": { /* the published release */ },
   "deployed": [
-    {"release_id": "…", "version": "v1.4.0", "to": "production", "action": "attach", "artifacts": ["page", "releases"]}
+    {"release_id": "…", "version": "v1.4.0", "to": "", "action": "attach", "artifacts": ["page", "releases"]}
   ],
   "files": [
     {"path": "./dist/yard-darwin-arm64.tar.gz", "status": "uploaded", "size_bytes": 12345678},
@@ -106,6 +108,9 @@ Spec field rules:
   "failed":   1
 }
 ```
+
+Each `deployed` entry names the scope the channel mirror shipped to: `""` is
+the project's global data, any other value is a sandbox slug.
 
 ### Flag mode
 
@@ -141,26 +146,40 @@ Exit codes:
   was published and the draft stays open. Re-run or add the missing assets
   from the dashboard.
 
-### Promoting to another environment
+### Promoting a release into a channel
 
-`yard releases promote <tag> --to <env>` attaches an already-published release
-to another environment's set — as the newest member it starts serving there
-(unless the environment is pinned to something else). Nothing is copied:
-storage is not consumed twice and download counts carry over. There is no
-source environment to name — the tag alone identifies the release.
+`yard releases promote <tag> --to <channel>` moves an already-published release
+into a release channel, out of whichever one it was in. Every scope connected to
+the new channel attaches it, and as the newest member it starts serving there
+(unless that scope is pinned to something else); scopes connected to the old
+channel detach it and fall back to their next newest release. Nothing is copied:
+storage is not consumed twice and download counts carry over. There is no source
+to name — a release is in exactly one channel, so the tag alone identifies both
+it and where it is coming from. `yard channels list` shows the project's
+channels and which scopes follow each one.
+
+The target channel has to exist first. Channels are created, renamed, deleted and
+reordered **from the dashboard's Releases tab only**: the CLI reads them and
+moves releases and scopes between them, but never creates one. `Production` is
+the exception: every project has it, and it cannot be renamed or deleted.
+Deleting a custom channel does not delete its releases; they are reassigned to a
+channel you name (Production by default), and scopes that followed the deleted
+one simply keep serving what they already serve.
 
 ```sh
 yard releases publish v1.4.0 --file dist/app.zip              # live to buyers
 ```
 
-To check it before buyers do, publish to an environment of your own and promote
-when it looks right:
+To check it before buyers do, hold the storefront where it is, deploy the
+release to a sandbox of your own, and release the hold when it looks right:
 
 ```sh
-yard env create preview
-yard releases publish v1.4.0 --env preview --file dist/app.zip
+yard sandbox create preview
+yard sandbox pin global                                       # the storefront stays put
+yard releases publish v1.4.0 --file dist/app.zip
+yard sandbox deploy preview v1.4.0
 # …verify the download works…
-yard releases promote v1.4.0 --to production                  # ships it to buyers
+yard sandbox unpin global                                     # ships it to buyers
 ```
 
 ---
@@ -173,6 +192,15 @@ publishes a GitHub release, Yard receives the webhook and creates a matching
 **published** release — tag, title, notes, and every attached asset are copied
 into Yard's own storage. Editing the GitHub release re-syncs it; deleting it
 **archives** the Yard release (buyers keep their downloads).
+
+**Which channel a synced release lands in.** A synced release is published, so it
+belongs to exactly one channel like any other. It lands in the project's **GitHub
+sync channel**, chosen on the dashboard's Releases tab and defaulting to the
+protected `Production` channel, which the project's global data follows, so by
+default publishing on GitHub ships to buyers. Point the project at a different
+channel to have GitHub releases land somewhere only a sandbox is watching. The
+setting is one channel, not a set: a synced release cannot fan out to several.
+
 
 ### Code and pricing from the repo
 
@@ -274,23 +302,22 @@ query parameter:
 GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>
 ```
 
-**Environments.** Both update endpoints accept an optional `environment`
-parameter and default to `production`, so an updater that omits it always gets
-the live build:
+**Sandboxes.** Both update endpoints accept an optional `sandbox` parameter.
+An updater that omits it reads the project's global data, which is the live
+build:
 
 ```
-GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&environment=beta
+GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&sandbox=beta
 ```
 
-Environment **visibility** decides who can read a channel. A `public`
-environment answers any valid license key for the project — that is how open
-beta channels work: hand testers the license key they already have and point
-their updater at the beta environment. A `private` environment — Production
-included — answers only license keys held by a member of the owning team (and
-the project's test license key); everyone else gets the same `404` an unknown
-slug gets, so a private channel's existence never leaks. Unpublished work is
-never reachable: draft releases can't belong to any environment, and each
-environment only serves releases attached to it.
+Sandbox **visibility** decides who can read one. A `public` sandbox answers any
+valid license key for the project, which is how an open beta stream works: hand
+testers the license key they already have and point their updater at the beta
+sandbox. A `private` sandbox answers only license keys held by a member of the
+owning team (and the project's test license key); everyone else gets the same
+`404` an unknown slug gets, so a private sandbox's existence never leaks.
+Unpublished work is never reachable: draft releases can't belong to any scope,
+and each scope only serves releases attached to it.
 
 **Response** (shape mirrors the GitHub Releases API for easy adoption of
 existing tooling):
@@ -328,7 +355,7 @@ Errors:
 - `403 Trial period has expired` — the key came from a trial that has ended.
 - `404 No releases found` — the project has no synced, non-archived release yet.
 - `404 License key not found` — the key isn't in our system.
-- `404 Environment "…" not found` — the slug doesn't exist, or the environment is private and the key's holder is not a member of the owning team (deliberately indistinguishable).
+- `404 Sandbox "…" not found`: the slug doesn't exist, or the sandbox is private and the key's holder is not a member of the owning team (deliberately indistinguishable).
 
 ### Download a release file
 
@@ -342,47 +369,49 @@ The endpoint returns `302 Found` with a presigned URL pointing to the storage
 bucket; follow the redirect (most HTTP clients do this automatically). The
 presigned URL expires after 5 minutes.
 
-### List environments (update channels)
+### List the scopes a key may see
 
 ```
-GET https://api.yard.sh/v1/updates/environments?license_key=<license_key>
+GET https://api.yard.sh/v1/updates/sandboxes?license_key=<license_key>
 ```
 
-Lists the environments the key may see, so an app can offer a channel picker.
-Private environments are simply omitted for non-members; the list can be empty.
+Lists the project's global data plus the sandboxes the key may see, so an app
+can offer a stream picker. Private sandboxes are simply omitted for
+non-members; `sandboxes` can be empty. The global scope has no slug: an update
+request that names no sandbox reads it.
 
 ```json
 {
-  "environments": [
-    { "slug": "Production", "visibility": "public", "protected": true,
-      "current_version": "v1.4.0", "current_published_at": "2026-04-28T16:32:11Z" },
-    { "slug": "beta", "visibility": "public", "protected": false,
+  "global": { "visibility": "public",
+    "current_version": "v1.4.0", "current_published_at": "2026-04-28T16:32:11Z" },
+  "sandboxes": [
+    { "slug": "beta", "visibility": "public",
       "current_version": "v1.5.0-beta.1", "current_published_at": "2026-05-02T09:00:00Z" }
   ]
 }
 ```
 
-### List releases in an environment
+### List releases in a scope
 
 ```
-GET https://api.yard.sh/v1/updates/releases?license_key=<license_key>&environment=beta
+GET https://api.yard.sh/v1/updates/releases?license_key=<license_key>&sandbox=beta
 ```
 
-Returns a **bare JSON array** of releases attached to the environment, newest
+Returns a **bare JSON array** of releases attached to the scope, newest
 first, each in the same GitHub-Release shape as `/v1/updates/latest`. Archived
 releases are excluded (that is also what keeps versions unique in download
 URLs). Paginate with `page` (default 1) and `limit` (default 50, max 100).
 Every asset's `browser_download_url` already carries the license key, version,
-and environment — use it verbatim.
+and sandbox, so use it verbatim.
 
 ### Download a file from a specific release
 
 ```
-GET https://api.yard.sh/v1/updates/releases/{version}/download/{filename}?license_key=<license_key>&environment=beta
+GET https://api.yard.sh/v1/updates/releases/{version}/download/{filename}?license_key=<license_key>&sandbox=beta
 ```
 
 Downloads by version rather than "latest". The release must be attached to the
-requested environment, or the endpoint returns `404 Release not found`. Same
+requested scope, or the endpoint returns `404 Release not found`. Same
 `302`-to-presigned-URL behavior as the latest-download endpoint.
 
 ---
@@ -461,7 +490,7 @@ Emits the raw `APIKeyListResponse`:
 
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
-- **`404 No releases found for this project`** — nothing has shipped to production yet. Run `yard releases publish` and then `yard releases promote <tag> --to production` (or publish with `--env production` in one step).
+- **`404 No releases found for this project`**: nothing has shipped to the project's global data yet. Run `yard releases publish` (which adds the release to the `Production` channel the global scope follows), or attach an already-published release with `yard sandbox deploy global <tag>`.
 - **Storage-limit `403` on publish** — the selling team's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

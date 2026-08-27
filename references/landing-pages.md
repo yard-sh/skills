@@ -344,36 +344,37 @@ Pages serve under `<username>.yard.sh/<slug>/`, so any CSS, JS, image, or font y
 
 Avoid bare root-relative paths (`href="/styles.css"`, `src="/app.js"`) — those drop the slug and resolve to `<username>.yard.sh/styles.css`, which isn't part of your bundle and will 404. If you have to use a leading slash, prefix the slug: `href="/<slug>/styles.css"`. Relative URLs are easier and survive renaming the project, which is what `yard init --page` scaffolds.
 
-Relative URLs matter more than usual because the same bundle serves under more than one prefix — a non-production environment adds a path segment (below). Root-relative paths break there too; relative ones just work.
+Relative URLs matter more than usual because the same bundle serves under more than one prefix: a sandbox adds a path segment (below). Root-relative paths break there too; relative ones just work.
 
 ---
 
 ## Testing a page before customers see it
 
-Every environment serves its own landing page, at `https://<username>.yard.sh/<slug>/@<env>/`. Production stays at `https://<username>.yard.sh/<slug>/`.
+Every scope serves its own landing page. A sandbox serves at `https://<username>.yard.sh/<slug>/@<sandbox>/`; the project's global data, which is what buyers reach, stays at `https://<username>.yard.sh/<slug>/`.
 
 ```
-https://alice.yard.sh/widget/            production
-https://alice.yard.sh/widget/@preview/   the preview environment
+https://alice.yard.sh/widget/            the project's global data
+https://alice.yard.sh/widget/@preview/   the preview sandbox
 ```
 
-Environment URLs are **team-only by default**: the Yard edge verifies you belong to the team that owns the project before serving, everyone else gets an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback — and shareable only once you opt in with `yard env visibility <env> public`, which lets anyone with the URL view that environment.
+Sandbox URLs are **team-only by default**: the Yard edge verifies you belong to the team that owns the project before serving, everyone else gets an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback, and shareable only once you opt in with `yard sandbox visibility <sandbox> public`, which lets anyone with the URL view that sandbox.
 
-The environment you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which environment it serves. `window.yard.project` reflects **that environment's** state — its own pricing, copy, and gallery — so a preview page shows preview prices, not production's.
+The scope you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which scope it serves. `window.yard.project` reflects **that scope's** state, its own pricing, copy, and gallery, so a preview page shows preview prices, not the global scope's.
 
-An environment whose release has no custom page still has a landing page: the built-in one, rendered from that environment's content. So the URL always resolves, whether or not you have shipped a bundle there.
+A scope whose release has no custom page still has a landing page: the built-in one, rendered from that scope's content. So the URL always resolves, whether or not you have shipped a bundle there.
 
 The usual loop:
 
 ```
-yard push                                   # into your draft release
-yard env create preview                     # once
-yard releases publish v1.0.0 --env preview  # deploy to the environment
-                                            # browse …/widget/@preview/
-yard releases promote v1.0.0 --to production
+yard push                            # into your draft release; nothing serves a draft
+yard sandbox create preview          # once
+yard sandbox pin global              # hold the storefront on the release it serves today
+yard releases publish v1.0.0         # tag the draft; the pin keeps it off the storefront
+yard sandbox deploy preview v1.0.0   # serve it in the sandbox, then browse …/widget/@preview/
+yard sandbox unpin global            # let the storefront serve v1.0.0
 ```
 
-Editing a release an environment already serves is live — Yard redeploys that environment and `yard status` reports stale → updating → up to date while it catches up.
+Editing a release a scope already serves is live: Yard redeploys that scope and `yard status` reports stale, then updating, then up to date while it catches up.
 
 ---
 
@@ -389,7 +390,7 @@ The same limits apply whether you upload via `yard push` or the dashboard editor
 | Allowed extensions | `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2` |
 | Path rules | letters/digits/`._-` only, at most one subdirectory level, no dotfiles |
 | Required file | `index.html` (must exist before you can publish) |
-| Scope | Per environment — the caps apply to each environment's bundle separately |
+| Scope | Per scope: the caps apply to each scope's bundle separately |
 
 Anything outside these constraints is rejected client-side by `yard push` before any upload happens.
 

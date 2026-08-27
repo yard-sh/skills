@@ -20,6 +20,25 @@ A team username is **not** a user's username. They share one namespace (so neith
 
 ---
 
+## Scopes: the `sandbox` parameter
+
+A project has one set of real data, its **global data**, plus any number of **sandboxes**, each an optional copy of the project's landing page, pricing, service, database and commerce. Endpoints that read or write project state pick a scope the same way everywhere: **naming no sandbox means the global data**, which is what buyers reach and the only scope where money is real. Naming one selects that sandbox, whose commerce is simulated by the platform (see [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
+
+The parameter travels in the query string on `GET`s and on the subscription-management `POST`s, and in the JSON body on the checkout endpoints:
+
+| Endpoint | Where `sandbox` goes |
+|---|---|
+| `GET /v1/updates/latest`, `/v1/updates/sandboxes`, `/v1/updates/releases`, and both download paths | query string |
+| `GET /v1/projects/{username}/{slug}/public` | query string |
+| `GET /v1/projects/{username}/{slug}/subscription` | query string |
+| `POST /v1/projects/{username}/{slug}/subscription/cancel` \| `/reactivate` \| `/change` | query string |
+| `POST /v1/subscription-intent` | JSON body (`"sandbox": "preview"`) |
+| The buyer's download and library endpoints | query string |
+
+A sandbox that does not exist is a `404` naming the scope. A **private** sandbox, the default for a new one, answers only callers who belong to the project's owning team, and answers everyone else with `404`, as if it did not exist; a **public** sandbox answers anyone with the URL. Responses that resolve a sandbox are never cacheable, because the same URL can answer differently to a stranger and to a team member, and a scope's visibility can flip at any moment.
+
+---
+
 ## Authentication
 
 ### API Key (recommended for integrations)
@@ -69,6 +88,9 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key (optionally bind to a device) |
 | `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license |
 
+`POST /v1/licenses/validate` answers `valid: true` for any live key, including one minted by a **simulated purchase inside a sandbox**. The response carries a `sandbox` field naming the scope the key's purchase lives in: absent or empty for a real purchase on the project's global data (and for the project's test key, which is per project rather than per scope), a sandbox name otherwise. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+
+
 ### Subscriptions (buyer-facing)
 
 | Method | Path | Scope | Description |
@@ -88,11 +110,11 @@ Built-in updaters in the seller's software can reach these directly with just a 
 |---|---|---|
 | `GET` | `/v1/updates/latest?license_key={key}` | Check for the latest release by license key |
 | `GET` | `/v1/updates/latest/download/{filename}?license_key={key}` | Download the latest release file by license key |
-| `GET` | `/v1/updates/environments?license_key={key}` | List the environments (update channels) the key may see |
-| `GET` | `/v1/updates/releases?license_key={key}` | List an environment's releases (GitHub Releases list shape) |
-| `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release in an environment |
+| `GET` | `/v1/updates/sandboxes?license_key={key}` | List the scopes (the project's global data plus each sandbox) the key may see |
+| `GET` | `/v1/updates/releases?license_key={key}` | List a scope's releases (GitHub Releases list shape) |
+| `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release in a scope |
 
-All of these accept an optional `environment` parameter (default `production`). Private environments answer only license keys held by a member of the project's owning team (the project's test key always passes); everyone else gets a 404, as if the environment doesn't exist.
+All of these accept an optional `sandbox` parameter (see [Scopes](#scopes-the-sandbox-parameter)). Omitting it reads the project's global data, which is what buyers get. A private sandbox answers only license keys held by a member of the project's owning team (the project's test key always passes); everyone else gets a 404, as if the sandbox doesn't exist.
 
 ---
 
@@ -117,6 +139,8 @@ The following are **not** exposed over HTTP as integration endpoints — an API 
 
 - Create / update / delete a project (`yard init`, project edits in the dashboard)
 - Create, publish, or promote a release (`yard releases publish`, `yard releases promote`, the GitHub App on release webhook, or the dashboard)
+- Create, rename, delete, or reorder a **release channel**: dashboard-only, and not even in the CLI, which can only list them (`yard channels list`). The endpoints behind the dashboard (`POST`/`PATCH`/`DELETE /v1/projects/{id}/channels…`) are session-authenticated and gated on the `sandboxes` permission; an API key cannot reach them
+- Create, rename, delete, or configure a **sandbox**, and choose what a scope serves (`yard sandbox …`, or the dashboard). Sandbox writes need the `sandboxes` permission and are capped by `max_sandboxes`; writes to the project's global data need only ordinary project-write permission
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
 - Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
 - Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
