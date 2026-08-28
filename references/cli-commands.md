@@ -612,67 +612,33 @@ For end-user-shipped software, downloads authenticate with license keys against 
 
 ---
 
-## yard licenses
+## Testing license keys
 
-Test license-key validation and inspect test device activations. All three subcommands accept `--project <slug-or-uuid>`; if omitted, the CLI reads the slug from `.yard/settings.json` (walking up from cwd) and falls back to auto-selecting your only project if you have one. All three accept `--json`.
+There is no `yard licenses` command group: license-key testing happens in a **sandbox** rather than through a per-project test key.
 
-Every project with `license_key_enabled: true` has a **test license key** — a license key value `POST /v1/licenses/validate` accepts the same way it accepts a real customer's key. It belongs to the project rather than to any one scope, so it validates with an empty `sandbox` field; it is not a sandbox's key. The validate endpoint itself still requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`); the test key is what goes in the request **body**. Test activations are tracked in a separate `test_activations` table, so they never affect real buyers.
-
-### yard licenses test-key
-
-Print the test license key for a project. Plain output is the bare key (one line, suitable for `$(...)` capture); `--json` emits an object with `project_id`, `project_slug`, and `test_license_key`.
-
-**Errors:**
-
-- Project doesn't have license keys enabled — surfaces a hint to run `yard projects edit <slug>` (needs the license_keys permission).
-- Project has no test key recorded — rare; usually means license keys were never toggled on.
-
-**Typical use:**
+License-key settings are per scope. A sandbox carries its own `license_key_enabled`, `activations_enabled` and `max_activations`, copied from the project's global scope when the sandbox is created and diverging from the next edit. Buying inside a sandbox is simulated - no card, no money - and mints a **real** license key scoped to that sandbox, so validation, device activation and the update server all exercise the same code path a buyer's key does.
 
 ```sh
-# Capture the test key for use in a curl/integration test.
-KEY=$(yard licenses test-key --project my-app)
+# A scope to rehearse in. It inherits the project's licensing settings.
+yard sandbox create staging
 
-# POST /v1/licenses/validate requires an API key with licenses:validate scope —
-# the license key being validated goes in the body, the API key goes in the header.
+# Mint an API key for the validate endpoint (the license key goes in the body,
+# this goes in the Authorization header).
+yard keys create --spec - --json <<<'{"name":"local-validate","scopes":["licenses:validate"]}'
+
+# Then buy the project inside the sandbox from its checkout page, and validate
+# the key it mints. The response's `sandbox` field reads "staging".
 curl -X POST https://api.yard.sh/v1/licenses/validate \
   -H "Authorization: Bearer $YARD_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d "{\"license_key\":\"$KEY\",\"device_id\":\"laptop-42\"}"
+  -d '{"license_key":"XXXX-XXXX-XXXX-XXXX","device_id":"laptop-42"}'
+
+# A clean slate is a fresh sandbox: deleting one takes its transactions,
+# license keys and device activations with it.
+yard sandbox delete staging --yes
 ```
 
-### yard licenses test-activations list
-
-List active test device activations attached to the project's test license key.
-
-**Output (table):**
-
-```
-ID                                   DEVICE ID                      DEVICE NAME          ACTIVATED    LAST SEEN
---------------------------------------------------------------------------------------------------------------------
-9f3e1c2a-...                         laptop-42                      Alice's MBP          2026-04-28   2026-04-28
-
-2 active / 5 max (3 slots remaining)
-```
-
-`--json` emits the raw `ActivationsListResponse` (`{ "activations": [...], "settings": { "enabled", "max_activations", "current_count", "remaining_slots" } }`). When `activations_enabled` is false on the project, the list is empty and the table form prints a one-liner explaining why.
-
-### yard licenses test-activations clear
-
-Deactivate every test device on the project's test license key. **Real customer activations are not touched** — the call only resets `test_activations` rows.
-
-**Flags:**
-
-- `--yes` — skip the confirmation prompt (required when running non-interactively / piped). Implied by `--json`.
-
-**Typical use:**
-
-```sh
-# Reset between test runs that hit max_activations.
-yard licenses test-activations clear --yes
-```
-
-`--json` emits `{ "project_id", "project_slug", "cleared": true }`.
+A sandbox's own licensing settings and the keys it has minted are read and edited from that sandbox's License Keys page in the dashboard; `yard projects edit` reaches the **global** scope's settings only.
 
 ---
 

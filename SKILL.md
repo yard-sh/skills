@@ -15,10 +15,10 @@ description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
   Use this skill whenever the user mentions Yard, the Yard CLI, license keys, GitHub release integration, yard login,
   yard init, yard install, yard projects, yard releases, yard sandbox, sandboxes, simulated or test purchases in a sandbox,
-  yard channels, release channels, promoting a release between channels, yard keys, yard licenses, yard help, installing the yard CLI,
+  yard channels, release channels, promoting a release between channels, yard keys, yard help, installing the yard CLI,
   pricing, trials, device activations, affiliate links, referral codes, update server, file updates, publishing a
-  release, downloading updates, creating API keys, testing license-key validation, the test license key, clearing
-  test device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, or extending
+  release, downloading updates, creating API keys, testing license-key validation in a sandbox,
+  device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, or extending
   and shortening a buyer's free trial. Also use this skill when users are working inside a Yard codebase and need to understand
   how Yard works, its CLI commands, API, pricing model or troubleshooting common issues.
 ---
@@ -67,7 +67,7 @@ A **release channel** is a project-wide category of releases, not a scope. Every
 **A sandbox has its own commerce, and that commerce is simulated.** Buying inside a sandbox never touches Stripe and never moves money: the platform writes a completed transaction carrying the amounts it would have charged, mints license keys, starts and renews subscriptions, and records coupon redemptions and gifts, all against that sandbox alone. That is how a seller exercises a full purchase flow - checkout, entitlement, license validation, renewal - without buying their own project. Three consequences worth holding onto:
 
 1. **Simulated sales are never in the seller's books.** Earnings, payouts, `yard transactions list` and `yard customers list` read the global scope only. A sandbox's customers, transactions, subscriptions and license keys appear on that sandbox's pages in the dashboard, and nowhere in the CLI.
-2. **A sandbox license key validates as `valid: true`.** `POST /v1/licenses/validate` returns a `sandbox` field naming the scope the key's purchase lives in - empty for a real purchase and for the project's test key. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real.
+2. **A sandbox license key validates as `valid: true`.** `POST /v1/licenses/validate` returns a `sandbox` field naming the scope the key's purchase lives in - empty for a real purchase. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real. Whether a scope mints keys at all is the scope's own setting: a sandbox can sell with license keys while the project does not, or the reverse.
 3. **Deleting a sandbox deletes its commerce.** Its transactions, subscriptions, trials, license keys, device activations, coupon usages and gifts go with it, immediately.
 
 Full rules: [references/pricing-and-licensing.md](references/pricing-and-licensing.md), _Commerce in a Sandbox_.
@@ -225,32 +225,20 @@ A hosted-service release carries its service bundles and landing page, not downl
 
 ### Testing license-key validation
 
-Every project with `license_key_enabled: true` has a **test license key** — a real license key value the seller can pass to `POST /v1/licenses/validate` and have the API treat it like a paid customer's key. Test activations live in a separate `test_activations` table, so they never collide with real customers. The test key belongs to the project rather than to any one scope, so it validates with an empty `sandbox` field; a key minted by a simulated purchase inside a sandbox names that sandbox instead. Simulating a whole purchase is the other way to test: see _Sandboxes and release channels_ above.
+A **sandbox** is how you exercise license keys without buying your own project for real. License-key settings are per scope, so a sandbox mints its own keys under its own rules, and the project's real buyers are untouched by anything you do there.
 
-**Auth:** `POST /v1/licenses/validate` is **not unauthenticated**. It requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). The test license key goes in the **request body**, not the header — it's the data being validated, not the credential.
+The keys a sandbox mints are real keys. They validate the same way, activate devices the same way, and carry a `sandbox` field naming the scope they came from - so entitlement logic has to check it, or a simulated purchase entitles someone for real.
 
-Three CLI commands cover the loop:
-
-```sh
-# Print the test key for the current project (or pass --project <slug>).
-yard licenses test-key
-
-# See what's currently activated against the test key.
-yard licenses test-activations list
-
-# Wipe every test device when you've hit max_activations during testing.
-yard licenses test-activations clear --yes
-```
+**Auth:** `POST /v1/licenses/validate` is **not unauthenticated**. It requires an API key with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). The license key goes in the **request body**, not the header - it's the data being validated, not the credential.
 
 Typical agent flow when wiring license validation into a seller's app:
 
-1. `yard keys create --spec - --json <<<'{"name":"local-validate","scopes":["licenses:validate"]}'` to mint an API key (capture `key` from the JSON output).
-2. `yard licenses test-key --json` to grab the test license key.
-3. From the app under test, `POST /v1/licenses/validate` with the API key in the `Authorization` header and `{"license_key": "<test-key>", "device_id": "<your-choice>"}` in the body. Verify the response shape matches what your app expects.
-4. `yard licenses test-activations list` to confirm the device showed up.
-5. After enough iterations to hit `max_activations`, `yard licenses test-activations clear` resets the slate.
-
-All three `yard licenses` commands accept `--project <slug>` and fall back to the slug in `.yard/settings.json`. `--json` is supported on each for scripted use.
+1. `yard sandbox create staging` to make a scope to rehearse in. It starts with a copy of the project's licensing settings, so if the project sells with license keys, so does the sandbox.
+2. Turn license keys on for the sandbox if the project has them off - the License Keys page's Settings dialog, opened while that sandbox is selected, writes the sandbox's settings and nothing else.
+3. `yard keys create --spec - --json <<<'{"name":"local-validate","scopes":["licenses:validate"]}'` to mint an API key (capture `key` from the JSON output).
+4. Buy the project inside the sandbox. Sandbox commerce is simulated - no card, no money - and it mints a real license key scoped to `staging`.
+5. From the app under test, `POST /v1/licenses/validate` with the API key in the `Authorization` header and `{"license_key": "<key>", "device_id": "<your-choice>"}` in the body. Verify the response shape, including that `sandbox` reads `"staging"`.
+6. Deleting the sandbox takes its transactions, keys and activations with it, which is how you get a clean slate.
 
 ## Quick Start
 
@@ -324,9 +312,6 @@ The interactive flow:
 | `yard channels list [--json]`                                                 | List the project's release channels with each one's release count, latest version, the scopes following it, and whether it is protected. Read-only: channels are created, renamed and deleted from the dashboard.                                                       |
 | `yard keys list [--json]`                                                     | List the active team's API keys (name, prefix, scopes, last-used, created). Keys are team credentials, not personal ones. The full secret is never shown.                                                                                                               |
 | `yard keys create [name] [flags]`                                             | Mint a new API key. Supports `--spec <file\|->` and `--json`. The full secret is shown only once at creation.                                                                                                                                                           |
-| `yard licenses test-key [--project <slug>] [--json]`                          | Print the project's **test license key** — usable with `POST /v1/licenses/validate` to exercise license-validation logic without buying your own project. Per project, not per scope: it is not a sandbox's key and validates with an empty `sandbox` field.             |
-| `yard licenses test-activations list [--project <slug>] [--json]`             | List active test device activations attached to the project's test license key.                                                                                                                                                                                         |
-| `yard licenses test-activations clear [--project <slug>] [--yes] [--json]`    | Deactivate every test device on the project's test key (real customer activations are untouched).                                                                                                                                                                       |
 | `yard coupons [--json]`                                                       | List discount codes with their discount, scope, usage, and derived status (`active`, `scheduled`, `expired`, `used up`, `inactive`).                                                                                                                                    |
 | `yard coupons show <code-or-id> [--json]`                                     | One coupon plus its redemption analytics. `--json` emits `{coupon, analytics}`. Accepts the code or the UUID.                                                                                                                                                           |
 | `yard coupons create <code> [flags] [--spec <file\|->] [--json]`              | Create a code. `--percent 20` or `--amount 5` (**dollars**; a spec's `discount_value` is **cents** for `fixed_amount`), `--projects <csv>`, `--max-uses`, `--expires`, `--valid-from`, `--subscription-duration once\|forever`. Flags override `--spec` field by field.  |

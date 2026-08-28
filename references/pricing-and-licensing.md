@@ -202,7 +202,7 @@ The flip side is that **the CLI cannot read a sandbox's commerce at all** - neit
 
 | `sandbox` value | What the key is |
 |---|---|
-| absent / empty | a real purchase on the project's global data - or the project's test key, which is per project rather than per scope |
+| absent / empty | a real purchase on the project's global data |
 | a sandbox name | a simulated purchase inside that sandbox |
 
 Software that grants entitlement on a successful validation **must check this field**, or a simulated purchase entitles someone for real. The safe default in shipped software is to accept only an absent `sandbox` unless the build is a test build.
@@ -229,9 +229,11 @@ Yard automatically generates license keys for each purchase.
 - Input: license key + optional device ID
 - Output: validation result with project/tier info
 - **Requires an API key** with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). Embed it in the seller's software the same way you would for releases — see [api-reference.md](api-reference.md) for the endpoint definition and [releases-and-updates.md](releases-and-updates.md) for the embedded-API-key tradeoffs.
-- The response carries a **`sandbox`** field naming the scope the key's purchase lives in: empty for a real purchase and for the project's test key, a sandbox name for a key minted by a simulated purchase. Entitlement logic has to check it; see [Commerce in a Sandbox](#commerce-in-a-sandbox).
+- The response carries a **`sandbox`** field naming the scope the key's purchase lives in: empty for a real purchase, a sandbox name for a key minted by a simulated purchase. Entitlement logic has to check it; see [Commerce in a Sandbox](#commerce-in-a-sandbox).
 
-**Test license key:** Every project with `license_key_enabled: true` has a test key the seller can use to exercise validation/activation logic without buying their own project. The test key behaves identically to a real one against `POST /v1/licenses/validate`, but its activations live in a separate `test_activations` table and never collide with real buyers. It belongs to the **project**, not to any one scope, so it validates with an empty `sandbox` field: it is not a sandbox's key, and simulating a purchase inside a sandbox is the other, fuller way to test. Retrieve it with `yard licenses test-key`; manage its activations with `yard licenses test-activations list` and `yard licenses test-activations clear`. See [cli-commands.md](cli-commands.md#yard-licenses) for full flag reference.
+**License keys are configured per scope.** `license_key_enabled`, `activations_enabled` and `max_activations` belong to a scope, not to the project: the values on the project are the global scope's, and each sandbox carries its own. A new sandbox starts with a copy of the global scope's three and diverges from the next edit.
+
+That is what makes a sandbox the way to test. Enable license keys there, buy the project inside it - simulated commerce, no card, no money - and the purchase mints a real key scoped to that sandbox, exercising the same code path a buyer's key does rather than a parallel one. The project's real buyers are untouched by anything the sandbox does, and deleting the sandbox takes its keys and activations with it. `yard projects edit` still edits the **global** scope's settings; a sandbox's are set from its License Keys page in the dashboard.
 
 ---
 
@@ -245,7 +247,7 @@ License keys can track device activations:
 - Sellers can configure a maximum activation limit per license key
 - Activations are tracked in the `license_activations` table
 - Buyers can view and manage their activations from the buyer dashboard
-- Test activations (created via the project's test license key) are isolated in a parallel `test_activations` table, count against `max_activations` independently, and can be wiped with `yard licenses test-activations clear`
+- Activations belong to their key, and a key belongs to a scope, so a sandbox's device activations count against that sandbox's `max_activations` and never against the global scope's
 
 ---
 

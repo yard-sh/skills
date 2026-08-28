@@ -88,7 +88,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key (optionally bind to a device) |
 | `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license |
 
-`POST /v1/licenses/validate` answers `valid: true` for any live key, including one minted by a **simulated purchase inside a sandbox**. The response carries a `sandbox` field naming the scope the key's purchase lives in: absent or empty for a real purchase on the project's global data (and for the project's test key, which is per project rather than per scope), a sandbox name otherwise. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+`POST /v1/licenses/validate` answers `valid: true` for any live key, including one minted by a **simulated purchase inside a sandbox**. The response carries a `sandbox` field naming the scope the key's purchase lives in: absent or empty for a real purchase on the project's global data, a sandbox name otherwise. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
 
 ### Subscriptions (buyer-facing)
@@ -114,7 +114,7 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/v1/updates/releases?license_key={key}` | List a scope's releases (GitHub Releases list shape) |
 | `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release in a scope |
 
-All of these accept an optional `sandbox` parameter (see [Scopes](#scopes-the-sandbox-parameter)). Omitting it reads the project's global data, which is what buyers get. A private sandbox answers only license keys held by a member of the project's owning team (the project's test key always passes); everyone else gets a 404, as if the sandbox doesn't exist.
+All of these accept an optional `sandbox` parameter (see [Scopes](#scopes-the-sandbox-parameter)). Omitting it reads the project's global data, which is what buyers get. A private scope - the global one included - answers only license keys held by a member of the project's owning team; everyone else gets a 404, as if it doesn't exist. A key also reaches only the scope its own purchase lives in, in both directions: a sandbox key cannot pull the global scope's artifacts, and a global key cannot pull a sandbox's.
 
 ---
 
