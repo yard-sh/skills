@@ -2,7 +2,7 @@
 
 > **What this API covers.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management — plus reading the seller's customers and sales — happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard customers`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
 >
-> Create an API key with the scopes you need at **https://yard.sh/dashboard/api-keys?action=create**.
+> Create an API key with the scopes you need at **https://dash.yard.sh/api-keys?action=create**.
 
 ## Base URL
 
@@ -47,7 +47,7 @@ A sandbox that does not exist is a `404` naming it. A **private** sandbox, the d
 Authorization: Bearer yard_{key}
 ```
 
-API keys start with the `yard_` prefix and are issued **per team** in the dashboard at https://yard.sh/dashboard/api-keys?action=create — a key is a team credential pinned to the team that created it, so it stays valid when the person who minted it leaves. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
+API keys start with the `yard_` prefix and are issued **per team** in the dashboard at https://dash.yard.sh/api-keys?action=create — a key is a team credential pinned to the team that created it, so it stays valid when the person who minted it leaves. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
 
 **Scopes** — each key is limited to the actions it actually needs. Pick only what you use:
 

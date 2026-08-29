@@ -103,7 +103,7 @@ Every project has a stage that controls availability and pricing. New projects a
 
 Stage discounts are applied before coupon discounts during checkout.
 
-**How to advance a stage:** the CLI does not currently surface stage transitions — `yard projects edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance project stage from the Yard dashboard at `https://yard.sh/dashboard/projects`. Direct REST `PUT /v1/projects/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
+**How to advance a stage:** the CLI does not currently surface stage transitions — `yard projects edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance project stage from the Yard dashboard at `https://dash.yard.sh/projects`. Direct REST `PUT /v1/projects/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
 
 ---
 

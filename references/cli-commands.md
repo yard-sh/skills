@@ -1016,7 +1016,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
   "release": "9f3e1c2a-…",
   "written": ["index.html", "styles.css"],
   "skipped": [],
-  "preview_url": "https://yard.sh/dashboard/projects/my-slug/landing-page",
+  "preview_url": "https://dash.yard.sh/projects/my-slug/landing-page",
   "live_url": null
 }
 ```
@@ -1160,7 +1160,7 @@ GitHub_.
       "remote_only": []
     }
   },
-  "preview_url": "https://yard.sh/dashboard/projects/my-slug/releases/9f3e1c2a-…/landing-page",
+  "preview_url": "https://dash.yard.sh/projects/my-slug/releases/9f3e1c2a-…/landing-page",
   "live_url": null,
   "errors": []
 }

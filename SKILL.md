@@ -52,7 +52,7 @@ Yard has two surfaces. Pick by intent:
 - **CLI (`yard …`)** — for **managing** a seller's Yard presence: creating/editing projects, linking repos, scaffolding and publishing landing pages, viewing projects, running discount codes, and reading who bought what. An LLM/agent working on a seller's codebase should drive all management through the CLI. This includes the seller's own reporting — `yard customers` and `yard transactions` — which an API key cannot reach.
 - **REST API** — for **integrating** Yard into shipped software: validating a buyer's license at runtime, deactivating a device, fetching the latest release, reading project metadata, managing a buyer's subscription. The API does **not** replace the CLI for catalog management — an agent that wants to "create a project" runs `yard init`, not an HTTP call.
 
-API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://yard.sh/dashboard/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
+API access uses an **API key with scoped permissions**. Create one from the CLI with `yard keys create` (see [references/releases-and-updates.md](references/releases-and-updates.md)) or from the dashboard at https://dash.yard.sh/api-keys?action=create. See [references/api-reference.md](references/api-reference.md) for endpoint details.
 
 For shipped end-user software, downloads authenticate with a **license key** (per-buyer) hitting `GET /v1/updates/latest`: each buyer's key is unique, so revocation, activation limits, and per-customer rate limits work for free, and there's no shared secret to embed in the binary.
 
@@ -476,7 +476,7 @@ Example `push --json` output (`page` and `config` at the top level, every servic
     "deleted": [],
     "remote_only": []
   },
-  "preview_url": "https://yard.sh/dashboard/projects/my-slug/landing-page",
+  "preview_url": "https://dash.yard.sh/projects/my-slug/landing-page",
   "live_url": null,
   "errors": []
 }
