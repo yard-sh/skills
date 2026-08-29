@@ -85,7 +85,7 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 ## Project Stages and Discounts
 
-Every project has a stage that controls availability and pricing. New projects always start in `draft` and progress through stages **forward-only**: once advanced, a project can never go back. Stage is not the same thing as visibility. Whether strangers may view the storefront at all is the visibility of the project's **global data** (`yard sandbox visibility global <public|private>`), and stage gates on top of it: a draft serves nothing publicly however the scopes are set.
+Every project has a stage that controls availability and pricing. New projects always start in `draft` and progress through stages **forward-only**: once advanced, a project can never go back. Stage is not the same thing as visibility. Whether strangers may view the storefront at all is the project's **own visibility** (`yard sandbox visibility <public|private>`), and stage gates on top of it: a draft serves nothing publicly however visibility is set.
 
 | Stage | Description | Discount field |
 |---|---|---|
@@ -174,7 +174,7 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.tea
 
 ## Commerce in a Sandbox
 
-Every project scope carries its own commerce. The **global scope** is the real one: its checkouts go through Stripe, its money reaches the seller's payouts, and it is the only scope that appears in the seller's books. A **sandbox** carries a parallel set of customers, transactions, subscriptions, trials, license keys, coupon redemptions and gifts that the platform **simulates**: no Stripe object is created, no card is charged, and no money moves. The amounts are still computed and recorded exactly as a real sale would compute them, so a simulated purchase is a faithful rehearsal of the real one.
+The project and each of its sandboxes carry their own commerce. The **project's own** is the real one: its checkouts go through Stripe, its money reaches the seller's payouts, and it alone appears in the seller's books. A **sandbox** carries a parallel set of customers, transactions, subscriptions, trials, license keys, coupon redemptions and gifts that the platform **simulates**: no Stripe object is created, no card is charged, and no money moves. The amounts are still computed and recorded exactly as a real sale would compute them, so a simulated purchase is a faithful rehearsal of the real one.
 
 This is how a seller exercises the whole buying flow - checkout, entitlement, license validation, subscription renewal - without buying their own project and without a test card. Delete the sandbox and the whole rehearsal goes with it.
 
@@ -183,33 +183,33 @@ This is how a seller exercises the whole buying flow - checkout, entitlement, li
 A checkout that names a sandbox runs the same post-purchase machinery a paid one does:
 
 - Writes a **completed transaction** carrying the tier, quantity, base price, volume and stage discounts, and coupon discount it would have charged. No `stripe_payment_intent_id` is set.
-- **Mints license keys** on the project's normal rules (seat type and quantity), indistinguishable from real keys except for the scope they belong to.
+- **Mints license keys** on the project's normal rules (seat type and quantity), indistinguishable from real keys except for the sandbox they belong to.
 - **Starts subscriptions** with no Stripe subscription behind them. They renew on a platform worker rather than on invoice webhooks, writing the `subscription_renewal` transactions Stripe would have written. The worker follows the app clock, so a dev-clock advance drives sandbox renewals.
-- **Starts and converts free trials.** The one-pending-or-active-trial-per-buyer rule is per scope, so a buyer's trial on the storefront does not block starting one in a sandbox.
+- **Starts and converts free trials.** The one-pending-or-active-trial-per-buyer rule applies to the project and to each sandbox separately, so a buyer's trial on the storefront does not block starting one in a sandbox.
 - **Records coupon redemptions and gifts.** A sandbox redemption records the usage row so it shows up on the transaction, but deliberately does **not** consume the coupon's real `current_uses` counter - simulating a redemption can never exhaust a live coupon.
 
 Readiness gates that exist only to protect real money (Stripe Connect onboarding, payout setup) do not apply in a sandbox: a sandbox has to work before the seller has ever taken a payment.
 
 ### Simulated sales stay out of the books
 
-Every seller-wide report reads the global scope only: the earnings summary, the transactions list, the customers list, payouts, subscribers and MRR. So `yard transactions list` and `yard customers list` never show simulated rows, and a sandbox can never inflate what a seller is owed.
+Every seller-wide report reads the project itself only: the earnings summary, the transactions list, the customers list, payouts, subscribers and MRR. So `yard transactions list` and `yard customers list` never show simulated rows, and a sandbox can never inflate what a seller is owed.
 
 The flip side is that **the CLI cannot read a sandbox's commerce at all** - neither command takes a `--sandbox` flag. A sandbox's transactions, subscriptions, customers and license keys live on that sandbox's pages in the dashboard. Do not tell a user to look for them in the CLI.
 
 ### Telling a sandbox key apart at runtime
 
-`POST /v1/licenses/validate` answers `valid: true` for a key minted by a simulated purchase, exactly as it does for a real one. The response carries a **`sandbox`** field naming the scope the key's purchase lives in:
+`POST /v1/licenses/validate` answers `valid: true` for a key minted by a simulated purchase, exactly as it does for a real one. The response carries a **`sandbox`** field saying where the key's purchase lives:
 
 | `sandbox` value | What the key is |
 |---|---|
-| absent / empty | a real purchase on the project's global data |
+| absent / empty | a real purchase on the project itself |
 | a sandbox name | a simulated purchase inside that sandbox |
 
 Software that grants entitlement on a successful validation **must check this field**, or a simulated purchase entitles someone for real. The safe default in shipped software is to accept only an absent `sandbox` unless the build is a test build.
 
 ### Deleting a sandbox
 
-Deleting a sandbox deletes its commerce with it, immediately and without a confirmation beyond the command's own prompt: its transactions, subscriptions, trials, license keys, device activations, coupon usages, gifts and affiliate commissions all go. Nothing cascades out of the sandbox - the global scope's books are untouched.
+Deleting a sandbox deletes its commerce with it, immediately and without a confirmation beyond the command's own prompt: its transactions, subscriptions, trials, license keys, device activations, coupon usages, gifts and affiliate commissions all go. Nothing cascades out of the sandbox - the project's own books are untouched.
 
 ---
 
@@ -229,11 +229,11 @@ Yard automatically generates license keys for each purchase.
 - Input: license key + optional device ID
 - Output: validation result with project/tier info
 - **Requires an API key** with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). Embed it in the seller's software the same way you would for releases — see [api-reference.md](api-reference.md) for the endpoint definition and [releases-and-updates.md](releases-and-updates.md) for the embedded-API-key tradeoffs.
-- The response carries a **`sandbox`** field naming the scope the key's purchase lives in: empty for a real purchase, a sandbox name for a key minted by a simulated purchase. Entitlement logic has to check it; see [Commerce in a Sandbox](#commerce-in-a-sandbox).
+- The response carries a **`sandbox`** field: absent or empty for a real purchase on the project itself, a sandbox name for a key minted by a simulated purchase. Entitlement logic has to check it; see [Commerce in a Sandbox](#commerce-in-a-sandbox).
 
-**License keys are configured per scope.** `license_key_enabled`, `activations_enabled` and `max_activations` belong to a scope, not to the project: the values on the project are the global scope's, and each sandbox carries its own. A new sandbox starts with a copy of the global scope's three and diverges from the next edit.
+**License keys are configured on the project and on each sandbox separately.** `license_key_enabled`, `activations_enabled` and `max_activations` exist once for the project itself and again for each sandbox. A new sandbox starts with a copy of the project's three and diverges from the next edit.
 
-That is what makes a sandbox the way to test. Enable license keys there, buy the project inside it - simulated commerce, no card, no money - and the purchase mints a real key scoped to that sandbox, exercising the same code path a buyer's key does rather than a parallel one. The project's real buyers are untouched by anything the sandbox does, and deleting the sandbox takes its keys and activations with it. `yard projects edit` still edits the **global** scope's settings; a sandbox's are set from its License Keys page in the dashboard.
+That is what makes a sandbox the way to test. Enable license keys there, buy the project inside it - simulated commerce, no card, no money - and the purchase mints a real key belonging to that sandbox, exercising the same code path a buyer's key does rather than a parallel one. The project's real buyers are untouched by anything the sandbox does, and deleting the sandbox takes its keys and activations with it. `yard projects edit` still edits the **project's own** settings; a sandbox's are set from its License Keys page in the dashboard.
 
 ---
 
@@ -247,7 +247,7 @@ License keys can track device activations:
 - Sellers can configure a maximum activation limit per license key
 - Activations are tracked in the `license_activations` table
 - Buyers can view and manage their activations from the buyer dashboard
-- Activations belong to their key, and a key belongs to a scope, so a sandbox's device activations count against that sandbox's `max_activations` and never against the global scope's
+- Activations belong to their key, and a key belongs to where its purchase lives, so a sandbox's device activations count against that sandbox's `max_activations` and never against the project's own
 
 ---
 

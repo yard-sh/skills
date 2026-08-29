@@ -350,31 +350,31 @@ Relative URLs matter more than usual because the same bundle serves under more t
 
 ## Testing a page before customers see it
 
-Every scope serves its own landing page. A sandbox serves at `https://<username>.yard.sh/<slug>/@<sandbox>/`; the project's global data, which is what buyers reach, stays at `https://<username>.yard.sh/<slug>/`.
+The project and each sandbox serve their own landing page. A sandbox serves at `https://<username>.yard.sh/<slug>/@<sandbox>/`; the project itself, which is what buyers reach, stays at `https://<username>.yard.sh/<slug>/`.
 
 ```
-https://alice.yard.sh/widget/            the project's global data
+https://alice.yard.sh/widget/            the project itself
 https://alice.yard.sh/widget/@preview/   the preview sandbox
 ```
 
-Sandbox URLs are **team-only by default**: the Yard edge verifies you belong to the team that owns the project before serving, everyone else gets an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback, and shareable only once you opt in with `yard sandbox visibility <sandbox> public`, which lets anyone with the URL view that sandbox.
+Sandbox URLs are **team-only by default**: the Yard edge verifies you belong to the team that owns the project before serving, everyone else gets an explanatory 403, and anonymous visitors are sent through sign-in first. Safe to have in scrollback, and shareable only once you opt in with `yard sandbox visibility public --sandbox <name>`, which lets anyone with the URL view that sandbox.
 
-The scope you get is the one in the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says which scope it serves. `window.yard.project` reflects **that scope's** state, its own pricing, copy, and gallery, so a preview page shows preview prices, not the global scope's.
+What you get is decided by the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says what it serves. `window.yard.project` reflects **that sandbox's** state (or the project's own, with no `/@…/` segment), its own pricing, copy, and gallery, so a preview page shows preview prices, not the storefront's.
 
-A scope whose release has no custom page still has a landing page: the built-in one, rendered from that scope's content. So the URL always resolves, whether or not you have shipped a bundle there.
+Where the serving release has no custom page there is still a landing page: the built-in one, rendered from the project's or sandbox's own content. So the URL always resolves, whether or not you have shipped a bundle there.
 
 The usual loop:
 
 ```
-yard push                            # into your draft release; nothing serves a draft
-yard sandbox create preview          # once
-yard sandbox pin global              # hold the storefront on the release it serves today
-yard releases publish v1.0.0         # tag the draft; the pin keeps it off the storefront
-yard sandbox deploy preview v1.0.0   # serve it in the sandbox, then browse …/widget/@preview/
-yard sandbox unpin global            # let the storefront serve v1.0.0
+yard push                                  # into your draft release; nothing serves a draft
+yard sandbox create preview                # once
+yard sandbox pin                           # hold the storefront on the release it serves today
+yard releases publish v1.0.0               # tag the draft; the pin keeps it off the storefront
+yard sandbox pin v1.0.0 --sandbox preview  # serve it in the sandbox, then browse …/widget/@preview/
+yard sandbox unpin                         # let the storefront serve v1.0.0
 ```
 
-Editing a release a scope already serves is live: Yard redeploys that scope and `yard status` reports stale, then updating, then up to date while it catches up.
+Editing a release that is already being served is live: Yard redeploys it and `yard status` reports stale, then updating, then up to date while it catches up.
 
 ---
 
@@ -390,7 +390,7 @@ The same limits apply whether you upload via `yard push` or the dashboard editor
 | Allowed extensions | `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2` |
 | Path rules | letters/digits/`._-` only, at most one subdirectory level, no dotfiles |
 | Required file | `index.html` (must exist before you can publish) |
-| Scope | Per scope: the caps apply to each scope's bundle separately |
+| Applies | To the project's and each sandbox's bundle separately |
 
 Anything outside these constraints is rejected client-side by `yard push` before any upload happens.
 

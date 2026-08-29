@@ -35,17 +35,15 @@ been published yet. A draft can never be deployed anywhere, so editing one has
 no side effects. Publishing stamps the tag and makes the release deployable —
 publishing itself is **one-way**, but the release stays editable afterwards.
 Editing a published release nothing serves is still side-effect free; editing
-one a scope is serving is live the moment it saves. A project can hold
+one the project or a sandbox is serving is live the moment it saves. A project can hold
 at most **10 open drafts**.
 
-Releases belong to the **project**, not to any scope. A **scope** is the
-project's global data or one of its sandboxes. Each scope **follows one
-channel**: that channel's releases are the scope's set, and the newest of them
-is what the scope serves, unless the seller **pins** the scope to one release.
-**Putting a release into a followed channel is the deploy moment.** Buyers only
-ever see what the project's **global data** serves, so publish into a channel
-the global scope follows (or `yard sandbox pin global <tag>`) to make a release
-live.
+Releases belong to the **project**, never to a sandbox. The project and each
+sandbox **follow one channel**: the newest release in that channel is what
+serves, unless the seller **pins** one release instead. **Putting a release
+into a followed channel is the deploy moment.** Buyers only ever see what the
+project itself serves, so publish into the channel the project follows (or
+`yard sandbox pin <tag>`) to make a release live.
 
 Version tags are **unique per project** across all non-archived releases —
 publishing under an existing tag (or tagging a draft with one) is rejected
@@ -62,9 +60,9 @@ patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 (creating one seeded from your newest published release if you have none;
 `--release <id|tag>` names one explicitly), then publishes the draft
 under the tag into a release channel (`--channel` / `channel`, default the
-`Production` channel, which the project's global data follows, so publishing is
+`Production` channel, which the project itself follows, so publishing is
 live to customers). Every published release belongs to exactly one channel, and
-every scope following that channel serves it. Anything `yard push` already staged in
+the project and every sandbox following that channel serve it. Anything `yard push` already staged in
 that draft, landing page and service bundle alike, ships with it.
 
 ### Spec mode (recommended for agents)
@@ -110,8 +108,8 @@ Spec field rules:
 }
 ```
 
-Each `deployed` entry names the scope the channel mirror shipped to: `""` is
-the project's global data, any other value is a sandbox slug.
+Each `deployed` entry's `to` names who the release shipped to: `""` is
+the project itself, any other value is a sandbox slug.
 
 ### Flag mode
 
@@ -150,37 +148,38 @@ Exit codes:
 ### Promoting a release into a channel
 
 `yard releases promote <tag> --to <channel>` moves an already-published release
-into a release channel, out of whichever one it was in. Every scope following
-the new channel starts serving it (unless that scope is pinned to something
-else); scopes following the old channel fall back to their next newest release.
+into a release channel, out of whichever one it was in. The project and every
+sandbox following the new channel start serving it (unless pinned to something
+else); followers of the old channel fall back to its next newest release.
 Nothing is copied:
 storage is not consumed twice and download counts carry over. There is no source
 to name — a release is in exactly one channel, so the tag alone identifies both
 it and where it is coming from. `yard channels list` shows the project's
-channels and which scopes follow each one.
+channels and who follows each one.
 
 The target channel has to exist first. Channels are created, renamed, deleted and
-reordered **from the dashboard's Releases tab only**: the CLI reads them and
-moves releases and scopes between them, but never creates one. `Production` is
+reordered **from the dashboard's Releases tab only**: the CLI reads them,
+moves releases between them, and changes who follows one, but never creates
+one. `Production` is
 the exception: every project has it, and it cannot be renamed or deleted.
 Deleting a custom channel does not delete its releases; they are reassigned to a
-channel you name (Production by default), and scopes that followed the deleted
-one simply keep serving what they already serve.
+channel you name (Production by default), and whoever followed the deleted
+one simply keeps serving what it already serves.
 
 ```sh
 yard releases publish v1.4.0 --file dist/app.zip              # live to buyers
 ```
 
-To check it before buyers do, hold the storefront where it is, deploy the
-release to a sandbox of your own, and release the hold when it looks right:
+To check it before buyers do, hold the storefront where it is, serve the
+release in a sandbox of your own, and release the hold when it looks right:
 
 ```sh
 yard sandbox create preview
-yard sandbox pin global                                       # the storefront stays put
+yard sandbox pin                                              # the storefront stays put
 yard releases publish v1.4.0 --file dist/app.zip
-yard sandbox deploy preview v1.4.0
+yard sandbox pin v1.4.0 --sandbox preview
 # …verify the download works…
-yard sandbox unpin global                                     # ships it to buyers
+yard sandbox unpin                                            # ships it to buyers
 ```
 
 ---
@@ -197,7 +196,7 @@ into Yard's own storage. Editing the GitHub release re-syncs it; deleting it
 **Which channel a synced release lands in.** A synced release is published, so it
 belongs to exactly one channel like any other. It lands in the project's **GitHub
 sync channel**, chosen on the dashboard's Releases tab and defaulting to the
-protected `Production` channel, which the project's global data follows, so by
+protected `Production` channel, which the project itself follows, so by
 default publishing on GitHub ships to buyers. Point the project at a different
 channel to have GitHub releases land somewhere only a sandbox is watching. The
 setting is one channel, not a set: a synced release cannot fan out to several.
@@ -304,29 +303,29 @@ GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>
 ```
 
 **Sandboxes.** Both update endpoints accept an optional `sandbox` parameter.
-An updater that omits it reads the project's global data, which is the live
+An updater that omits it reads the project itself, which is the live
 build:
 
 ```
 GET https://api.yard.sh/v1/updates/latest?license_key=<license_key>&sandbox=beta
 ```
 
-Scope **visibility** decides who can read one. A `public` scope answers any key
+**Visibility** decides who can read what. A `public` sandbox answers any key
 entitled to it, which is how an open beta stream works: hand testers a key
-minted in the beta sandbox and point their updater at that sandbox. A `private`
-scope - the project's global data included - answers only keys held by a member
+minted in the beta sandbox and point their updater at that sandbox. Anything
+`private` - a private project itself included - answers only keys held by a member
 of the owning team; everyone else gets the same `404` an unknown slug gets, so a
 private sandbox's existence never leaks.
 
-**A key reaches only the scope its own purchase lives in**, and the match runs
-both ways: a key minted by a simulated sandbox purchase cannot pull the global
-scope's artifacts by omitting `sandbox`, and a real buyer's key cannot pull a
-sandbox's. A seller testing an updater against a sandbox therefore buys the
-project inside that sandbox, which costs nothing and mints them a key scoped
-there.
+**A key reaches only where its own purchase lives**, and the match runs
+both ways: a key minted by a simulated sandbox purchase cannot pull the
+project's own artifacts by omitting `sandbox`, and a real buyer's key cannot
+pull a sandbox's. A seller testing an updater against a sandbox therefore buys
+the project inside that sandbox, which costs nothing and mints them a key
+living there.
 
-Unpublished work is never reachable: a draft has no channel to reach a scope
-through, and each scope only serves releases its own channel holds.
+Unpublished work is never reachable: a draft belongs to no channel, and the
+project and each sandbox only serve releases their own channel holds.
 
 **Response** (shape mirrors the GitHub Releases API for easy adoption of
 existing tooling):
@@ -378,16 +377,16 @@ The endpoint returns `302 Found` with a presigned URL pointing to the storage
 bucket; follow the redirect (most HTTP clients do this automatically). The
 presigned URL expires after 5 minutes.
 
-### List the scopes a key may see
+### List the update streams a key may see
 
 ```
 GET https://api.yard.sh/v1/updates/sandboxes?license_key=<license_key>
 ```
 
-Lists the project's global data plus the sandboxes the key may see, so an app
+Lists the project's own data plus the sandboxes the key may see, so an app
 can offer a stream picker. Private sandboxes are simply omitted for
-non-members; `sandboxes` can be empty. The global scope has no slug: an update
-request that names no sandbox reads it.
+non-members; `sandboxes` can be empty. An update request that names no
+sandbox reads the project itself.
 
 ```json
 {
@@ -400,13 +399,17 @@ request that names no sandbox reads it.
 }
 ```
 
-### List releases in a scope
+`"global"` is the API's internal name for the project's own data; it never
+appears in CLI output.
+
+### List releases in a stream
 
 ```
 GET https://api.yard.sh/v1/updates/releases?license_key=<license_key>&sandbox=beta
 ```
 
-Returns a **bare JSON array** of the releases the scope holds, newest
+Returns a **bare JSON array** of the releases the named sandbox holds (the
+project itself, with no `sandbox`), newest
 first, each in the same GitHub-Release shape as `/v1/updates/latest`. Archived
 releases are excluded (that is also what keeps versions unique in download
 URLs). Paginate with `page` (default 1) and `limit` (default 50, max 100).
@@ -420,7 +423,8 @@ GET https://api.yard.sh/v1/updates/releases/{version}/download/{filename}?licens
 ```
 
 Downloads by version rather than "latest". The release must be one the
-requested scope holds, or the endpoint returns `404 Release not found`. Same
+requested sandbox (or the project itself) holds, or the endpoint returns
+`404 Release not found`. Same
 `302`-to-presigned-URL behavior as the latest-download endpoint.
 
 ---
@@ -499,7 +503,7 @@ Emits the raw `APIKeyListResponse`:
 
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
-- **`404 No releases found for this project`**: nothing has shipped to the project's global data yet. Run `yard releases publish` (which adds the release to the `Production` channel the global scope follows), or pin an already-published release with `yard sandbox pin global <tag>`.
+- **`404 No releases found for this project`**: nothing has shipped to the project itself yet. Run `yard releases publish` (which adds the release to the `Production` channel the project follows), or pin an already-published release with `yard sandbox pin <tag>`.
 - **Storage-limit `403` on publish** — the selling team's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

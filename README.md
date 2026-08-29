@@ -8,7 +8,7 @@ When this skill is installed, an agent gains awareness of:
 - The `yard init --spec` and `yard releases publish --spec` JSON shapes for non-interactive use
 - The REST API endpoints for license validation, release downloads, subscriptions, and the license-key update server
 - Pricing model details (tiers, seat types, volume brackets, Pro-only features)
-- Scopes: a project's global data versus its sandboxes, release channels, and the simulated commerce a sandbox carries
+- Sandboxes: optional copies of the project, release channels, and the simulated commerce a sandbox carries
 - Custom landing-page authoring (`window.yard`, `data-yard` / `data-action`)
 - Common troubleshooting steps
 
