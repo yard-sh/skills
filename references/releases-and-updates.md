@@ -210,7 +210,7 @@ that file declares:
 
 | settings.json section | What syncs |
 |---|---|
-| `services[].dir` | Each listed directory (must contain `_worker.js` and its own `settings.json`) becomes one of the release's services. The list is the whole set: a service the tag drops loses its Worker on the next deploy |
+| `services[]` | Each entry - its `dir`, `name`, `url`, `access` and `database` - becomes one of the release's services, built from the bundle in that directory (which must contain `_worker.js`). The list is the whole set: a service the tag drops is taken down on the next deploy |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
 | `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |
@@ -220,8 +220,8 @@ the release carries that part forward unchanged, and removing it stays a
 dashboard/CLI operation. A repo with no `.yard/settings.json` syncs assets,
 name, and notes only. A section that IS declared must resolve — a declared dir
 with no files at the tag fails the sync (typo protection), as does a service
-bundle without `_worker.js` or without its own `settings.json`, or two
-services claiming the same name or path.
+bundle without `_worker.js`, an entry without a `name`, or two services
+claiming the same name or path.
 
 The `pricing` section uses the release-document tier shape (note the nested
 `free_trial` object — this differs from the flat `free_trial_enabled` fields in
@@ -229,9 +229,12 @@ The `pricing` section uses the release-document tier shape (note the nested
 
 ```json
 {
-  "version": 5,
+  "version": 6,
   "project_slug": "my-project",
-  "services": [{ "dir": "api" }, { "dir": "jobs" }],
+  "services": [
+    { "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database": true },
+    { "dir": "jobs", "name": "jobs" }
+  ],
   "pricing": {
     "tiers": [
       { "name": "Personal", "price_cents": 900, "is_default": true,
@@ -261,7 +264,11 @@ Notes:
   is a supported state. Existing purchases and subscriptions keep resolving
   against the tiers they were bought on.
 - Tag content is immutable, so a settings.json change lands with the **next**
-  release (or via Re-sync after force-moving a tag).
+  release (or via Re-sync after force-moving a tag). The same immutability
+  means a tag whose settings.json still uses the retired v5 layout (services
+  entries without a `name`, settings in per-directory files) fails the sync
+  with an error naming the fix: run `yard migrate`, commit, and ship the next
+  tag.
 - `downloads.buttons` rules match release files by `condition`
   (`contains` | `starts_with` | `ends_with` | `has_extension`, case-insensitive)
   and `value` (1-255 chars), and label the button (`label`, 1-50 chars); max 10

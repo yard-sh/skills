@@ -44,35 +44,36 @@ release can carry several, each its own directory and its own deployment:
 | Path | Meaning |
 |---|---|
 | `_worker.js` | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
-| `settings.json` | This service's name, URL, access and database settings. Required; deploy input, never served. |
 | `migrations/*.sql` | Database schema migrations, applied in filename order at deploy. Never served publicly. |
 | everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`). |
 
 Limits are per service: 200 files, 5 MB per file, 25 MB total, paths nest up
 to 8 levels. Start from a working scaffold with `yard service init <name>`: it
-writes the bundle plus its `settings.json` and adds the directory to
-`services` in `.yard/settings.json`, so plain `yard push` finds it. The deploy
-walker skips dotfiles and known local-config files at the bundle root (e.g.
-`README.md`, the retired `yard.json` manifest) — they're reported as skipped,
-never uploaded.
+writes the bundle and records the service on the `services` list in
+`.yard/settings.json`, so plain `yard push` finds it. The deploy walker skips
+dotfiles and known local-config files at the bundle root (e.g. `README.md`,
+the retired `yard.json` manifest and the retired per-service `settings.json`)
+— they're reported as skipped, never uploaded.
 
 ## Service settings
 
-Two files, at two levels. The project's `.yard/settings.json` lists which
-directories are services:
+One file: the project's `.yard/settings.json`. Each entry of its `services`
+list is the whole service declaration — the directory the bundle lives in and
+how it deploys — so changing how a service deploys is an edit there plus a
+`yard push`:
 
 ```json
-{ "version": 5, "services": [{ "dir": "api" }, { "dir": "jobs" }] }
+{
+  "version": 6,
+  "services": [
+    { "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database": true },
+    { "dir": "jobs", "name": "jobs" }
+  ]
+}
 ```
 
-Each of those directories carries its own `settings.json` at its root, which
-travels with the bundle — so changing how a service deploys is an edit in that
-file plus a `yard push`:
-
-```json
-{ "name": "api", "url": "/api", "access": "authenticated", "database": true }
-```
-
+- `dir`: the bundle directory, relative to the working directory. Directories
+  must not nest inside one another.
 - `name`: 1-30 lowercase letters, digits and inner hyphens. Unique within the
   release; it also names the service everywhere the CLI and dashboard show it.
 - `url`: the path the service serves under. Default `/<name>`. `/` gives the

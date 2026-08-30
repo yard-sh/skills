@@ -175,20 +175,32 @@ When running in a Coder workspace, the CLI automatically detects the `VSCODE_PRO
 
 ---
 
-## `.yard/settings.json` has a "service" block
+## `.yard/settings.json` uses an old service layout
 
-Services are a list now: one project can host several, each on its own path
-and each deployed on its own. A settings file carrying the old single
-`service` block is rejected rather than upgraded, because reading it would
-have to guess the service's name and URL.
+A service's settings - `name`, `url`, `access`, `database` - live on its
+entry in the `services` list of `.yard/settings.json`. Two retired layouts
+are rejected rather than upgraded, because reading them would have to guess
+values the seller chose:
 
-To convert it by hand:
+**Services entries without a `"name"` (v5)** - the settings lived in each
+directory's own `settings.json`. Run `yard migrate`: it folds every
+per-directory settings file onto its entry, deletes those files, and stamps
+`"version": 6`. Or move the fields by hand and delete the files.
 
-1. Move the `service` block's `dir` into a `services` list:
-   `"services": [{ "dir": "service" }]`.
-2. Create `<dir>/settings.json` naming the service and the path it serves
-   under, carrying the old `access` and `database` values:
-   `{ "name": "service", "url": "/service", "access": "public", "database": true }`.
-3. Set `"version": 5`.
+**A top-level `"service"` (or `"app"`) block (v4 and older)** - convert by
+hand:
 
-Or start over with `yard service init <name>`, which writes both files.
+1. Replace the block with a `services` list entry carrying its old values:
+   `"services": [{ "dir": "service", "name": "service", "url": "/service", "access": "public", "database": true }]`.
+2. Set `"version": 6`.
+
+Or start over with `yard service init <name>`, which records the entry for
+you.
+
+## A GitHub tag fails to sync after upgrading
+
+Tag content is immutable. A tag whose `.yard/settings.json` still uses the
+retired v5 layout fails the sync with an error naming the fix; the release
+on Yard keeps serving as it was. Run `yard migrate` in the repo, commit,
+and publish the next tag - or force-move the tag and use the dashboard's
+Re-sync.
