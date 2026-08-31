@@ -285,6 +285,13 @@ overwritten. The dashboard's **Re-sync** button (after a confirmation)
 restores the GitHub-managed parts, keeps everything settings.json doesn't
 declare, and clears the marker.
 
+For every release - whatever created it - the server keeps the settings.json
+it carries in step with dashboard edits: changing pricing, download buttons
+or services in the dashboard regenerates the file (and synthesizes one for a
+release that never had it). `yard status` therefore surfaces dashboard edits
+as a config diff, and `yard pull` retrieves them; a settings.json deleted
+from a release re-synthesizes on the next dashboard edit.
+
 ---
 
 ## Downloading releases — license-key path

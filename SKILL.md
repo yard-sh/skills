@@ -103,7 +103,7 @@ Keep the CLI as the single source of truth for project creation — **never** tr
 | Mode            | Invocation                           | When to use                                                                                                                       |
 | --------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | **Spec**        | `yard init --spec <file\|->`         | Creating a new project. Accepts the full pricing shape as JSON.                                                                   |
-| **Link**        | `yard init --project <slug-or-uuid>` | Linking the current directory to an existing project.                                                                             |
+| **Link**        | `yard init --project <slug-or-uuid>` | Linking the current directory to an existing project. A fresh directory also pulls the latest Production release down whole (settings, landing page, service bundles); `--no-pull` skips that. |
 | **Interactive** | `yard init`                          | Humans only. Trying to drive this from an agent via stdin is a dead end — the prompt order is load-bearing and changes over time. |
 
 Non-interactive flags:
@@ -330,7 +330,7 @@ The interactive flow:
 | `yard status`                                                                  | Diff every local bundle (landing page + each service) against your draft release — what `yard push` would change (no writes) |
 | `yard ls [--release <id\|tag>]`                                                | List a release's files, grouped by bundle (defaults to your open draft) |
 | `yard push [--prune] [--release <id\|tag>]`                                    | Upload every changed local file — landing page and every service — into your draft release; go live with `yard releases publish <tag>`. `--release` can name a published release, which is edited in place |
-| `yard pull [--release <id\|tag>]`                                              | Download a release's files into the project |
+| `yard pull [--release <id\|tag>]`                                              | Download a release's files into the project — settings.json included, so pricing, download-button and service edits made in the dashboard reach your working directory |
 | `yard sandbox list [--json]`                                                   | List the project itself and each sandbox with what each serves and **why** (`(pinned)`, the followed channel's name, or `(no channel)`), plus its release count, the channel it follows, and whether its running services are up to date. A project starts with zero sandboxes. |
 | `yard sandbox create <sandbox>` / `yard sandbox rename <sandbox> <new-name>` / `yard sandbox delete <sandbox> [-y]` | Add / rename / remove a sandbox (plan-gated via `max_sandboxes`, check `yard me --json` → `.team_permissions`). Renaming keeps its releases, files, secrets and database but changes its `/@<sandbox>/` URL. Deleting removes its files, services, and database immediately, and prompts unless `-y`. |
 | `yard sandbox visibility <public\|private> [--sandbox name]`                   | Set who may view the project's or a sandbox's URLs. `private` (the default for a sandbox) is the owning team only, every member, `owner` and `admin` alike; `public` lets anyone with the URL view its page and services. Omitting `--sandbox` sets the project itself, which is how a project goes private (there is no separate project-level visibility setting). Stage still trumps: drafts serve nothing publicly. |
@@ -441,6 +441,12 @@ All project sync commands (`push`, `pull`, `status`, `ls`) accept:
 - `--yes`: skip confirmation prompts (`push --prune`, and pushing into a release the project or a sandbox is serving)
 
 Exit codes: `0` = success, `1` = fatal (auth/validation/network), `2` = partial success (`push` only).
+
+Every release carries a server-maintained `settings.json`: dashboard edits to
+pricing, download buttons or services regenerate it. So `yard status` showing
+a config diff can mean the release moved, not just your file - `yard pull`
+brings the release's copy down (your `project_slug` is never rewritten), and
+`yard pull --force` discards local changes in favor of it.
 
 Example `push --json` output (`page` and `config` at the top level, every service keyed by name under `services`):
 

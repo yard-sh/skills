@@ -166,7 +166,7 @@ Every seller-side endpoint answers `403` with `code: "NO_TEAM"` when the caller 
 
 ## yard init
 
-Set up a Yard project in the current directory. Interactive flow that links the folder to a Yard project (new or existing) and optionally scaffolds a custom landing page.
+Set up a Yard project in the current directory. Interactive flow that links the folder to a Yard project (new or existing) and optionally scaffolds a custom landing page. Linking an existing project from a fresh directory also pulls its latest Production release down whole (`--no-pull` opts out).
 
 **Prerequisites:** none. A Git repo with a GitHub remote enables the "link the repo to a new project" path, but is not required — outside of a git repo, `yard init` still creates projects, they just won't be linked to a GitHub repository.
 
@@ -191,18 +191,20 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 6. **Scaffold `.yard/`** — Writes `./.yard/settings.json` via `EnsureYardProject`. Existing settings are preserved.
 
-7. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
+7. **Fresh-checkout pull** (existing project selected, directory had no `.yard/settings.json`) — Downloads the latest **Production** release: `settings.json` with `project_slug` set to the linked project, the landing page into the directory that file records, and each declared service's bundle into its directory (created as needed — init is the one flow that invents service dirs). A project whose Production channel holds no releases keeps the skeleton from step 6. `--no-pull` skips this; a directory that was already a Yard working directory is never touched. Applies to `yard init --project <slug>` the same way.
+
+8. **Optional landing-page setup** — Prompts `Set up a custom landing page for <slug>? [y/N]`. If yes:
    - Creates `./.yard/landing-page/`.
    - Resolves the project's draft release (same logic as `yard init --page`) and pulls its landing-page files, or scaffolds the hello-world starter when it has none.
    - Uploads the local files into the draft and prints that the page is staged — going live requires publishing the draft (`yard releases publish <tag>`). If the plan doesn't include custom pages, the server returns `upgrade_required`; the CLI prints the `https://yard.sh/pricing` message to stderr and the rest of `init` still succeeds.
 
-8. **Optional project-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
+9. **Optional project-settings prompts** — After landing-page setup, the wizard always asks (regardless of plan — the server decides, no client-side gate):
    - "Enable license keys? [y/N]" — toggles `license_key_enabled`.
    - If license keys are on: "Enable device activations? [y/N]" → on yes, "Device activation limit (1-10000) [3]:".
 
    Changes are applied via `PUT /v1/projects/{id}`. If the team's plan doesn't include a setting, the server returns `upgrade_required` and the CLI shows the generic upgrade link — the rest of `init` still succeeds. Spec mode (`yard init --spec`) accepts the same fields directly in the JSON payload (see SKILL.md schema). (Free trials, `trial_requires_card`, and `gift_enabled` are configured **per tier**, not here — see `yard projects tiers`.)
 
-9. **Success output** — Prints the project display name, slug, and the buy / profile URLs (new projects only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
+10. **Success output** — Prints the project display name, slug, and the buy / profile URLs (new projects only). If a landing page was set up, also prints the preview URL — and the live URL when publish succeeded.
 
 **JSON output:** the current implementation is interactive-only; there's no `--json` variant yet.
 
@@ -945,8 +947,11 @@ one file plus a push), the landing page in its directory (`landing_page.dir`
 in `.yard/settings.json`, default `.yard/landing-page/`), and one bundle per
 service listed in `services`. A project with only some of the bundles simply
 syncs what it has.
-The config bundle is **push-only**: `yard pull` never overwrites your local
-settings.json, since it is the project's identity.
+The config bundle syncs both ways. The server keeps every release's
+settings.json current - dashboard edits to pricing, download buttons or
+services regenerate it - so `yard status` reports such edits as a config diff
+and `yard pull` writes them into your local file. A pull keeps your local
+`project_slug`, so it can never rebind the directory to another project.
 
 Common flags:
 
@@ -1178,8 +1183,9 @@ removed paths appear in `deleted`.
 
 ### yard pull
 
-Download a release's files into the project — the landing page into
-`.yard/landing-page/` and each service into its recorded bundle dir.
+Download a release's files into the project — `.yard/settings.json` (the
+config bundle), the landing page into `.yard/landing-page/`, and each service
+into its recorded bundle dir.
 Defaults to your open draft; pass `--release <id|tag>` for a specific release.
 
 **Flags:**
@@ -1190,7 +1196,8 @@ Defaults to your open draft; pass `--release <id|tag>` for a specific release.
 
 1. Resolves project root (with `.yard/` discovery allowed to be missing — `pull` is useful for bootstrapping a fresh checkout).
 2. For each bundle, downloads and writes each file unless the local file already has the same SHA-256 (skipped). Subdirectories are created as needed.
-3. The landing-page directory is created on demand; a service directory is not invented, since it belongs to the seller's build.
+3. The pulled settings.json keeps your local `project_slug` (a pull never rebinds the directory); everything else in the file — pricing, downloads, services — arrives as the release has it, dashboard edits included. `--force` on the config bundle is how you discard local settings changes in favor of the release's copy.
+4. The landing-page and `.yard/` directories are created on demand; a service directory is not invented, since it belongs to the seller's build (`yard init` on a fresh directory is the one flow that creates service dirs).
 
 **JSON output:**
 
@@ -1199,6 +1206,11 @@ Defaults to your open draft; pass `--release <id|tag>` for a specific release.
   "project": "my-slug",
   "release": "9f3e1c2a-…",
   "version": "",
+  "config": {
+    "destination": "/home/alice/proj/.yard",
+    "written": ["settings.json"],
+    "skipped": []
+  },
   "page": {
     "destination": "/home/alice/proj/.yard/landing-page",
     "written": ["index.html"],
