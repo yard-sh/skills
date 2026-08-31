@@ -41,11 +41,10 @@ for root-absolute URLs.
 A deployable service is one directory (build output or hand-written). A
 release can carry several, each its own directory and its own deployment:
 
-| Path | Meaning |
-|---|---|
-| `_worker.js` | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
-| `migrations/*.sql` | Database schema migrations, applied in filename order at deploy. Never served publicly. |
-| everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`). |
+| Path            | Meaning                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `_worker.js`    | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
+| everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`).                 |
 
 Limits are per service: 200 files, 5 MB per file, 25 MB total, paths nest up
 to 8 levels. Start from a working scaffold with `yard service init <name>`: it
@@ -66,7 +65,13 @@ how it deploys — so changing how a service deploys is an edit there plus a
 {
   "version": 6,
   "services": [
-    { "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database": true },
+    {
+      "dir": "api",
+      "name": "api",
+      "url": "/api",
+      "access": "authenticated",
+      "database": true
+    },
     { "dir": "jobs", "name": "jobs" }
   ]
 }
@@ -121,13 +126,13 @@ letter or digit.
 
 The Yard edge signs buyers in and hands your code trusted headers:
 
-| Header | Value |
-|---|---|
-| `X-Yard-User-Id` | Stable buyer id — use as your foreign key |
-| `X-Yard-Email` | Buyer email (may be empty) |
-| `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
-| `X-Yard-Tier` | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price projects never send it. |
-| `X-Yard-Sandbox` | A sandbox name, or empty when the project itself is serving |
+| Header               | Value                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `X-Yard-User-Id`     | Stable buyer id — use as your foreign key                                                                                 |
+| `X-Yard-Email`       | Buyer email (may be empty)                                                                                                |
+| `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner`                                                                                  |
+| `X-Yard-Tier`        | Purchased pricing-tier **name**. Absent when the entitlement carries no named tier — single-price projects never send it. |
+| `X-Yard-Sandbox`     | A sandbox name, or empty when the project itself is serving                                                               |
 
 Absent identity headers = anonymous visitor (`public` services only; gated
 modes never reach your code anonymously). Clients can never spoof these —
@@ -174,16 +179,22 @@ Do not implement OAuth, sessions, or password storage — with
 ```js
 const { results } = await env.DB.prepare(
   "SELECT * FROM notes WHERE user_id = ?1",
-).bind(user).all(); // .run() for writes, .first() for a single row
+)
+  .bind(user)
+  .all(); // .run() for writes, .first() for a single row
 ```
 
-Schema changes go in `migrations/` as new numbered files
-(`0002_add_column.sql`, …) — never edit an applied migration; deploys apply
-pending files in order. The project and each sandbox have their own
+Schema changes go in `.yard/migrations/` as new numbered files
+(`0002_add_column.sql`, ...) - never edit an applied migration; deploys apply
+pending files in filename order, before any new service code goes live. The
+migration stream is project-level: one ordered set of flat `.sql` files
+shared by every service (the directory is configurable via `migrations.dir`
+in `.yard/settings.json`, and the dashboard's release editor has a Database
+tab for writing them). The project and each sandbox have their own
 database, shared by every service there that asks for one, so two services
 can read each other's tables
 while a sandbox's test data never reaches the storefront. Inspect the
-data with `yard service db query "select ..." --sandbox preview --json`
+data with `yard db query "select ..." --sandbox preview --json`
 (omit `--sandbox` for the project itself; or
 `--file schema.sql`, `-` for stdin). Query limits: SQL up to 10 000 bytes,
 up to 100 bind params, results truncated past 1000 rows.
@@ -191,21 +202,22 @@ up to 100 bind params, results truncated past 1000 rows.
 ### The migration ledger
 
 Applied migrations are recorded in `_yard_migrations (name, applied_at)`
-inside the database they ran against; query it to answer "did my migration
-run?". Names are recorded as `<service>/<file>`, so two services are free to
-both ship a `0001_init.sql`. Underscore-prefixed table names are reserved for
-Yard; don't create your own.
+inside the database they ran against, by filename (`0001_init.sql`), so each
+file runs once per database. `yard db migrations list` answers "did my
+migration run?" (ledger entries merged with the local pending files); rows
+whose name contains a `/` are from the retired per-service scheme.
+Underscore-prefixed table names are reserved for Yard; don't create your own.
 
-### Failed migrations — read before writing multi-statement files
+### Failed migrations: read before writing multi-statement files
 
-A failed migration **aborts the deploy before the new version goes live** —
+A failed migration **aborts the deploy before the new version goes live**;
 the previous version keeps serving. But migration files are **not
 transactional**: statements run one at a time, so a mid-file failure leaves
 earlier statements applied and the file unrecorded in the ledger. The next
 deploy re-runs the whole file from the top, which then typically fails on
 the already-created objects. Recovery: fix the file so it can re-run from
 the top (e.g. `CREATE TABLE IF NOT EXISTS`), or mark it applied manually:
-`yard service db query "INSERT INTO _yard_migrations (name) VALUES ('api/0002_x.sql')"`.
+`yard db migrations mark-applied 0002_x.sql`.
 Best practice: keep each migration file to a single statement, or make every
 statement idempotent.
 
@@ -294,7 +306,7 @@ You can build and verify everything before ever advancing the project stage
 service's `console.log` output, uncaught exceptions, and abnormal request
 outcomes (e.g. CPU limit exceeded), newest ~24h, up to 500 entries. A
 brand-new service with no traffic returns an empty list, not an error. Logs
-appear a few seconds after the request. `yard service db query` against the
+appear a few seconds after the request. `yard db query` against the
 live database answers data questions directly.
 
 There is no `window.yard` runtime inside a service; that exists only on

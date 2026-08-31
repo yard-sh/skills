@@ -990,9 +990,15 @@ Editing a release that is already being served is live on save.
 **Service-bundle constraints:** ≤200 files, ≤5 MB per file, ≤25 MB total, paths nest
 ≤8 levels, extensions in `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp
 .gif .woff2 .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus
-`_worker.js`, `migrations/*.sql`). `_worker.js` is required. Dotfiles and
-legacy bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
-manifest) are skipped and reported.
+`_worker.js`). `_worker.js` is required. `.sql` is rejected with a pointer to
+`.yard/migrations` - migrations are project-level, not service files. Dotfiles
+and legacy bundle-root local-dev files (e.g. `README.md`, the retired
+`yard.json` manifest) are skipped and reported.
+
+**Migrations:** flat `.sql` files in `.yard/migrations/` (or `migrations.dir`
+from settings.json) push as the release's `migrations` artifact: names of
+letters, digits and `._-` ending in `.sql`, ≤200 files, ≤1 MB per file,
+≤5 MB total, no subdirectories.
 
 ---
 
@@ -1500,8 +1506,9 @@ Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--sandbox <slug>`
 **Bundle constraints enforced client-side before any HTTP:** ≤200 files,
 ≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
 `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif .woff2 .woff
-.ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`,
-`migrations/*.sql`). `_worker.js` is required. Dotfiles and legacy
+.ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`).
+`.sql` inside a service directory is rejected: migrations moved to
+`.yard/migrations` at the project level. `_worker.js` is required. Dotfiles and legacy
 bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
 manifest, the retired per-service `settings.json`) are skipped (reported as
 ignored), so old scaffolds that carried them inside the bundle still deploy.
@@ -1564,12 +1571,30 @@ Write-only: `list` shows names and timestamps, never values; `--json` output
 carries a `sandbox` field, `""` for the project itself. Secrets never move
 between the project and a sandbox.
 
-### yard service db query [sql]
+### yard db query [sql]
 
-Runs SQL against the project's or a sandbox's database, the one every
-service there shares, and prints rows as JSON. SQL from the inline argument, `--file
-<path>`, or stdin (`-`). Caps: 10 kB SQL, 1000 rows returned. The
-`_yard_migrations` table records applied migrations as `<service>/<file>`.
+Runs SQL against the project's or a sandbox's database (`--sandbox <slug>`),
+the one every service there shares, and prints rows as JSON. SQL from the
+inline argument, `--file <path>`, or stdin (`-`). Caps: 10 kB SQL, 1000 rows
+returned.
+
+### yard db migrations list
+
+One row per migration: the union of the database's `_yard_migrations` ledger
+(applied files, recorded by filename) and the local migrations directory
+(pending files not yet in the ledger). `--sandbox <slug>` reads that
+sandbox's database; `--json` emits `{"sandbox", "database", "migrations":
+[{"name", "applied", "applied_at", "local"}]}`. A project with no database
+yet reports every local file as pending. Ledger rows whose name contains a
+`/` are from the retired per-service scheme and are not listed. Unrelated to
+`yard migrate`, which upgrades the settings.json schema.
+
+### yard db migrations mark-applied \<file\>
+
+Records one migration filename in the ledger without running it, so deploys
+stop trying to - the repair step after fixing a migration whose earlier
+statements already applied (migration files are not transactional). Errors
+if the file is already recorded.
 
 ### yard service logs
 
