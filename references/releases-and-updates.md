@@ -40,9 +40,11 @@ at most **10 open drafts**.
 
 Releases belong to the **project**, never to a sandbox. The project and each
 sandbox **follow one channel**: the newest release in that channel is what
-serves, unless the seller **pins** one release instead. **Putting a release
-into a followed channel is the deploy moment.** Buyers only ever see what the
-project itself serves, so publish into the channel the project follows (or
+serves, unless the seller **rolls back** to an earlier one (which the next
+release into that channel undoes) or **pins** one release instead (which holds
+until unpinned). **Putting a release into a followed channel is the deploy
+moment.** Buyers only ever see what the project itself serves, so publish into
+the channel the project follows (or `yard sandbox rollback <tag>` /
 `yard sandbox pin <tag>`) to make a release live.
 
 Version tags are **unique per project** across all non-archived releases —
@@ -149,8 +151,8 @@ Exit codes:
 
 `yard releases promote <tag> --to <channel>` moves an already-published release
 into a release channel, out of whichever one it was in. The project and every
-sandbox following the new channel start serving it (unless pinned to something
-else); followers of the old channel fall back to its next newest release.
+sandbox following the new channel start serving it (unless pinned or rolled
+back to something else); followers of the old channel fall back to its next newest release.
 Nothing is copied:
 storage is not consumed twice and download counts carry over. There is no source
 to name — a release is in exactly one channel, so the tag alone identifies both
@@ -181,6 +183,30 @@ yard sandbox pin v1.4.0 --sandbox preview
 # …verify the download works…
 yard sandbox unpin                                            # ships it to buyers
 ```
+
+### Rolling a bad release back
+
+`yard sandbox rollback <tag>` puts an earlier release back in front of buyers
+immediately, without holding it there:
+
+```sh
+yard sandbox rollback v1.3.0                                  # the storefront
+yard sandbox rollback v1.3.0 --sandbox staging                # one sandbox
+```
+
+The target keeps following its channel, so the fix takes over on its own the
+moment you publish it - there is nothing to undo afterwards:
+
+```sh
+yard sandbox rollback v1.3.0                                  # buyers are back on the good one
+# …fix the bug…
+yard releases publish v1.4.1 --file dist/app.zip              # takes over automatically
+```
+
+Use `yard sandbox pin` instead when the release should stay put through later
+publishes; `yard sandbox pin` with no tag pins whatever is serving, which makes
+a rollback permanent. A rollback is refused while the target is pinned, since a
+pin outranks it - unpin first, or move the pin with `yard sandbox pin <tag>`.
 
 ---
 
@@ -517,7 +543,7 @@ Emits the raw `APIKeyListResponse`:
 
 - **`400 Missing license key` on `/v1/updates/latest`** — neither query nor `Authorization: Bearer` header was sent. Most update libraries default to query-param auth; double-check that the key actually got injected.
 - **`403 License has been refunded`** — the seller refunded the buyer; the license is permanently revoked. Surface this to the user and invite them to re-purchase.
-- **`404 No releases found for this project`**: nothing has shipped to the project itself yet. Run `yard releases publish` (which adds the release to the `Production` channel the project follows), or pin an already-published release with `yard sandbox pin <tag>`.
+- **`404 No releases found for this project`**: nothing has shipped to the project itself yet. Run `yard releases publish` (which adds the release to the `Production` channel the project follows), or serve an already-published release with `yard sandbox rollback <tag>` (or `yard sandbox pin <tag>` to hold it there).
 - **Storage-limit `403` on publish** — the selling team's plan has a storage cap. Either upgrade the plan or delete old release files from the dashboard.
 - **API key gone, can't re-read it** — keys are unrecoverable by design. Run `yard keys create` to mint a new one (and update wherever the old one was embedded).
 - **Wrong scopes on an existing key** — there's no CLI command to edit scopes today; edit the key from the dashboard or delete + recreate via the CLI.

@@ -383,7 +383,7 @@ All three subcommands accept `--json` to emit the refreshed tier list on stdout.
 
 Manage releases for a project. The CLI exposes `publish` and `promote` — list/edit/delete still happen in the dashboard.
 
-**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (a draft belongs to no channel, so nothing can serve it). With no `--release`, every CLI command that writes files (`yard push`, `yard releases publish`) targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and puts the release in its target channel, and the project and every sandbox following that channel start serving it: landing in a followed channel is the deploy moment. Every published release belongs to exactly one channel; a draft belongs to none, which is what makes it a draft. The project and each sandbox follow one channel and serve the newest release in it, unless pinned to one release.
+**The draft-release model.** A release starts as a **draft**: an ordinary release that has not been published yet and is unreachable by buyers (a draft belongs to no channel, so nothing can serve it). With no `--release`, every CLI command that writes files (`yard push`, `yard releases publish`) targets the same draft: your open one, or a new draft seeded from your newest published release. Publishing stamps the tag and puts the release in its target channel, and the project and every sandbox following that channel start serving it: landing in a followed channel is the deploy moment. Every published release belongs to exactly one channel; a draft belongs to none, which is what makes it a draft. The project and each sandbox follow one channel and serve the newest release in it, unless rolled back to one release (until the channel moves on) or pinned to one release (until unpinned).
 
 **Published releases stay editable.** Publishing is one-way, but the release it produces is not frozen: `--release <id|tag>` names any release, draft or published, and `yard push` edits it in place. Editing a release nothing serves has no deploy side effects; editing one the project or a sandbox is serving is live the moment it saves, which is why `yard push` names who is serving the release and asks before uploading (`--yes` skips the prompt).
 
@@ -484,7 +484,7 @@ yard releases publish v1.4.0 --file dist/app.zip   # publishes into the Producti
 yard releases promote v1.4.0 --to Beta             # move it into Beta, out of Production
 ```
 
-**Nothing is copied**: a release is one project-wide snapshot, and it belongs to exactly one channel. Promoting moves it, so the channel it came from no longer has it. As the new channel's newest release it starts serving wherever that channel is followed (unless a follower is pinned to another release). Storage is not consumed twice and download counts carry over. Promoting a release into the channel it is already in is a no-op. Because every follower now serves the same release, a later edit to it shows up in all of them. To hold the project or one sandbox on a specific release by hand, use `yard sandbox pin <release> [--sandbox <name>]`.
+**Nothing is copied**: a release is one project-wide snapshot, and it belongs to exactly one channel. Promoting moves it, so the channel it came from no longer has it. As the new channel's newest release it starts serving wherever that channel is followed (unless a follower is pinned to, or rolled back to, another release). Storage is not consumed twice and download counts carry over. Promoting a release into the channel it is already in is a no-op. Because every follower now serves the same release, a later edit to it shows up in all of them. To hold the project or one sandbox on a specific release by hand, use `yard sandbox pin <release> [--sandbox <name>]`; to step one back until the next publish, use `yard sandbox rollback <release>`.
 
 **`--json` output** (the channel-membership result, plus what it deployed):
 
@@ -1240,8 +1240,8 @@ serve.
 A **release** is one project-wide snapshot: landing page, pricing, downloads,
 and the service bundle. Releases are grouped into **channels**, and the
 project and each sandbox follow one channel and serve the newest release in
-it, unless pinned to one release. The project's own data is what buyers reach
-at its plain URL; a **sandbox** is an optional extra copy of your own,
+it, unless rolled back or pinned to one. The project's own data is what buyers
+reach at its plain URL; a **sandbox** is an optional extra copy of your own,
 private by default, at `/@<sandbox>/`. A project starts with zero sandboxes.
 Commands act on the project itself unless `--sandbox` names a sandbox.
 
@@ -1253,14 +1253,22 @@ sandbox's pages in the dashboard and from the buyer-facing endpoints with a
 `yard transactions`, `yard customers`, earnings and payouts. See
 [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
-What serves is decided by two settings, and the commands below move them:
+What serves is decided by three settings, and the commands below move them:
 
 | State | Reached by | What serves |
 |---|---|---|
 | following a channel | `sandbox channel <name>`, or `sandbox unpin` | the channel's newest release; a new release landing in the channel takes over |
+| rolled back | `sandbox rollback <release>` | that one release, until the next release lands in the followed channel and takes over |
 | pinned | `sandbox pin [release]` (`promote` also sets a pin) | that one release, whatever the channel does, until `unpin` |
 
-A pin outranks the channel; `unpin` hands control back to the channel.
+A pin outranks a rollback, which outranks the channel. `unpin` hands control
+back to the channel and drops any rollback with it.
+
+**Which one to reach for:** a bad release is live and you want the previous one
+back while you fix it → `sandbox rollback`, because the fix takes over by
+itself when you publish it. You want a target held on one release through every
+later publish (a demo, a customer on an old version, a sandbox someone is
+testing) → `sandbox pin`.
 
 Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--json`. Every
 `<release>` argument accepts a version tag or a release UUID. Sandbox
@@ -1284,9 +1292,9 @@ preview              -                        0         -              public
 
 The summary line is the project itself; the table lists its sandboxes. The
 `SERVING` cell says what serves and why: `<version> (pinned)`, `<version>
-(<channel name>)` when the followed channel's newest release serves,
-`<version> (no channel)`, or `-` when nothing serves. `DEPLOY` is blank when
-the service is up to date; a `failed` entry gets a warning line after the
+(rolled back)`, `<version> (<channel name>)` when the followed channel's newest
+release serves, `<version> (no channel)`, or `-` when nothing serves. `DEPLOY`
+is blank when the service is up to date; a `failed` entry gets a warning line after the
 table with its error. JSON:
 
 ```json
@@ -1381,21 +1389,47 @@ disconnects it from its channel. A new project follows the protected
 list` for the project's channels; a channel other than `Production` has to be
 created in the dashboard before it can be followed.
 
+### yard sandbox rollback \<release\> [--sandbox \<name\>]
+
+Serves an earlier release **now** without holding it there. The target keeps
+following its channel, so the next release published into that channel - or
+synced from GitHub - takes over again and deploys as normal. This is the
+fix-a-bad-release command.
+
+```sh
+yard sandbox rollback v1.3.0                      # the project's storefront
+yard sandbox rollback v1.3.0 --sandbox staging    # one sandbox
+```
+
+The release is required; naming the channel's newest release just hands the
+target back to its channel. The release does not have to be in the channel the
+target follows. Success reads like
+`Rolled back the project - serving 1.3.0 (page)`.
+
+**Refused with 409 `Unpin the release to roll back` while the target is
+pinned** - a pin outranks a rollback, so the write would do nothing. Either
+`yard sandbox unpin` first, or move the pin with `yard sandbox pin <release>`
+if it should stay held.
+
+To make a rollback permanent, follow it with `yard sandbox pin` (no release),
+which pins whatever is serving.
+
 ### yard sandbox pin [release] [--sandbox \<name\>]
 
 Holds the project (no `--sandbox`) or one sandbox on one release, however old
 and whichever channel it sits in: later releases landing in the followed
-channel no longer take over. Naming no release pins what serves right now,
-which is how a rollback is held through later publishes. This is also the
-ship-a-specific-release command: `yard sandbox pin v1.3.0` serves that
-release on the project itself, and `yard sandbox pin v1.5.0-rc1 --sandbox
-preview` seeds a sandbox with a release to try. Success reads like
-`Pinned the project - serving 1.2.0 (page)`.
+channel no longer take over, and the target's channel is locked until it is
+unpinned. Naming no release pins what serves right now, which is how a rollback
+is made permanent. This is also the ship-a-specific-release command:
+`yard sandbox pin v1.3.0` serves that release on the project itself, and
+`yard sandbox pin v1.5.0-rc1 --sandbox preview` seeds a sandbox with a release
+to try. Success reads like `Pinned the project - serving 1.2.0 (page)`.
 
 ### yard sandbox unpin [--sandbox \<name\>]
 
-Clears the pin and hands control back to the followed channel: its newest
-release serves again, and every later release landing there takes over.
+Clears the pin - and any rollback under it - and hands control back to the
+followed channel: its newest release serves again, and every later release
+landing there takes over.
 Unpinned with no channel followed, nothing serves; point it at one with
 `yard sandbox channel`.
 
@@ -1412,7 +1446,7 @@ project-as-source form; to seed a sandbox use `yard sandbox pin <release>
 `yard sandbox unpin`. Success reads like
 `Promoted 1.2.0: preview -> my-project (page, service)`.
 
-`pin`, `unpin` and `promote` all answer the same JSON:
+`rollback`, `pin`, `unpin` and `promote` all answer the same JSON:
 `{"release_id": "…", "version": "v1.4.0", "to": "", "action": "…", "artifacts": [...]}`,
 where `to` names the sandbox acted on and `""` is the project itself.
 Human output ends with what is now serving, plus the live and `/service/`
@@ -1426,10 +1460,14 @@ yard sandbox create staging
 yard sandbox pin v1.4.0 --sandbox staging
 yard sandbox pin v1.4.0
 
-# Roll back the storefront and hold it there through later publishes
+# Roll the storefront back to the last good release; the fix takes over
+# automatically once you publish it
+yard sandbox rollback v1.3.0
+
+# Roll back and hold it there through later publishes instead
 yard sandbox pin v1.3.0
 
-# Hand control back to the channel once the fix ships
+# Hand a pinned target back to its channel
 yard sandbox unpin
 
 # Share a work-in-progress preview with someone who has no Yard account
