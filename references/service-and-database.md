@@ -186,7 +186,7 @@ const { results } = await env.DB.prepare(
 
 Schema changes go in `.yard/migrations/` as new numbered files
 (`0002_add_column.sql`, ...) - never edit an applied migration; deploys apply
-pending files in filename order, before any new service code goes live. The
+pending files in filename order, before any new services are deployed. The
 migration stream is project-level: one ordered set of flat `.sql` files
 shared by every service (the directory is configurable via `migrations.dir`
 in `.yard/settings.json`, and the dashboard's release editor has a Database
