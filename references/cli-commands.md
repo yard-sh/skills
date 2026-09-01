@@ -1372,9 +1372,10 @@ alike, and nobody else: the edge sends everyone else through sign-in.
 `public` means anyone with the URL can view the landing page and service.
 Omitting `--sandbox` sets the project itself, and is how a project goes
 private: there is no separate project-level visibility setting. The project's
-stage still trumps, so a draft project serves nothing publicly regardless.
-The seller gets an in-app + email notification on every flip. Success reads
-`Sandbox "staging" is now public` or `The project is now private`.
+launch stage still trumps, so a draft project serves nothing publicly
+regardless. The seller gets an in-app + email notification on every flip.
+Success reads `Sandbox "staging" is now public` or `The project is now
+private`.
 
 ### yard sandbox delete \<sandbox\> [-y]
 

@@ -79,7 +79,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/projects/{username}/{slug}/metadata` | `projects:read` | Read project metadata (title, stage, tiers, pricing) |
+| `GET` | `/v1/projects/{username}/{slug}/metadata` | `projects:read` | Read project metadata (title, launch stage, tiers, pricing) |
 
 ### Licenses
 

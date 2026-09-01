@@ -297,8 +297,8 @@ owning team**, as does a private project
 (`yard sandbox visibility private`): anonymous visitors are sent
 through sign-in, everyone outside the team gets an explanatory 403, and any
 team member gets the service.
-You can build and verify everything before ever advancing the project stage
-(stage changes are one-way).
+You can build and verify everything before ever advancing the launch stage
+(launch stage changes are one-way).
 
 ## Debugging deployed services
 

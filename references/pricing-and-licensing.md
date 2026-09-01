@@ -5,7 +5,7 @@
 - [Pricing Tiers](#pricing-tiers)
 - [Seat Types](#seat-types)
 - [Volume Brackets](#volume-brackets)
-- [Project Stages and Discounts](#project-stages-and-discounts)
+- [Launch Stages and Discounts](#launch-stages-and-discounts)
 - [Coupons](#coupons)
 - [Free Trials](#free-trials)
 - [Gift Purchases](#gift-purchases)
@@ -83,27 +83,27 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 ---
 
-## Project Stages and Discounts
+## Launch Stages and Discounts
 
-Every project has a stage that controls availability and pricing. New projects always start in `draft` and progress through stages **forward-only**: once advanced, a project can never go back. Stage is not the same thing as visibility. Whether strangers may view the storefront at all is the project's **own visibility** (`yard sandbox visibility <public|private>`), and stage gates on top of it: a draft serves nothing publicly however visibility is set.
+Every project has a launch stage that controls availability and pricing. New projects always start in `draft` and progress through launch stages **forward-only**: once advanced, a project can never go back. The launch stage is not the same thing as visibility. Whether strangers may view the storefront at all is the project's **own visibility** (`yard sandbox visibility <public|private>`), and the launch stage gates on top of it: a draft serves nothing publicly however visibility is set.
 
-| Stage | Description | Discount field |
+| Launch stage | Description | Discount field |
 |---|---|---|
-| `draft` | Initial stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
+| `draft` | Initial launch stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
 | `early_access` | Public, purchasable, but the seller signals the project is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
-| `published` | General availability. Final stage. | — |
+| `published` | General availability. Final launch stage. | — |
 | `archived` | No longer available for new purchases. (Existing buyers retain access.) | — |
 
 **Transition rules** (enforced server-side):
 
-- Order: `draft` → `early_access` → `published`. Going backwards is rejected with `Cannot move project stage backward`.
-- `published` is terminal — once there, the project cannot be moved again. The API returns `Project is already in the final 'published' stage and cannot be changed.`
+- Order: `draft` → `early_access` → `published`. Going backwards is rejected with `Cannot move launch stage backward`.
+- `published` is terminal — once there, the project cannot be moved again. The API returns `Project is already in the final 'published' launch stage and cannot be changed.`
 - Skipping `early_access` is allowed — `draft` → `published` directly is valid.
 - Transitioning out of `draft` requires an active Stripe Connect seller account. Backend rejects the change otherwise.
 
-Stage discounts are applied before coupon discounts during checkout.
+Launch stage discounts are applied before coupon discounts during checkout.
 
-**How to advance a stage:** the CLI does not currently surface stage transitions — `yard projects edit` accepts settings (license keys, activations, trials) but not `stage`. Sellers advance project stage from the Yard dashboard at `https://dash.yard.sh/projects`. Direct REST `PUT /v1/projects/{id}` with `{"stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
+**How to advance a launch stage:** the CLI does not currently surface launch stage transitions — `yard projects edit` accepts settings (license keys, activations, trials) but not `launch_stage`. Sellers advance the launch stage from the Yard dashboard at `https://dash.yard.sh/projects`. Direct REST `PUT /v1/projects/{id}` with `{"launch_stage": "early_access"}` works server-side, but is not exposed as a public seller-API surface.
 
 ---
 
@@ -182,7 +182,7 @@ This is how a seller exercises the whole buying flow - checkout, entitlement, li
 
 A checkout that names a sandbox runs the same post-purchase machinery a paid one does:
 
-- Writes a **completed transaction** carrying the tier, quantity, base price, volume and stage discounts, and coupon discount it would have charged. No `stripe_payment_intent_id` is set.
+- Writes a **completed transaction** carrying the tier, quantity, base price, volume and launch stage discounts, and coupon discount it would have charged. No `stripe_payment_intent_id` is set.
 - **Mints license keys** on the project's normal rules (seat type and quantity), indistinguishable from real keys except for the sandbox they belong to.
 - **Starts subscriptions** with no Stripe subscription behind them. They renew on a platform worker rather than on invoice webhooks, writing the `subscription_renewal` transactions Stripe would have written. The worker follows the app clock, so a dev-clock advance drives sandbox renewals.
 - **Starts and converts free trials.** The one-pending-or-active-trial-per-buyer rule applies to the project and to each sandbox separately, so a buyer's trial on the storefront does not block starting one in a sandbox.
@@ -258,7 +258,7 @@ The full price calculation during checkout (`CreatePaymentIntent`):
 1. **Resolve tier** — Use the specified tier or fall back to the project's default tier
 2. **Validate quantity** — Check quantity against the tier's seat type constraints
 3. **Calculate base price** — `tier.GetPriceForQuantity(quantity)` (applies volume brackets if applicable)
-4. **Apply stage discount** — If project is in the early access stage, apply `early_access_discount_percent`
+4. **Apply launch stage discount** — If project is in the early access launch stage, apply `early_access_discount_percent`
 5. **Apply coupon discount** — If a valid coupon code is provided, apply percentage or fixed-amount discount
 6. **Calculate tax** — Via Stripe Tax API based on buyer's location
 7. **Calculate seller earnings**
