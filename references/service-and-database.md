@@ -5,7 +5,7 @@ database, secrets, and buyer sign-in (the project and each sandbox get their
 own), using the same CLI you already have. A release can carry several, each on its own path and each
 deployed on its own. It powers full web apps, but the same feature hosts any HTTP
 workload: a JSON API, a webhook receiver, or the backend an installed project
-calls home to. A bundle with no frontend at all (just `_worker.js`) is valid.
+calls home to. A bundle with no frontend at all (just `_service.js`) is valid.
 Requires the `service` permission (Pro; check `yard me --json` →
 `.team_permissions` before promising a deploy).
 
@@ -13,7 +13,7 @@ Requires the `service` permission (Pro; check `yard me --json` →
 
 **There are no ports.** Never scaffold Express, `app.listen()`, or any
 socket-listening server — it cannot run. The backend is a single file,
-`_worker.js`, exporting a fetch handler:
+`_service.js`, exporting a fetch handler:
 
 ```js
 export default {
@@ -43,7 +43,7 @@ release can carry several, each its own directory and its own deployment:
 
 | Path            | Meaning                                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
-| `_worker.js`    | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
+| `_service.js`   | The backend. One pre-bundled ES module (bundle imports with esbuild if you use dependencies). Required. |
 | everything else | Static assets served via `env.ASSETS` with SPA fallback (unknown paths → `index.html`).                 |
 
 Limits are per service: 200 files, 5 MB per file, 25 MB total, paths nest up

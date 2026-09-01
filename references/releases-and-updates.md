@@ -236,7 +236,7 @@ that file declares:
 
 | settings.json section | What syncs |
 |---|---|
-| `services[]` | Each entry - its `dir`, `name`, `url`, `access` and `database` - becomes one of the release's services, built from the bundle in that directory (which must contain `_worker.js`). The list is the whole set: a service the tag drops is taken down on the next deploy |
+| `services[]` | Each entry - its `dir`, `name`, `url`, `access` and `database` - becomes one of the release's services, built from the bundle in that directory (which must contain `_service.js`). The list is the whole set: a service the tag drops is taken down on the next deploy |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
 | `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |
@@ -246,7 +246,7 @@ the release carries that part forward unchanged, and removing it stays a
 dashboard/CLI operation. A repo with no `.yard/settings.json` syncs assets,
 name, and notes only. A section that IS declared must resolve — a declared dir
 with no files at the tag fails the sync (typo protection), as does a service
-bundle without `_worker.js`, an entry without a `name`, or two services
+bundle without `_service.js`, an entry without a `name`, or two services
 claiming the same name or path.
 
 The `pricing` section uses the release-document tier shape (note the nested

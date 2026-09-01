@@ -215,7 +215,7 @@ For content projects or anything static the buyer does not install locally, skip
 
 If the project runs on Yard — the buyer uses it in the browser, or an installed project calls its API, rather than running the code themselves — Yard hosts the backend, database, buyer sign-in, and any static frontend (a bundle with no frontend at all is valid). Requires the `service` permission (Pro; check `yard me --json` → `.team_permissions`). Whenever you detect this project type, the plan you present must cover:
 
-1. **Scaffold and build.** `yard service init <name>` writes a zero-dependency working bundle (plain `_worker.js` fetch handler, static frontend), writes a first migration to `.yard/migrations/` when none exists, and records the service - directory, name, url, access, database - on the `services` list in `.yard/settings.json`. Run it once per service - a release can carry several, each on its own path. Build the user's actual service inside that contract. **No ports, no `listen()`, no Express**: the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/service-and-database.md](references/service-and-database.md).
+1. **Scaffold and build.** `yard service init <name>` writes a zero-dependency working bundle (plain `_service.js` fetch handler, static frontend), writes a first migration to `.yard/migrations/` when none exists, and records the service - directory, name, url, access, database - on the `services` list in `.yard/settings.json`. Run it once per service - a release can carry several, each on its own path. Build the user's actual service inside that contract. **No ports, no `listen()`, no Express**: the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/service-and-database.md](references/service-and-database.md).
 2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `"access": "customers"` on a service's entry in `.yard/settings.json` is a complete paywall with zero service code. Building your own login/OAuth/session layer is a bug.
 3. **Push → test → publish.** `yard push` uploads every declared bundle into a **draft release**. Nothing serves a draft. Publishing tags it and, with no `--channel`, lands it in the `Production` channel, which the project itself follows, so `yard releases publish <tag>` is the go-live step. Every published release is in exactly one channel. To try a release before buyers reach it, create a sandbox of your own (`yard sandbox create preview`), hold the storefront where it is (`yard sandbox pin`), publish, then `yard sandbox pin <tag> --sandbox preview` and `yard service open --sandbox preview` (add `--service <name>` when there are several). A sandbox is visible to your team only by default; `yard sandbox visibility public --sandbox preview` makes the URL shareable with testers, and `yard sandbox unpin` ships it. Data and secrets never move between the project and its sandboxes, so set the project's own secrets explicitly.
 4. **Draft projects serve services to the owning team only.** You can deploy, promote, and fully verify a service's URL while the project is still `draft`: any member of the team signs in and gets through; everyone else sees an explanatory 403. Never advance the project stage just to test (stage changes are one-way).
@@ -340,7 +340,7 @@ The interactive flow:
 | `yard sandbox promote <from-sandbox> [--to sandbox]`                           | Pin the target to the release `<from-sandbox>` currently serves; omitting `--to` promotes into the project itself, deploying the release's service and taking it live. Nothing is copied; data and secrets never promote. Prefer `sandbox pin <release>` when you can name the release, or `sandbox rollback <release>` when it should step aside for the next publish. |
 | `yard service init <name> [--dir PATH] [--service-dir NAME] [--url PATH]`         | Scaffold a zero-dependency service bundle (backend + frontend); local-dev files land at the top of the working directory, an example migration lands in `.yard/migrations/` when none exists, and the service is recorded on the `services` list in `.yard/settings.json`                                             |
 | `yard service open [--sandbox SLUG] [--service NAME]`                         | Print and open a service's URL (no `--sandbox` = the project itself)                                                                                                                                                                                                                      |
-| `yard service check`                                                 | Validate every declared bundle offline (limits, extensions, `_worker.js`) + lint root-absolute URLs; the settings entries themselves are validated whenever settings.json is read                                                                                                                    |
+| `yard service check`                                                 | Validate every declared bundle offline (limits, extensions, `_service.js`) + lint root-absolute URLs; the settings entries themselves are validated whenever settings.json is read                                                                                                                    |
 | `yard service secrets set/list/rm [--sandbox SLUG]`                           | `env.<NAME>` bindings for the project or one sandbox, shared by every service there; write-only; apply on the next deploy                                                                                                                                                              |
 | `yard db query [sql] [--file PATH] [--sandbox SLUG]`                          | Run SQL against the project's or a sandbox's database (`-` for stdin)                                                                                                                                        |
 | `yard db migrations list [--sandbox SLUG]`                                    | Migrations applied in that database (from its `_yard_migrations` ledger, recorded by filename) merged with the local `.yard/migrations/` files still pending                                                                                                                                        |
@@ -390,9 +390,9 @@ For everything an agent needs to **author** the page itself — how to read proj
 │       ├── index.html
 │       └── ...
 ├── api/                      # one service bundle, listed in services[]
-│   └── _worker.js
+│   └── _service.js
 └── jobs/                     # another service, same shape
-    └── _worker.js
+    └── _service.js
 ```
 
 `.yard/settings.json` schema (v6):
@@ -470,7 +470,7 @@ Example `push --json` output (`page` and `config` at the top level, every servic
   "services": {
     "api": {
       "dir": "/abs/path/api",
-      "uploaded": ["_worker.js"],
+      "uploaded": ["_service.js"],
       "skipped": [],
       "deleted": [],
       "remote_only": []

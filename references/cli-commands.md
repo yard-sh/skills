@@ -990,7 +990,7 @@ Editing a release that is already being served is live on save.
 **Service-bundle constraints:** ≤200 files, ≤5 MB per file, ≤25 MB total, paths nest
 ≤8 levels, extensions in `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp
 .gif .woff2 .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus
-`_worker.js`). `_worker.js` is required. `.sql` is rejected with a pointer to
+`_service.js`). `_service.js` is required. `.sql` is rejected with a pointer to
 `.yard/migrations` - migrations are project-level, not service files. Dotfiles
 and legacy bundle-root local-dev files (e.g. `README.md`, the retired
 `yard.json` manifest) are skipped and reported.
@@ -1069,7 +1069,7 @@ itself by its slug; anything else is a sandbox slug.
   "service": {
     "dir": "/home/alice/proj/service",
     "to_upload": [],
-    "unchanged": ["_worker.js"],
+    "unchanged": ["_service.js"],
     "remote_only": []
   },
   "serving": [
@@ -1110,7 +1110,7 @@ List a release's files, grouped by bundle. Defaults to your open draft;
     {
       "id": "…",
       "artifact": "service",
-      "path": "_worker.js",
+      "path": "_service.js",
       "content_type": "application/javascript; charset=utf-8",
       "size_bytes": 2048,
       "content_hash": "…"
@@ -1165,7 +1165,7 @@ GitHub_.
   "services": {
     "api": {
       "dir": "/home/alice/proj/api",
-      "uploaded": ["_worker.js"],
+      "uploaded": ["_service.js"],
       "skipped": [],
       "deleted": [],
       "remote_only": []
@@ -1506,9 +1506,9 @@ Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--sandbox <slug>`
 **Bundle constraints enforced client-side before any HTTP:** ≤200 files,
 ≤5 MB per file, ≤25 MB total, paths nest ≤8 levels, extensions in
 `.html .css .js .mjs .json .svg .png .jpg .jpeg .webp .gif .woff2 .woff
-.ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_worker.js`).
+.ttf .otf .txt .md .ico .map .wasm .webmanifest` (plus `_service.js`).
 `.sql` inside a service directory is rejected: migrations moved to
-`.yard/migrations` at the project level. `_worker.js` is required. Dotfiles and legacy
+`.yard/migrations` at the project level. `_service.js` is required. Dotfiles and legacy
 bundle-root local-dev files (e.g. `README.md`, the retired `yard.json`
 manifest, the retired per-service `settings.json`) are skipped (reported as
 ignored), so old scaffolds that carried them inside the bundle still deploy.
@@ -1541,7 +1541,7 @@ project itself.
 ### yard service check
 
 Validates every declared bundle exactly like a deploy would (limits,
-extensions, `_worker.js` presence), plus lint warnings for root-absolute
+extensions, `_service.js` presence), plus lint warnings for root-absolute
 `href`/`src`/`fetch("/…")` URLs — no network, no login. The services entries
 themselves (names, mounts, no clashes) are validated whenever
 `.yard/settings.json` is read, by every command alike.
