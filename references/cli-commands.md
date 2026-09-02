@@ -941,7 +941,7 @@ Update the CLI to the latest version.
 
 The project sync commands. One set covers **everything** a project sends to
 Yard: `.yard/settings.json` itself (the `config` bundle - pushed first, since
-its `services` entries carry each service's `name`/`url`/`access`/`database`
+its `services` entries carry each service's `name`/`url`/`access`/`database_access`
 and deploys read them there, so a service-settings change is an edit in that
 one file plus a push), the landing page in its directory (`landing_page.dir`
 in `.yard/settings.json`, default `.yard/landing-page/`), and one bundle per
@@ -998,7 +998,8 @@ and legacy bundle-root local-dev files (e.g. `README.md`, the retired
 **Migrations:** flat `.sql` files in `.yard/migrations/` (or `migrations.dir`
 from settings.json) push as the release's `migrations` artifact: names of
 letters, digits and `._-` ending in `.sql`, ≤200 files, ≤1 MB per file,
-≤5 MB total, no subdirectories.
+≤5 MB total, no subdirectories. Deploying a release that carries them creates
+the database where it deploys and applies them in filename order.
 
 ---
 
@@ -1009,7 +1010,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 **Behavior:**
 
 1. Resolves the project (flag → existing settings → sole project → error).
-2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 6, "project_slug": "<slug>", "ignore_files": []}`.
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 7, "project_slug": "<slug>", "ignore_files": []}`.
 3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh project starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.
@@ -1521,10 +1522,10 @@ first migration) into `./<name>` (`--service-dir <dir>` to change the
 directory, `--url <path>` the path it serves under, default `/<name>`). The
 service is recorded on the `services` list in `.yard/settings.json` as
 `{"dir": "<dir>", "name": "<name>", "url": "/<name>", "access":
-"authenticated", "database": true}` — that entry is what names the service
-and decides how it deploys. A `README.md` describing the workflow is written
-at the top of the **working directory**, never inside the bundle, and is
-write-if-absent (an existing file is skipped and reported). An unlinked
+"authenticated", "database_access": true}` - that entry is what names the
+service and decides how it deploys. A `README.md` describing the workflow is
+written at the top of the **working directory**, never inside the bundle, and
+is write-if-absent (an existing file is skipped and reported). An unlinked
 settings file is bootstrapped first when the project isn't yard-initialized
 (a note says to run `yard init`). Run it once per service. JSON: `{"dir":
 "api", "service": "api", "url": "/api", "written": [...], "skipped": [...],
@@ -1548,20 +1549,21 @@ themselves (names, mounts, no clashes) are validated whenever
 `.yard/settings.json` is read, by every command alike.
 JSON: `{"services": [{"name": "api", "dir": "api", "mount_path": "/api",
 "files": 7, "total_bytes": 5494, "ignored": [...], "warnings": [...],
-"access": "authenticated", "database": true}]}`.
+"access": "authenticated", "database_access": true}]}`.
 
 ### yard migrate
 
 Upgrades `.yard/settings.json` to the current layout in one step: folds each
-service directory's retired `settings.json` (`name`/`url`/`access`/`database`)
-onto that service's entry on the `services` list, deletes the folded files,
-and stamps `"version": 6`. Idempotent — a current file reports nothing to
-migrate — and validated before anything is written, so a fold that would not
-parse changes nothing. `--dir <path>` picks the working directory; `--json`
-emits `{"settings_file": "...", "migrated": ["api"], "deleted":
-["api/settings.json"], "warnings": []}`. Layouts older than the services list
-(a top-level `"service"` or `"app"` block) are not migrated here; the parse
-error spells out that move.
+service directory's retired `settings.json` (`name`/`url`/`access`/`database`,
+the last landing in `database_access`) onto that service's entry on the
+`services` list, deletes the folded files, renames each entry's retired v6
+`database` key to `database_access`, and stamps `"version": 7`. Idempotent -
+a current file reports nothing to migrate - and validated before anything is
+written, so a fold that would not parse changes nothing. `--dir <path>` picks
+the working directory; `--json` emits `{"settings_file": "...", "migrated":
+["api"], "renamed": ["api"], "deleted": ["api/settings.json"], "warnings":
+[]}`. Layouts older than the services list (a top-level `"service"` or
+`"app"` block) are not migrated here; the parse error spells out that move.
 
 ### yard service secrets set KEY=VALUE [KEY=VALUE...] / list / rm \<name\>
 
@@ -1586,8 +1588,9 @@ One row per migration: the union of the database's `_yard_migrations` ledger
 (pending files not yet in the ledger). `--sandbox <slug>` reads that
 sandbox's database; `--json` emits `{"sandbox", "database", "migrations":
 [{"name", "applied", "applied_at", "local"}]}`. A project with no database
-yet reports every local file as pending. Ledger rows whose name contains a
-`/` are from the retired per-service scheme and are not listed. Unrelated to
+yet reports every local file as pending; deploying a release that carries
+them creates the database and applies them. Ledger rows whose name contains
+a `/` are from the retired per-service scheme and are not listed. Unrelated to
 `yard migrate`, which upgrades the settings.json schema.
 
 ### yard db migrations mark-applied \<file\>

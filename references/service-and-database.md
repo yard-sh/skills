@@ -63,14 +63,14 @@ how it deploys — so changing how a service deploys is an edit there plus a
 
 ```json
 {
-  "version": 6,
+  "version": 7,
   "services": [
     {
       "dir": "api",
       "name": "api",
       "url": "/api",
       "access": "authenticated",
-      "database": true
+      "database_access": true
     },
     { "dir": "jobs", "name": "jobs" }
   ]
@@ -90,9 +90,12 @@ how it deploys — so changing how a service deploys is an edit there plus a
   paywall: non-customers are redirected to the project's sales page; only
   buyers/trialers/subscribers get in). Default `public`. Per service, so one
   release can put a paywalled app next to a public API.
-- `database`: `true` binds a SQLite database as `env.DB`. The project and
-  each sandbox have their own database, so every service that asks for one
-  shares it there.
+- `database_access`: `true` lets the service reach the database as `env.DB`.
+  The database itself is created by the release's migrations (see _Database_
+  below), so a service flagged before the first migration deploys without
+  `env.DB` and is redeployed with it once the database exists. The project and
+  each sandbox have their own database, so every service there with access
+  shares it.
 
 **The project owner always gets in**, whatever the access mode, with
 `X-Yard-Entitlement: owner`. A seller never needs to buy their own project
@@ -187,12 +190,14 @@ const { results } = await env.DB.prepare(
 Schema changes go in `.yard/migrations/` as new numbered files
 (`0002_add_column.sql`, ...) - never edit an applied migration; deploys apply
 pending files in filename order, before any new services are deployed. The
-migration stream is project-level: one ordered set of flat `.sql` files
-shared by every service (the directory is configurable via `migrations.dir`
-in `.yard/settings.json`, and the dashboard's release editor has a Database
-tab for writing them). The project and each sandbox have their own
-database, shared by every service there that asks for one, so two services
-can read each other's tables
+first migration deployed creates the database, whether or not any service
+has `database_access`: a release with migration files and no services still
+gets one. The migration stream is project-level: one ordered set of flat
+`.sql` files shared by every service (the directory is configurable via
+`migrations.dir` in `.yard/settings.json`, and the dashboard's release
+editor has a Database Migrations page for writing them). The project and
+each sandbox have their own database, shared by every service there with
+`database_access`, so two services can read each other's tables
 while a sandbox's test data never reaches the storefront. Inspect the
 data with `yard db query "select ..." --sandbox preview --json`
 (omit `--sandbox` for the project itself; or

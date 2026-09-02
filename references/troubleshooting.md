@@ -177,22 +177,27 @@ When running in a Coder workspace, the CLI automatically detects the `VSCODE_PRO
 
 ## `.yard/settings.json` uses an old service layout
 
-A service's settings - `name`, `url`, `access`, `database` - live on its
-entry in the `services` list of `.yard/settings.json`. Two retired layouts
-are rejected rather than upgraded, because reading them would have to guess
-values the seller chose:
+A service's settings - `name`, `url`, `access`, `database_access` - live on
+its entry in the `services` list of `.yard/settings.json`. Three retired
+layouts are rejected rather than upgraded, because reading them would have to
+guess values the seller chose:
 
 **Services entries without a `"name"` (v5)** - the settings lived in each
 directory's own `settings.json`. Run `yard migrate`: it folds every
 per-directory settings file onto its entry, deletes those files, and stamps
-`"version": 6`. Or move the fields by hand and delete the files.
+`"version": 7`. Or move the fields by hand and delete the files.
+
+**A services entry carrying `database` (v6)** - the flag was renamed to
+`database_access`, because it only binds `env.DB`; the release's migrations
+are what create the database. Run `yard migrate`: it renames the key on every
+entry and stamps `"version": 7`. Or rename it by hand and set `"version": 7`.
 
 **A top-level `"service"` (or `"app"`) block (v4 and older)** - convert by
 hand:
 
 1. Replace the block with a `services` list entry carrying its old values:
-   `"services": [{ "dir": "service", "name": "service", "url": "/service", "access": "public", "database": true }]`.
-2. Set `"version": 6`.
+   `"services": [{ "dir": "service", "name": "service", "url": "/service", "access": "public", "database_access": true }]`.
+2. Set `"version": 7`.
 
 Or start over with `yard service init <name>`, which records the entry for
 you.
@@ -200,7 +205,7 @@ you.
 ## A GitHub tag fails to sync after upgrading
 
 Tag content is immutable. A tag whose `.yard/settings.json` still uses the
-retired v5 layout fails the sync with an error naming the fix; the release
-on Yard keeps serving as it was. Run `yard migrate` in the repo, commit,
-and publish the next tag - or force-move the tag and use the dashboard's
-Re-sync.
+retired v5 layout, or the retired v6 `database` key, fails the sync with an
+error naming the fix; the release on Yard keeps serving as it was. Run
+`yard migrate` in the repo, commit, and publish the next tag - or force-move
+the tag and use the dashboard's Re-sync.
