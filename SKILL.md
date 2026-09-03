@@ -432,7 +432,7 @@ All blocks are optional. `yard push` uploads `.yard/settings.json` itself as the
 1. `cd <project>` and `yard init --page` — scaffolds `.yard/landing-page/`, pulling your draft release's page files (or a hello-world starter)
 2. Edit files in `.yard/landing-page/` (by hand, or prompt an agent to do it)
 3. `yard status` — preview the diff without writing anything
-4. `yard push` — upload changed files into your draft release; prints a `Preview:` URL
+4. `yard push` — upload changed files into your draft release; prints a `Review:` URL
 5. `yard releases publish <tag>`: publish the draft and go live (or try it in a sandbox of your own first with `yard sandbox pin <tag> --sandbox preview`, then `yard sandbox pin <tag>` when ready)
 
 ### Driving It From an Agent
@@ -483,7 +483,7 @@ Example `push --json` output (`page` and `config` at the top level, every servic
     "deleted": [],
     "remote_only": []
   },
-  "preview_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=landing-page",
+  "review_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=overview",
   "live_url": null,
   "errors": []
 }

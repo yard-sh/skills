@@ -1140,7 +1140,7 @@ published release.
 2. Validate every bundle client-side. Validation happens for all bundles before any upload, so a bad file never leaves the release half-updated.
 3. Compare each local file's SHA-256 against the release's; upload the ones that differ (`PUT …/custom-page/files/{path}?release=` and `PUT …/services/{name}/files/{path}?release=`).
 4. If `--prune`, `DELETE` release files not present locally (one confirmation covering every bundle, unless `--yes` or `--json`).
-5. Print `Preview:`. Going live is a separate step: `yard releases publish <tag>`.
+5. Print `Review:` - the release editor Overview in the dashboard. Going live is a separate step: `yard releases publish <tag>`.
 
 Pushing `settings.json` with a `pricing` section also **applies** it: the
 draft's pricing tiers are replaced to match `pricing.tiers` exactly (invalid
@@ -1172,7 +1172,7 @@ GitHub_.
       "remote_only": []
     }
   },
-  "preview_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=landing-page",
+  "review_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=overview",
   "live_url": null,
   "errors": []
 }
