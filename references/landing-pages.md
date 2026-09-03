@@ -350,6 +350,12 @@ Relative URLs matter more than usual because the same bundle serves under more t
 
 ## Testing a page before customers see it
 
+Locally, `yard dev` serves the page at `http://localhost:9875/<slug>/` with the
+`__yard__` snapshot and `embed.js` injected, so `window.yard.project`,
+`data-yard` bindings and Buy buttons behave as hosted (with live project data
+when logged in, otherwise a placeholder built from `.yard/settings.json`). See
+[local-dev.md](local-dev.md). Once it looks right, push and check it hosted:
+
 The project and each sandbox serve their own landing page. A sandbox serves at `https://<username>.yard.sh/<slug>/@<sandbox>/`; the project itself, which is what buyers reach, stays at `https://<username>.yard.sh/<slug>/`.
 
 ```

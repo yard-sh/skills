@@ -1611,6 +1611,40 @@ a `sandbox` field, `""` for the project itself.
 
 ---
 
+## yard dev
+
+Serve the working directory locally the way Yard hosts it: the landing page at
+`http://localhost:9875/<slug>/`, every service under its mount path, the
+`X-Yard-*` identity headers, secrets, and a local SQLite database with
+`.yard/migrations` applied. Files are watched and validated on save with the
+same rules as `yard push`. No login required. Full guide: `local-dev.md`.
+
+**Flags:**
+
+- `--port <n>`: listen port (default 9875)
+- `--dir <path>`: working directory (default: walk up from cwd)
+- `--project <slug>`: project for live project data when logged in
+- `--as <persona>`: default persona (`anonymous`, `signed-in`, `trial`, `customer[:tier]`, `member`)
+- `--root`: serve at `/` instead of `/<slug>/` (custom-domain shape)
+- `--open`: open the landing page in the browser
+- `--secrets-file <path>`: secrets file (default `.yard/dev/secrets.env`)
+- `--reset-db`: delete the local database and re-apply migrations
+- `--allow-local-egress`: let services reach localhost and private networks
+- `--no-panel`: disable the control panel at `/__yard/dev/`
+- `--offline`: skip Yard lookups
+- `--json`: one JSON event per line (`ready`, `restart`, `validation_error`, `migrations`, `log`, `request`, `runtime_error`, `stopped`)
+
+**First run:** downloads the Yard local runtime (about 40 MB) into
+`~/.yard/runtime/<version>/` and verifies it. Linux needs glibc 2.35+, macOS
+13.5+; Windows on ARM is not supported.
+
+**Local files:** `.yard/dev/` (git-ignored) holds `secrets.env`,
+`data.sqlite` and the runtime's build output.
+
+**Exit:** Ctrl-C stops the runtime and prints `Stopped.`; exit code 0.
+
+---
+
 ## yard uninstall
 
 Remove the CLI from your system.

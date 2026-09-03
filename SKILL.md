@@ -10,6 +10,7 @@ metadata:
     - references/landing-pages.md
     - references/releases-and-updates.md
     - references/service-and-database.md
+    - references/local-dev.md
     - references/troubleshooting.md
 description: >-
   Yard is the complete platform for digital commerce, compliance, distribution, and growth so you can ship faster.
@@ -18,8 +19,8 @@ description: >-
   yard channels, release channels, promoting a release between channels, yard keys, yard help, installing the yard CLI,
   pricing, trials, device activations, affiliate links, referral codes, update server, file updates, publishing a
   release, downloading updates, creating API keys, testing license-key validation in a sandbox,
-  device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, or extending
-  and shortening a buyer's free trial. Also use this skill when users are working inside a Yard codebase and need to understand
+  device activations, coupons or discount codes, customers or buyers, transactions, sales, orders, extending
+  and shortening a buyer's free trial, yard dev, or running a service or landing page locally. Also use this skill when users are working inside a Yard codebase and need to understand
   how Yard works, its CLI commands, API, pricing model or troubleshooting common issues.
 ---
 
@@ -217,7 +218,7 @@ If the project runs on Yard — the buyer uses it in the browser, or an installe
 
 1. **Scaffold and build.** `yard service init <name>` writes a zero-dependency working bundle (plain `_service.js` fetch handler, static frontend), writes a first migration to `.yard/migrations/` when none exists, and records the service - directory, name, url, access, database_access - on the `services` list in `.yard/settings.json`. Run it once per service - a release can carry several, each on its own path. Build the user's actual service inside that contract. **No ports, no `listen()`, no Express**: the backend is a fetch handler; route by path; use relative URLs in the frontend. Full contract: [references/service-and-database.md](references/service-and-database.md).
 2. **Never build auth.** The Yard edge signs buyers in and injects trusted `X-Yard-User-Id` / `X-Yard-Entitlement` headers; `"access": "customers"` on a service's entry in `.yard/settings.json` is a complete paywall with zero service code. Building your own login/OAuth/session layer is a bug.
-3. **Push → test → publish.** `yard push` uploads every declared bundle into a **draft release**. Nothing serves a draft. Publishing tags it and, with no `--channel`, lands it in the `Production` channel, which the project itself follows, so `yard releases publish <tag>` is the go-live step. Every published release is in exactly one channel. To try a release before buyers reach it, create a sandbox of your own (`yard sandbox create preview`), hold the storefront where it is (`yard sandbox pin`), publish, then `yard sandbox pin <tag> --sandbox preview` and `yard service open --sandbox preview` (add `--service <name>` when there are several). A sandbox is visible to your team only by default; `yard sandbox visibility public --sandbox preview` makes the URL shareable with testers, and `yard sandbox unpin` ships it. Data and secrets never move between the project and its sandboxes, so set the project's own secrets explicitly.
+3. **Run locally → push → test → publish.** `yard dev` serves the landing page and every service at `http://localhost:9875/<slug>/` with identity headers, secrets and a local database with the migrations applied, reloading on save; iterate there first ([references/local-dev.md](references/local-dev.md)). `yard push` uploads every declared bundle into a **draft release**. Nothing serves a draft. Publishing tags it and, with no `--channel`, lands it in the `Production` channel, which the project itself follows, so `yard releases publish <tag>` is the go-live step. Every published release is in exactly one channel. To try a release before buyers reach it, create a sandbox of your own (`yard sandbox create preview`), hold the storefront where it is (`yard sandbox pin`), publish, then `yard sandbox pin <tag> --sandbox preview` and `yard service open --sandbox preview` (add `--service <name>` when there are several). A sandbox is visible to your team only by default; `yard sandbox visibility public --sandbox preview` makes the URL shareable with testers, and `yard sandbox unpin` ships it. Data and secrets never move between the project and its sandboxes, so set the project's own secrets explicitly.
 4. **Draft projects serve services to the owning team only.** You can deploy, promote, and fully verify a service's URL while the project is still `draft`: any member of the team signs in and gets through; everyone else sees an explanatory 403. Never advance the launch stage just to test (launch stage changes are one-way).
 5. **Pricing still applies.** Services are gated by normal Yard pricing (tiers, trials, subscriptions), configured as for any project; the project page remains the sales surface and each service lives under its own path. Every member of the owning team passes the paywall with `X-Yard-Entitlement: owner`.
 
@@ -341,6 +342,7 @@ The interactive flow:
 | `yard service init <name> [--dir PATH] [--service-dir NAME] [--url PATH]`         | Scaffold a zero-dependency service bundle (backend + frontend); local-dev files land at the top of the working directory, an example migration lands in `.yard/migrations/` when none exists, and the service is recorded on the `services` list in `.yard/settings.json`                                             |
 | `yard service open [--sandbox SLUG] [--service NAME]`                         | Print and open a service's URL (no `--sandbox` = the project itself)                                                                                                                                                                                                                      |
 | `yard service check`                                                 | Validate every declared bundle offline (limits, extensions, `_service.js`) + lint root-absolute URLs; the settings entries themselves are validated whenever settings.json is read                                                                                                                    |
+| `yard dev [--as PERSONA] [--port N] [--root] [--reset-db] [--offline] [--json]` | Serve the landing page and every service locally at `http://localhost:9875/<slug>/` with `X-Yard-*` headers (personas), secrets from `.yard/dev/secrets.env`, and a local database with migrations applied; reloads on save; control panel at `/__yard/dev/`. See [references/local-dev.md](references/local-dev.md) |
 | `yard service secrets set/list/rm [--sandbox SLUG]`                           | `env.<NAME>` bindings for the project or one sandbox, shared by every service there; write-only; apply on the next deploy                                                                                                                                                              |
 | `yard db query [sql] [--file PATH] [--sandbox SLUG]`                          | Run SQL against the project's or a sandbox's database (`-` for stdin)                                                                                                                                        |
 | `yard db migrations list [--sandbox SLUG]`                                    | Migrations applied in that database (from its `_yard_migrations` ledger, recorded by filename) merged with the local `.yard/migrations/` files still pending                                                                                                                                        |
@@ -431,9 +433,10 @@ All blocks are optional. `yard push` uploads `.yard/settings.json` itself as the
 
 1. `cd <project>` and `yard init --page` — scaffolds `.yard/landing-page/`, pulling your draft release's page files (or a hello-world starter)
 2. Edit files in `.yard/landing-page/` (by hand, or prompt an agent to do it)
-3. `yard status` — preview the diff without writing anything
-4. `yard push` — upload changed files into your draft release; prints a `Review:` URL
-5. `yard releases publish <tag>`: publish the draft and go live (or try it in a sandbox of your own first with `yard sandbox pin <tag> --sandbox preview`, then `yard sandbox pin <tag>` when ready)
+3. `yard dev` serves it at `http://localhost:9875/<slug>/` with `window.yard` working; iterate here until it looks right
+4. `yard status` — preview the diff without writing anything
+5. `yard push` — upload changed files into your draft release; prints a `Review:` URL
+6. `yard releases publish <tag>`: publish the draft and go live (or try it in a sandbox of your own first with `yard sandbox pin <tag> --sandbox preview`, then `yard sandbox pin <tag>` when ready)
 
 ### Driving It From an Agent
 
@@ -535,5 +538,6 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | REST API (integration endpoints for license validation, releases, subscriptions)    | [references/api-reference.md](references/api-reference.md)                 |
 | Custom landing pages — runtime data, `data-yard` / `data-action`, `window.yard` API | [references/landing-pages.md](references/landing-pages.md)                 |
 | Service & database - runtime contract, `yard service` workflow, auth headers, database | [references/service-and-database.md](references/service-and-database.md)   |
+| Local development with `yard dev`: personas, secrets, local database, control panel API | [references/local-dev.md](references/local-dev.md)                         |
 | Publishing releases, downloading updates, API keys                                  | [references/releases-and-updates.md](references/releases-and-updates.md)   |
 | Troubleshooting common issues                                                       | [references/troubleshooting.md](references/troubleshooting.md)             |

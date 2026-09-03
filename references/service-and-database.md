@@ -206,6 +206,10 @@ up to 100 bind params, results truncated past 1000 rows.
 
 ### The migration ledger
 
+`yard dev` applies the same files to its local database with the same ledger
+(`release_tag = 'local'`), so a file that runs cleanly locally runs cleanly on
+deploy.
+
 Applied migrations are recorded in `_yard_migrations (name, applied_at)`
 inside the database they ran against, by filename (`0001_init.sql`), so each
 file runs once per database. `yard db migrations list` answers "did my
@@ -245,6 +249,7 @@ keys into a bundle.
 
 ```
 yard service init api                              # scaffold (once per service)
+yard dev                                           # run it locally; reloads on save (see local-dev.md)
 yard service check                                 # validate every bundle + lint (no network)
 yard push                                          # uploads every bundle into your draft release
 yard releases publish v1.0.0                       # tag the draft; this is the go-live step
@@ -279,6 +284,15 @@ real license key, without any money moving. See
 [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
 ## Testing before customers see it
+
+Start on the machine: `yard dev` serves every service at
+`http://localhost:9875/<slug>/<mount>/` with the identity headers (pick a
+persona with `--as` or the `yard_dev_identity` cookie), secrets from
+`.yard/dev/secrets.env`, and a local database with the migrations applied and
+recorded in `_yard_migrations`. Access gating, header stripping and the
+`__yard/auth/*` endpoints all behave as hosted. What it cannot do is real
+commerce, so a purchase or trial flow is confirmed in a sandbox. Details:
+[local-dev.md](local-dev.md).
 
 The project and every sandbox have a real, browsable URL. Opening
 `https://<username>.yard.sh/<slug>/@preview/service/` signs the visitor in (if

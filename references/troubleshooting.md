@@ -36,6 +36,24 @@ Then re-run `yard login`.
 
 ---
 
+## `yard dev`: port 9875 is in use
+
+Another process (often a previous `yard dev`) holds the port. Pass `--port <n>`, or stop the other process (`lsof -i :9875` on Linux/macOS, `netstat -ano | findstr :9875` on Windows).
+
+---
+
+## `yard dev`: the runtime download did not verify
+
+The CLI only runs a runtime whose SHA-256 matches the digest built into it. A mismatch means an incomplete or tampered download. Run `yard update`, then `yard dev` again. If it persists, delete `~/.yard/runtime/` and retry.
+
+---
+
+## `yard dev is not available on this platform yet`
+
+There is no local runtime build for Windows on ARM. Test with a sandbox instead: `yard push`, publish, `yard sandbox pin <tag> --sandbox preview`, `yard service open --sandbox preview`. On Linux the runtime needs glibc 2.35 or newer (`ldd --version`); on macOS, 13.5 or newer.
+
+---
+
 ## `yard init` in a non-git folder
 
 `yard init` works outside a Git repository — the project will simply be created without a linked GitHub repo. If you *want* the project linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
