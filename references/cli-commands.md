@@ -1149,6 +1149,13 @@ release sync reads the same section the same way — see
 [releases-and-updates.md](releases-and-updates.md) — _Syncing releases from
 GitHub_.
 
+When the live deployment has an object class that the local `objects` list
+no longer declares, push prints `warning: class Old will be deleted with all
+its data on deploy`; the deletion happens when a release without the class
+goes live, not at push. A plan without `service_objects` gets
+`upgrade_required` from the server, which the CLI restates with the upgrade
+link.
+
 **JSON output:**
 
 ```json
@@ -1519,7 +1526,11 @@ ignored), so old scaffolds that carried them inside the bundle still deploy.
 
 Scaffolds a zero-dependency working service (notes API + vanilla frontend +
 first migration) into `./<name>` (`--service-dir <dir>` to change the
-directory, `--url <path>` the path it serves under, default `/<name>`). The
+directory, `--url <path>` the path it serves under, default `/<name>`).
+`--realtime` scaffolds a realtime service instead: a `Room` class (a
+broadcast room with a presence count), an `index.html` with a minimal
+WebSocket client, no migration, and `"objects": [{"class": "Room",
+"binding": "ROOMS"}]` on the settings entry (see `objects.md`). The
 service is recorded on the `services` list in `.yard/settings.json` as
 `{"dir": "<dir>", "name": "<name>", "url": "/<name>", "access":
 "authenticated", "database_access": true}` - that entry is what names the
@@ -1529,7 +1540,8 @@ is write-if-absent (an existing file is skipped and reported). An unlinked
 settings file is bootstrapped first when the project isn't yard-initialized
 (a note says to run `yard init`). Run it once per service. JSON: `{"dir":
 "api", "service": "api", "url": "/api", "written": [...], "skipped": [...],
-"service_dir_recorded": true, "settings_bootstrapped": false}`.
+"service_dir_recorded": true, "settings_bootstrapped": false}`; with
+`--realtime` it also carries `"objects": ["Room"]`.
 
 ### yard service open
 
@@ -1546,10 +1558,14 @@ Validates every declared bundle exactly like a deploy would (limits,
 extensions, `_service.js` presence), plus lint warnings for root-absolute
 `href`/`src`/`fetch("/…")` URLs — no network, no login. The services entries
 themselves (names, mounts, no clashes) are validated whenever
-`.yard/settings.json` is read, by every command alike.
+`.yard/settings.json` is read, by every command alike. A service that
+declares `objects` gets a line per class (`  objects: Room (ROOMS)`) and a
+warning when a declared class does not appear to be exported by
+`_service.js`.
 JSON: `{"services": [{"name": "api", "dir": "api", "mount_path": "/api",
 "files": 7, "total_bytes": 5494, "ignored": [...], "warnings": [...],
-"access": "authenticated", "database_access": true}]}`.
+"access": "authenticated", "database_access": true, "objects": [{"class":
+"Room", "binding": "ROOMS", "exported": true}]}]}`.
 
 ### yard migrate
 
@@ -1629,17 +1645,19 @@ same rules as `yard push`. No login required. Full guide: `local-dev.md`.
 - `--open`: open the landing page in the browser
 - `--secrets-file <path>`: secrets file (default `.yard/dev/secrets.env`)
 - `--reset-db`: delete the local database and re-apply migrations
+- `--reset-objects`: delete `.yard/dev/objects/` (stored objects) before starting; the database is untouched
 - `--allow-local-egress`: let services reach localhost and private networks
 - `--no-panel`: disable the control panel at `/__yard/dev/`
 - `--offline`: skip Yard lookups
-- `--json`: one JSON event per line (`ready`, `restart`, `validation_error`, `migrations`, `log`, `request`, `runtime_error`, `stopped`)
+- `--json`: one JSON event per line (`ready`, `restart`, `validation_error`, `migrations`, `log`, `request`, `runtime_error`, `stopped`); a `ready` entry in `services[]` gains `"objects": ["Room"]` when the service declares objects
 
 **First run:** downloads the Yard local runtime (about 40 MB) into
 `~/.yard/runtime/<version>/` and verifies it. Linux needs glibc 2.35+, macOS
 13.5+; Windows on ARM is not supported.
 
 **Local files:** `.yard/dev/` (git-ignored) holds `secrets.env`,
-`data.sqlite` and the runtime's build output.
+`data.sqlite`, `objects/<service>/` (stored objects) and the runtime's build
+output. A service with objects ends its banner line with `objects=Room`.
 
 **Exit:** Ctrl-C stops the runtime and prints `Stopped.`; exit code 0.
 

@@ -13,6 +13,7 @@ yard dev --json                # one JSON event per line, for scripts and agents
 yard dev --port 4000           # default 9875
 yard dev --root                # serve at / like a custom domain, instead of /<slug>/
 yard dev --reset-db            # delete .yard/dev/data.sqlite and re-apply migrations
+yard dev --reset-objects       # delete .yard/dev/objects/ (stored objects) before starting
 yard dev --offline             # skip Yard lookups (live project data, remote secret names)
 yard dev --no-panel            # disable the control panel
 yard dev --allow-local-egress  # let services reach localhost and private networks
@@ -28,6 +29,7 @@ Startup output (human mode):
 Yard local runtime v1.20260903.1
   Landing page   http://localhost:9875/widget/
   Service api    http://localhost:9875/widget/api/   access=customers  database=yes
+  Service chat   http://localhost:9875/widget/chat/  access=customers  database=no   objects=Room
   Control panel  http://localhost:9875/__yard/dev/
   Persona        anonymous (change with --as or in the control panel)
   Database       .yard/dev/data.sqlite  (2 migrations applied, 0 pending)
@@ -36,7 +38,7 @@ Yard local runtime v1.20260903.1
 Watching for changes. Press Ctrl-C to stop.
 ```
 
-With `--json`, events are `{"event":"ready",...}` (same fields: `landing_page`, `services[]`, `panel`, `persona`, `database`, `migrations_applied`, `migrations_pending`, `secrets_loaded`, `missing_secrets`, `snapshot_source`, `warnings`), then `restart`, `validation_error` (with `errors[]`), `migrations` (with `applied[]`), `log` (with `service`, `level`, `message`), `request`, `runtime_error`, `runtime_download`, `notice`, and `stopped`. Run it in the background and read stdout; `ready` means the URLs answer.
+With `--json`, events are `{"event":"ready",...}` (same fields: `landing_page`, `services[]` (an entry gains `"objects": ["Room"]` when the service declares objects), `panel`, `persona`, `database`, `migrations_applied`, `migrations_pending`, `secrets_loaded`, `missing_secrets`, `snapshot_source`, `warnings`), then `restart`, `validation_error` (with `errors[]`), `migrations` (with `applied[]`), `log` (with `service`, `level`, `message`), `request`, `runtime_error`, `runtime_download`, `notice`, and `stopped`. Run it in the background and read stdout; `ready` means the URLs answer.
 
 ## URLs
 
@@ -82,19 +84,26 @@ Services with `database_access: true` get `env.DB` backed by `.yard/dev/data.sql
 
 Query the local database from the panel or with `POST /__yard/dev/api/db/query` `{"sql":"select * from notes","params":[]}`; the response is `{columns, rows, meta}` or `{error}`. `yard db query` still targets the hosted database, not this one.
 
+## Objects
+
+A service that declares `objects` runs them locally with the same class contract as hosted: `env.<binding>`, `ctx.acceptWebSocket`, storage, alarms, and the persona's identity headers on the upgrade request. Its banner line ends with `objects=Room`. Storage lives under `.yard/dev/objects/<service>/` and survives restarts. `--reset-objects` (or `POST /__yard/dev/api/objects/reset`) deletes `.yard/dev/objects/` and starts every room empty; `--reset-db` leaves objects alone, and `--reset-objects` leaves the database alone. Live connections end whenever the runtime restarts, which is every save, so the client's reconnect logic gets exercised early. Contract and examples: [objects.md](objects.md).
+
 ## Control panel and its API
 
 `http://localhost:9875/__yard/dev/` is a small page over these JSON endpoints, all loopback-only:
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /__yard/dev/api/state` | Everything at a glance: URLs, services (mount, access, database), personas and the current default, runtime state and validation errors, migrations applied and pending, local and remote secret names |
+| `GET /__yard/dev/api/state` | Everything at a glance: URLs, services (mount, access, database, objects), personas and the current default, runtime state and validation errors, migrations applied and pending, local and remote secret names |
 | `GET /__yard/dev/api/requests?since=<id>&limit=<n>` | Recent requests: method, path, target service, status, duration, persona. `requests/stream` is the same as Server-Sent Events |
 | `GET /__yard/dev/api/logs?service=<name>&since=<id>` | Console output and exceptions from your services. `logs/stream` for SSE |
 | `POST /__yard/dev/api/persona` | `{"persona": "<id>", "default": true|false}` |
 | `POST /__yard/dev/api/db/query` | `{"sql": "...", "params": []}` against the local database |
 | `POST /__yard/dev/api/migrations/apply` | Apply pending migrations now |
 | `POST /__yard/dev/api/db/reset` | Empty the local database and re-apply |
+| `POST /__yard/dev/api/objects/reset` | Delete every stored object under `.yard/dev/objects/`; the database is untouched |
+
+Services with objects add an Objects card to the page: each class, its binding, the size stored on disk, and a "Clear stored objects" button, which calls the objects reset endpoint.
 
 POST requests must send `Content-Type: application/json`. For an automated check, start `yard dev --json`, wait for `ready`, exercise the URLs with curl (choosing personas by cookie), read `/__yard/dev/api/requests` and `/api/logs` for what happened, then stop the process.
 
@@ -110,5 +119,6 @@ Every service directory, the landing page directory, `.yard/migrations`, `.yard/
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.
 - The Cache API is unavailable.
+- Live connections to objects end whenever the runtime restarts, which is every save. Clients reconnect, as they must hosted when the 24 hour session cap closes them.
 
 When behavior must be confirmed with real commerce (a purchase, a trial, a license key), move to a sandbox: `yard push`, publish, `yard sandbox pin <tag> --sandbox preview`.

@@ -28,7 +28,10 @@ export default {
 Route by path, not by port. There is no filesystem and no long-lived
 process — state belongs in the database. Each request has a CPU budget of
 about 50 ms (time spent awaiting fetches or database calls doesn't count
-against it).
+against it). Live state shared by several open connections (a chat room,
+presence, a whiteboard, a multiplayer session) belongs in an object, not in
+a table, and objects are what hold WebSocket connections: see
+[objects.md](objects.md).
 
 The service's paths arrive rooted at `/` regardless of where it's mounted
 externally. Use **relative URLs** in frontend code (`fetch("api/notes")`,
@@ -72,7 +75,14 @@ how it deploys — so changing how a service deploys is an edit there plus a
       "access": "authenticated",
       "database_access": true
     },
-    { "dir": "jobs", "name": "jobs" }
+    { "dir": "jobs", "name": "jobs" },
+    {
+      "dir": "chat",
+      "name": "chat",
+      "url": "/chat",
+      "access": "customers",
+      "objects": [{ "class": "Room", "binding": "ROOMS" }]
+    }
   ]
 }
 ```
@@ -96,6 +106,14 @@ how it deploys — so changing how a service deploys is an edit there plus a
   `env.DB` and is redeployed with it once the database exists. The project and
   each sandbox have their own database, so every service there with access
   shares it.
+- `objects`: the object classes this service exports, as
+  `[{"class": "Room", "binding": "ROOMS"}]`. Each becomes `env.<binding>`
+  in the fetch handler (`binding` defaults to the class name in upper snake
+  case); at most 10 per service, and a class removed from the list is deleted
+  with all its data on the next deploy. Realtime rooms, presence and anything
+  several connections share live belong here, not in the database. Requires
+  the `service_objects` permission (Pro). Full contract:
+  [objects.md](objects.md).
 
 **The project owner always gets in**, whatever the access mode, with
 `X-Yard-Entitlement: owner`. A seller never needs to buy their own project

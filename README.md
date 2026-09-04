@@ -10,6 +10,7 @@ When this skill is installed, an agent gains awareness of:
 - Pricing model details (tiers, seat types, volume brackets, Pro-only features)
 - Sandboxes: optional copies of the project, release channels, and the simulated commerce a sandbox carries
 - Custom landing-page authoring (`window.yard`, `data-yard` / `data-action`)
+- Objects: realtime rooms and WebSocket connections inside a hosted service, their storage, limits and lifecycle
 - Common troubleshooting steps
 
 ## Layout
@@ -21,6 +22,7 @@ When this skill is installed, an agent gains awareness of:
   - `api-reference.md` — REST API endpoints
   - `landing-pages.md` — custom landing-page runtime and conventions
   - `service-and-database.md` - hosted Yard Service + database runtime contract and workflow
+  - `objects.md` - realtime objects: declaring classes, the class contract, connections, storage, limits, lifecycle
   - `releases-and-updates.md` — publishing releases and downloading updates
   - `troubleshooting.md` — common issues
 
