@@ -19,7 +19,7 @@ answers `upgrade_required` and `yard push` restates it with the upgrade link.
 - [Lifecycle](#lifecycle)
 - [Local development](#local-development)
 - [Debugging](#debugging)
-- [Testing before customers see it](#testing-before-customers-see-it)
+- [Testing before users see it](#testing-before-users-see-it)
 
 ## What an object is
 
@@ -52,7 +52,7 @@ Classes are declared on the service's entry in `.yard/settings.json`, next to
       "dir": "chat",
       "name": "chat",
       "url": "/chat",
-      "access": "customers",
+      "access": "users",
       "objects": [{ "class": "Room", "binding": "ROOMS" }]
     }
   ]
@@ -197,7 +197,7 @@ connect();
   `X-Yard-Email`, `X-Yard-Entitlement`, `X-Yard-Tier`, `X-Yard-Sandbox`.
   Read them in the object's `fetch` before accepting. The service's `access`
   setting gates the upgrade like any other request, so `"access":
-  "customers"` keeps non-buyers out of every room with no code.
+  "users"` keeps non-buyers out of every room with no code.
 - **Every session ends after 24 hours.** Yard closes the connection with code
   1000 and reason `Session limit reached`; clients reconnect and carry on.
   Write the client so every close leads to a reconnect, as above, and it also
@@ -357,10 +357,10 @@ Common mistakes, in the order they usually happen:
 - **One object for everything.** One name means one budget of about 1,000
   requests per second for all users. One room per object is the rule.
 
-## Testing before customers see it
+## Testing before users see it
 
 Objects follow the sandbox flow in
-[service-and-database.md](service-and-database.md#testing-before-customers-see-it):
+[service-and-database.md](service-and-database.md#testing-before-users-see-it):
 `yard push`, `yard releases publish <tag>`, `yard sandbox pin <tag> --sandbox
 preview`, then `yard service open --sandbox preview --service chat`. The
 sandbox has its own objects, so the rooms you fill while testing never appear

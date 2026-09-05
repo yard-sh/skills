@@ -348,7 +348,7 @@ Relative URLs matter more than usual because the same bundle serves under more t
 
 ---
 
-## Testing a page before customers see it
+## Testing a page before users see it
 
 Locally, `yard dev` serves the page at `http://localhost:9875/<slug>/` with the
 `__yard__` snapshot and `embed.js` injected, so `window.yard.project`,

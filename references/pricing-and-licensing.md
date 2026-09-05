@@ -174,7 +174,7 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.tea
 
 ## Commerce in a Sandbox
 
-The project and each of its sandboxes carry their own commerce. The **project's own** is the real one: its checkouts go through Stripe, its money reaches the seller's payouts, and it alone appears in the seller's books. A **sandbox** carries a parallel set of customers, transactions, subscriptions, trials, license keys, coupon redemptions and gifts that the platform **simulates**: no Stripe object is created, no card is charged, and no money moves. The amounts are still computed and recorded exactly as a real sale would compute them, so a simulated purchase is a faithful rehearsal of the real one.
+The project and each of its sandboxes carry their own commerce. The **project's own** is the real one: its checkouts go through Stripe, its money reaches the seller's payouts, and it alone appears in the seller's books. A **sandbox** carries a parallel set of users, transactions, subscriptions, trials, license keys, coupon redemptions and gifts that the platform **simulates**: no Stripe object is created, no card is charged, and no money moves. The amounts are still computed and recorded exactly as a real sale would compute them, so a simulated purchase is a faithful rehearsal of the real one.
 
 This is how a seller exercises the whole buying flow - checkout, entitlement, license validation, subscription renewal - without buying their own project and without a test card. Delete the sandbox and the whole rehearsal goes with it.
 
@@ -192,9 +192,9 @@ Readiness gates that exist only to protect real money (Stripe Connect onboarding
 
 ### Simulated sales stay out of the books
 
-Every seller-wide report reads the project itself only: the earnings summary, the transactions list, the customers list, payouts, subscribers and MRR. So `yard transactions list` and `yard customers list` never show simulated rows, and a sandbox can never inflate what a seller is owed.
+Every seller-wide report reads the project itself only: the earnings summary, the transactions list, the users list, payouts, subscribers and MRR. So `yard transactions list` and `yard users list` never show simulated rows, and a sandbox can never inflate what a seller is owed.
 
-The flip side is that **the CLI cannot read a sandbox's commerce at all** - neither command takes a `--sandbox` flag. A sandbox's transactions, subscriptions, customers and license keys live on that sandbox's pages in the dashboard. Do not tell a user to look for them in the CLI.
+The flip side is that **the CLI cannot read a sandbox's commerce at all** - neither command takes a `--sandbox` flag. A sandbox's transactions, subscriptions, users and license keys live on that sandbox's pages in the dashboard. Do not tell a user to look for them in the CLI.
 
 ### Telling a sandbox key apart at runtime
 

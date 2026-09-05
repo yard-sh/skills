@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **What this API covers.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management — plus reading the seller's customers and sales — happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard customers`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
+> **What this API covers.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management — plus reading the seller's users and sales — happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard users`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://dash.yard.sh/api-keys?action=create**.
 
@@ -142,7 +142,7 @@ The following are **not** exposed over HTTP as integration endpoints — an API 
 - Create, rename, delete, or reorder a **release channel**: dashboard-only, and not even in the CLI, which can only list them (`yard channels list`). The endpoints behind the dashboard (`POST`/`PATCH`/`DELETE /v1/projects/{id}/channels…`) are session-authenticated and gated on the `sandboxes` permission; an API key cannot reach them
 - Create, rename, delete, or configure a **sandbox**, and choose what the project or a sandbox serves (`yard sandbox …`, or the dashboard). Sandbox writes need the `sandboxes` permission and are capped by `max_sandboxes`; writes to the project itself need only ordinary project-write permission
 - Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
-- Read the seller's customers and sales (`yard customers`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
+- Read the seller's users and sales (`yard users`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
 - Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
 - Stripe Connect onboarding and payout management
 - Custom domains, project images / videos, webhook secrets

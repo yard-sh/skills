@@ -80,7 +80,7 @@ how it deploys — so changing how a service deploys is an edit there plus a
       "dir": "chat",
       "name": "chat",
       "url": "/chat",
-      "access": "customers",
+      "access": "users",
       "objects": [{ "class": "Room", "binding": "ROOMS" }]
     }
   ]
@@ -96,8 +96,8 @@ how it deploys — so changing how a service deploys is an edit there plus a
   the release; `/__yard` and `/@…` are reserved. Nesting is allowed —
   `/api` and `/api/v2` can be two services, and the longer path wins.
 - `access`: `public` (everyone) · `authenticated` (Yard sign-in required —
-  the edge redirects anonymous visitors to login) · `customers` (the edge
-  paywall: non-customers are redirected to the project's sales page; only
+  the edge redirects anonymous visitors to login) · `users` (the edge
+  paywall: non-users are redirected to the project's sales page; only
   buyers/trialers/subscribers get in). Default `public`. Per service, so one
   release can put a paywalled app next to a public API.
 - `database_access`: `true` lets the service reach the database as `env.DB`.
@@ -186,12 +186,12 @@ to `__yard/auth/login?return=/` and `__yard/auth/logout`.
 
 `email` can be `""`; `tier` is **omitted** (not null) when empty. Note
 `authenticated: true` with `entitlement: "none"` is a real state (signed-in
-non-customer on a `public` or `authenticated` service). Sessions are
+non-user on a `public` or `authenticated` service). Sessions are
 per-project: signing in to one seller's project grants nothing anywhere else,
 and covers every service of that project.
 
 Do not implement OAuth, sessions, or password storage — with
-`access: customers` even the paywall is enforced before your code runs.
+`access: users` even the paywall is enforced before your code runs.
 
 ## Database
 
@@ -294,14 +294,14 @@ automatically, and `yard status` reports it as stale, then updating, then
 up to date while it catches up.
 
 A sandbox isolates more than the database and secrets: it carries its own
-customers, transactions, subscriptions, trials and license keys, simulated by
+users, transactions, subscriptions, trials and license keys, simulated by
 the platform rather than charged through Stripe. So a paywalled service
-(`"access": "customers"`) can be exercised end to end in a sandbox: buy it
+(`"access": "users"`) can be exercised end to end in a sandbox: buy it
 there, and the buyer reaches the service with a real entitlement header and a
 real license key, without any money moving. See
 [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
-## Testing before customers see it
+## Testing before users see it
 
 Start on the machine: `yard dev` serves every service at
 `http://localhost:9875/<slug>/<mount>/` with the identity headers (pick a

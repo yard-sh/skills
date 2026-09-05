@@ -63,7 +63,7 @@ patterns: full interactive, flag-driven, and `--spec` JSON for agents/scripts.
 `--release <id|tag>` names one explicitly), then publishes the draft
 under the tag into a release channel (`--channel` / `channel`, default the
 `Production` channel, which the project itself follows, so publishing is
-live to customers). Every published release belongs to exactly one channel, and
+live to users). Every published release belongs to exactly one channel, and
 the project and every sandbox following that channel serve it. Anything `yard push` already staged in
 that draft, landing page and service bundle alike, ships with it.
 

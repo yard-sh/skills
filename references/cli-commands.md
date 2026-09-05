@@ -401,7 +401,7 @@ Publish a draft release under a tag, with optional file assets. Files upload int
 - `--notes <string>` — short release notes (markdown).
 - `--notes-file <path|->` — read notes from a file or stdin.
 - `--file <path>` — file to upload, repeatable (`--file a.zip --file b.zip`).
-- `--channel <name>`: the one release channel the release lands in. Defaults to **Production**, the protected channel every project has and the one the project itself follows, so a release published without this flag is live to customers. The project and every sandbox following that channel start serving the release. `yard channels list` shows the project's channels and who follows each one; a name that doesn't exist is rejected before anything is published. Channels are created in the dashboard, not from the CLI, so a custom `--channel` target has to exist first.
+- `--channel <name>`: the one release channel the release lands in. Defaults to **Production**, the protected channel every project has and the one the project itself follows, so a release published without this flag is live to users. The project and every sandbox following that channel start serving the release. `yard channels list` shows the project's channels and who follows each one; a name that doesn't exist is rejected before anything is published. Channels are created in the dashboard, not from the CLI, so a custom `--channel` target has to exist first.
 - `--release <id|tag>`: the draft to publish. Defaults to your open draft (creating one seeded from your newest published release if none exists); required when multiple drafts are open. Must still be a draft: publishing is one-way, so an already-published release is refused here (edit it with `yard push --release <id|tag>` instead).
 - `--spec <path|->` — JSON spec, alternative to flags.
 - `--json` — emit a single JSON result on stdout; logs go to stderr.
@@ -414,7 +414,7 @@ Publish a draft release under a tag, with optional file assets. Files upload int
   "tag_name": "v1.4.0", // required
   "release_name": "Late April fixes", // optional, ≤255 chars
   "release_notes": "## Highlights\n…", // optional, markdown, ≤125,000 chars
-  "channel": "Production", // optional; defaults to "Production", live to customers
+  "channel": "Production", // optional; defaults to "Production", live to users
   "files": [
     // optional; absolute or relative paths
     "./dist/yard-darwin-arm64.tar.gz",
@@ -761,67 +761,67 @@ yard coupons list --json \
 # Read-modify-write via specs
 echo '{"max_uses": 250, "expires_at": null}' | yard coupons update LAUNCH20 --spec - --json
 
-# Confirm a code works before sending it to customers
+# Confirm a code works before sending it to users
 yard coupons validate LAUNCH20 --project my-tool --json | jq '{valid, final_price_cents}'
 ```
 
 ---
 
-## yard customers
+## yard users
 
-Read-only view of the people who bought the seller's projects. Without a subcommand, runs `customers list`.
+Read-only view of the people who bought the seller's projects. Without a subcommand, runs `users list`.
 
-A "customer" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear. With `--project`, the aggregation narrows to that one project: the rows are its buyers, and each customer's order count and spend cover only their orders of it.
+A "user" is a buyer with at least one **completed, unrefunded** purchase, aggregated across the seller's whole catalog — a buyer whose only order was refunded does not appear. With `--project`, the aggregation narrows to that one project: the rows are its buyers, and each user's order count and spend cover only their orders of it.
 
-Buyers are identified by an opaque id: `cust_` plus the first 8 characters of their account id. That id is what `customers show` takes; there is no email lookup.
+Buyers are identified by an opaque id: `user_` plus the first 8 characters of their account id. That id is what `users show` takes; there is no email lookup.
 
 Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is no cents field on these responses — use `yard transactions` when you need to do arithmetic.
 
-**Sandbox commerce is not here.** These rows are the seller's real books: simulated purchases made inside a sandbox are excluded from the list and from the summary figures, and there is no `--sandbox` flag to reach them. A sandbox's customers live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+**Sandbox commerce is not here.** These rows are the seller's real books: simulated purchases made inside a sandbox are excluded from the list and from the summary figures, and there is no `--sandbox` flag to reach them. A sandbox's users live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
 
-### yard customers list
+### yard users list
 
 **Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--project <slug-or-uuid>`, `--page N`, `--limit N` (max 100).
 
-Sort columns: `lastTransaction` (default), `email`, `username`, `orderCount`, `totalSpent`, `buyerId`.
+Sort columns: `lastTransaction` (default), `email`, `username`, `orderCount`, `totalSpent`, `userDisplayId`.
 
 ```
-ID               CUSTOMER                       ORDERS   SPENT        FIRST        LAST
+ID               USER                           ORDERS   SPENT        FIRST        LAST
 --------------------------------------------------------------------------------------
-cust_deadbeef    @alice                         3        $87.00       2026-01-04   2026-07-20
-cust_c0ffee11    bob@example.com                1        $29.00       2026-07-18   2026-07-18
+user_deadbeef    @alice                         3        $87.00       2026-01-04   2026-07-20
+user_c0ffee11    bob@example.com                1        $29.00       2026-07-18   2026-07-18
 
-2 customers (1 new this month), $58.00 avg spend, 50.0% repeat rate
+2 users (1 new this month), $58.00 avg spend, 50.0% repeat rate
 ```
 
 The summary line doesn't move with pagination. It is team-wide by default, and project-wide under `--project`.
 
-Unlike `yard transactions --project` — where the filters narrow the rows but the earnings summary stays team-wide — `yard customers --project` narrows the summary too, because "customers of this project" is a different set from "customers", not a filtered view of it.
+Unlike `yard transactions --project` — where the filters narrow the rows but the earnings summary stays team-wide — `yard users --project` narrows the summary too, because "users of this project" is a different set from "users", not a filtered view of it.
 
-### yard customers show \<customer-id\>
+### yard users show \<user-id\>
 
 One buyer's totals plus their orders from this seller. **Flags:** `--json`, `--page N`, `--limit N`.
 
-`--json` emits `{ "customer": {...}, "transactions": [...], "total", "page", "limit" }`. Unlike the list, the transactions here **include refunded orders**.
+`--json` emits `{ "user": {...}, "transactions": [...], "total", "page", "limit" }`. Unlike the list, the transactions here **include refunded orders**.
 
-Two customers can share an 8-character id prefix. The server answers `409` rather than guessing; pass the buyer's full UUID in that case.
+Two users can share an 8-character id prefix. The server answers `409` rather than guessing; pass the buyer's full UUID in that case.
 
 **Typical agent flows:**
 
 ```sh
 # Biggest spenders
-yard customers --json | jq -r '.customers | sort_by(.order_count) | reverse | .[:5] | .[] | "\(.email) \(.total_spent_display)"'
+yard users --json | jq -r '.users | sort_by(.order_count) | reverse | .[:5] | .[] | "\(.email) \(.total_spent_display)"'
 
 # Everything one buyer owns
-yard customers show cust_deadbeef --json | jq -r '.transactions[] | "\(.project_name) \(.created_at)"'
+yard users show user_deadbeef --json | jq -r '.transactions[] | "\(.project_name) \(.created_at)"'
 
 # Who bought one specific project, biggest spenders first
-yard customers --project my-tool --sort totalSpent --direction desc --json | jq -r '.customers[] | "\(.email) \(.total_spent_display)"'
+yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '.users[] | "\(.email) \(.total_spent_display)"'
 
 # Who bought in the last month
-yard customers --json | jq -r --arg since "$(date -u -d '30 days ago' +%Y-%m-%d)" \
-  '.customers[] | select(.last_transaction >= $since) | .email'
+yard users --json | jq -r --arg since "$(date -u -d '30 days ago' +%Y-%m-%d)" \
+  '.users[] | select(.last_transaction >= $since) | .email'
 ```
 
 ---
@@ -844,10 +844,10 @@ Refunds are **not** exposed here — issuing one stays in the dashboard.
 Sort columns: `date` (default), `amount`, `sellerEarnings`, `projectName`. Dates take `YYYY-MM-DD` or RFC3339; a bare `--end` date covers that whole day.
 
 ```
-ORDER            DATE         PROJECT                    CUSTOMER              TOTAL       EARNINGS    TYPE           STATUS
------------------------------------------------------------------------------------------------------------------------------
-order_1a2b3c4d   2026-07-20   My Tool                    @alice                $29.99      $26.99      purchase       completed
-order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com       $0.00       $0.00       trial          completed
+ORDER            DATE         PROJECT                    USER                     TOTAL       EARNINGS    TYPE           STATUS
+--------------------------------------------------------------------------------------------------------------------------------
+order_1a2b3c4d   2026-07-20   My Tool                    @alice                   $29.99      $26.99      purchase       completed
+order_9f8e7d6c   2026-07-18   My Tool                    bob@example.com          $0.00       $0.00       trial          completed
 
 2 of 97 transactions · $2699.00 earned, 97 sales, $27.81 avg order, 3 active trials
 ```
@@ -878,7 +878,7 @@ Requires a plan that can sell projects (`yard me --json` → `.team_permissions.
 ```sh
 # Trials, and when each one runs out
 yard transactions list --trials --json \
-  | jq -r '.transactions[] | "\(.id) \(.customer_email) \(.trial_expires_at)"'
+  | jq -r '.transactions[] | "\(.id) \(.user_email) \(.trial_expires_at)"'
 
 # Give one buyer another week, and read back the new expiry
 yard transactions trial order_1a2b3c4d --add-days 7 --json | jq -r .trial_expires_at
@@ -1259,12 +1259,12 @@ reach at its plain URL; a **sandbox** is an optional extra copy of your own,
 private by default, at `/@<sandbox>/`. A project starts with zero sandboxes.
 Commands act on the project itself unless `--sandbox` names a sandbox.
 
-A sandbox is not only a deployment target: it carries its own **customers,
+A sandbox is not only a deployment target: it carries its own **users,
 transactions, subscriptions, trials and license keys**, all simulated by the
 platform rather than run through Stripe. That commerce is reachable from the
 sandbox's pages in the dashboard and from the buyer-facing endpoints with a
 `sandbox` parameter; the CLI does not read it, and it is excluded from
-`yard transactions`, `yard customers`, earnings and payouts. See
+`yard transactions`, `yard users`, earnings and payouts. See
 [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
 What serves is decided by three settings, and the commands below move them:
@@ -1281,7 +1281,7 @@ back to the channel and drops any rollback with it.
 **Which one to reach for:** a bad release is live and you want the previous one
 back while you fix it → `sandbox rollback`, because the fix takes over by
 itself when you publish it. You want a target held on one release through every
-later publish (a demo, a customer on an old version, a sandbox someone is
+later publish (a demo, a user on an old version, a sandbox someone is
 testing) → `sandbox pin`.
 
 Shared flags: `--project <slug-or-uuid>`, `--dir <path>`, `--json`. Every
@@ -1640,7 +1640,7 @@ same rules as `yard push`. No login required. Full guide: `local-dev.md`.
 - `--port <n>`: listen port (default 9875)
 - `--dir <path>`: working directory (default: walk up from cwd)
 - `--project <slug>`: project for live project data when logged in
-- `--as <persona>`: default persona (`anonymous`, `signed-in`, `trial`, `customer[:tier]`, `member`)
+- `--as <persona>`: default persona (`anonymous`, `signed-in`, `trial`, `user[:tier]`, `member`)
 - `--root`: serve at `/` instead of `/<slug>/` (custom-domain shape)
 - `--open`: open the landing page in the browser
 - `--secrets-file <path>`: secrets file (default `.yard/dev/secrets.env`)

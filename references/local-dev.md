@@ -8,7 +8,7 @@ Use it whenever you are building or changing a service or a custom landing page.
 
 ```sh
 yard dev                       # serve the working directory (walks up to find .yard/settings.json)
-yard dev --as customer:pro     # default persona for requests with no identity cookie
+yard dev --as user:pro         # default persona for requests with no identity cookie
 yard dev --json                # one JSON event per line, for scripts and agents
 yard dev --port 4000           # default 9875
 yard dev --root                # serve at / like a custom domain, instead of /<slug>/
@@ -28,8 +28,8 @@ Startup output (human mode):
 ```
 Yard local runtime v1.20260903.1
   Landing page   http://localhost:9875/widget/
-  Service api    http://localhost:9875/widget/api/   access=customers  database=yes
-  Service chat   http://localhost:9875/widget/chat/  access=customers  database=no   objects=Room
+  Service api    http://localhost:9875/widget/api/   access=users  database=yes
+  Service chat   http://localhost:9875/widget/chat/  access=users  database=no  objects=Room
   Control panel  http://localhost:9875/__yard/dev/
   Persona        anonymous (change with --as or in the control panel)
   Database       .yard/dev/data.sqlite  (2 migrations applied, 0 pending)
@@ -58,21 +58,21 @@ There is no real sign-in locally. A persona decides which `X-Yard-*` headers the
 | Persona id | `X-Yard-User-Id` | `X-Yard-Entitlement` | `X-Yard-Tier` | `member` |
 | --- | --- | --- | --- | --- |
 | `anonymous` | (none) | (none) | | |
-| `signed-in` | `dev-user-signed-in` | `none` | | false |
-| `trial` | `dev-user-trial` | `trial` | first tier with a free trial | false |
-| `customer:<tier-slug>` | `dev-user-customer-<tier-slug>` | `active` | the tier's name | false |
-| `member` | `dev-user-member` | `owner` | | true |
+| `signed-in` | `dev-persona-signed-in` | `none` | | false |
+| `trial` | `dev-persona-trial` | `trial` | first tier with a free trial | false |
+| `user:<tier-slug>` | `dev-persona-user-<tier-slug>` | `active` | the tier's name | false |
+| `member` | `dev-persona-member` | `owner` | | true |
 
-One `customer:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `customer:pro`); with no tiers there is a single `customer`. `X-Yard-Sandbox` is always empty (the project's own scope). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either.
+One `user:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project's own scope). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either.
 
 Ways to choose the persona:
 
 - `--as <id>` sets the default for requests without a cookie.
-- Send the cookie directly: `curl -H 'Cookie: yard_dev_identity=customer:pro' http://localhost:9875/widget/api/notes`.
+- Send the cookie directly: `curl -H 'Cookie: yard_dev_identity=user:pro' http://localhost:9875/widget/api/notes`.
 - `POST /__yard/dev/api/persona` with `{"persona":"member","default":true}` (JSON, from the same origin) changes the default for everyone.
 - In a browser, `/<slug>/<service>/__yard/auth/login` shows the picker; `__yard/auth/logout` clears it.
 
-Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `customers` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
+Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `users` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
 
 ## Secrets
 
