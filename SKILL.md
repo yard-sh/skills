@@ -412,7 +412,7 @@ For everything an agent needs to **author** the page itself — how to read proj
     { "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database_access": true },
     { "dir": "jobs", "name": "jobs" }
   ],
-  "landing_page": { "dir": ".yard/landing-page" },
+  "landing_page": { "type": "custom", "dir": ".yard/landing-page" },
   "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] },
   "downloads": { "buttons": [{ "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" }] }
 }
@@ -426,6 +426,7 @@ For everything an agent needs to **author** the page itself — how to read proj
   - `url` — the path the service serves under, e.g. `/api`. Default `/<name>`; `/` gives the service the whole site. Unique within the release; `/__yard` and `/@…` are reserved.
   - `access` — who can reach it: `public` | `authenticated` | `users` (default `public`).
   - `database_access` - `true` lets the service reach the database as `env.DB`. The database itself is created by the release's migrations (see `migrations.dir`), so a service flagged before the first migration deploys without `env.DB` and is redeployed with it once the database exists. The project and each sandbox have their own database, shared by every service there with access.
+- `landing_page.type` - which page the release serves: `custom` serves the files in `landing_page.dir`, `builtin` serves the pre-built page you edit in the dashboard (files in the directory are still uploaded with the release, just not served). A `landing_page` block without `type` means `custom`. Omitting the whole block leaves the page type and files as they already are on the release you are building from; a brand new project starts on the pre-built page. A `custom` block whose directory holds no files is an error on `yard push`, on GitHub release sync, and when creating a project from a template. Custom pages are plan-gated: declaring one without the feature fails with `upgrade_required`.
 - `landing_page.dir` — landing-page directory relative to the working directory (default `.yard/landing-page`).
 - `migrations.dir` - migrations directory relative to the working directory (default `.yard/migrations`). Flat numbered `.sql` files (`0001_init.sql`, `0002_add_column.sql`, ...), pushed with the release. Deploying a release that carries one or more migration files creates the database for the project or sandbox it deploys to (the first migration creates the database, whether or not any service has `database_access`) and applies pending files in filename order before any new services are deployed; the `_yard_migrations` table in the database records applied files by filename, so each file runs once. The directory must not sit inside a service directory.
 - `pricing.tiers` — optional; when present, `yard push` and GitHub release sync replace the release's pricing tiers to match the array exactly (tiers missing from the file are removed). Absent = pricing is managed from the dashboard as usual. Full shape and rules: [references/releases-and-updates.md](references/releases-and-updates.md) — _Syncing releases from GitHub_.

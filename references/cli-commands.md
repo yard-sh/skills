@@ -947,6 +947,14 @@ one file plus a push), the landing page in its directory (`landing_page.dir`
 in `.yard/settings.json`, default `.yard/landing-page/`), and one bundle per
 service listed in `services`. A project with only some of the bundles simply
 syncs what it has.
+
+`landing_page.type` decides which page the release then serves: `custom` (the
+default for a block that omits it) serves those files, `builtin` serves the
+pre-built page edited in the dashboard and uploads the files without serving
+them. Leaving the whole block out keeps the type and files the release already
+has. A `custom` block whose directory is empty fails the push, and declaring one
+without the custom-pages plan feature fails with `upgrade_required`.
+
 The config bundle syncs both ways. The server keeps every release's
 settings.json current - dashboard edits to pricing, download buttons or
 services regenerate it - so `yard status` reports such edits as a config diff
@@ -1010,7 +1018,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
 **Behavior:**
 
 1. Resolves the project (flag → existing settings → sole project → error).
-2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 7, "project_slug": "<slug>", "ignore_files": []}`.
+2. Creates the landing-page directory (`landing_page.dir` in settings, default `<project>/.yard/landing-page/`) and writes `<project>/.yard/settings.json` if absent: `{"version": 7, "project_slug": "<slug>", "ignore_files": []}`. Either way it records `"landing_page": {"type": "custom"}` in that file, adding `"dir"` alongside it when the directory is not the default, so the next push serves your files instead of the pre-built page.
 3. Resolves the draft release (your open draft, or a new one seeded from your newest published release — a first init on a fresh project starts from what shipped rather than from a blank page).
 4. If the draft has landing-page files, pulls them; else writes the hello-world starter (`index.html` + `styles.css`).
 5. Local files that already match the remote SHA-256 are skipped.

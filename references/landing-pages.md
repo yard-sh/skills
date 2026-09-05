@@ -1,6 +1,6 @@
 # Custom Landing Pages
 
-Every Yard project has a public landing page. **Pro** sellers can replace the default layout with a custom page — plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.team_permissions`).
+Every Yard project has a public landing page. **Pro** sellers can replace the default layout with a custom page: plain HTML, CSS, JS (and images/fonts) bundled in the project's landing-page directory (default `.yard/landing-page/`, configurable via `landing_page.dir` in `.yard/settings.json`, and selected by `"type": "custom"` on that same block) and uploaded with the `yard push / yard pull` commands (check with `yard me --json` → `.team_permissions`).
 
 This document covers what you can put **inside** that bundle: the project data your page can read at runtime, the helper functions for wiring up checkout/trial buttons, and the limits the bundle has to fit within. For the commands that scaffold and publish the bundle, see [cli-commands.md](./cli-commands.md).
 
@@ -367,7 +367,7 @@ Sandbox URLs are **team-only by default**: the Yard edge verifies you belong to 
 
 What you get is decided by the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says what it serves. `window.yard.project` reflects **that sandbox's** state (or the project's own, with no `/@…/` segment), its own pricing, copy, and gallery, so a preview page shows preview prices, not the storefront's.
 
-Where the serving release has no custom page there is still a landing page: the built-in one, rendered from the project's or sandbox's own content. So the URL always resolves, whether or not you have shipped a bundle there.
+Where the serving release has no custom page there is still a landing page: the pre-built one, rendered from the project's or sandbox's own content and edited in the dashboard. So the URL always resolves, whether or not you have shipped a bundle there. Setting `"landing_page": { "type": "builtin" }` switches a release back to it without deleting your files: they still upload, they just stop being served. Leaving the `landing_page` block out entirely changes neither the type nor the files, so a release you build from an earlier one keeps whatever page it had.
 
 The usual loop:
 
