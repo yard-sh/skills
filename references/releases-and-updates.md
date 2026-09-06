@@ -237,7 +237,7 @@ that file declares:
 | settings.json section | What syncs |
 |---|---|
 | `services[]` | Each entry - its `dir`, `name`, `url`, `access` and `database_access` - becomes one of the release's services, built from the bundle in that directory (which must contain `_service.js`). The list is the whole set: a service the tag drops is taken down on the next deploy |
-| `landing_page.type` | `custom` serves the files in the landing-page directory; `builtin` serves the pre-built page edited in the dashboard, and the files still sync but are not served. A `landing_page` block without `type` means `custom`, and no block at all leaves the release on whatever type and files it inherits |
+| `landing_page.type` | `custom` serves the files in the landing-page directory; `default` serves the default page edited in the dashboard, and the files still sync but are not served. A `landing_page` block without `type` means `custom`, and no block at all leaves the release on whatever type and files it inherits |
 | `landing_page.dir` — or files under the default `.yard/landing-page` | Those files become the release's landing page |
 | `pricing.tiers` | The release's pricing tiers are replaced to **match the array exactly** — tiers missing from the file are removed |
 | `downloads.buttons` | The release's download buttons are replaced to **match the array exactly**; rules missing from the file are removed |

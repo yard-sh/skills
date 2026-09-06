@@ -23,7 +23,6 @@ The object is the JSON returned by `GET /v1/projects/{username}/{slug}/public` �
 | `tagline` | `string?` | Short marketing line |
 | `description` | `string?` | Markdown source of the long description |
 | `description_html` | `string?` | Server-rendered HTML for `description` |
-| `readme_html` | `string?` | Server-rendered HTML of the linked repo's README, if any |
 | `price_cents` | `number` | Default tier price, in cents |
 | `discounted_price_cents` | `number?` | Effective price after any launch stage discount |
 | `launch_stage` | `string` | `draft`, `early_access`, or `published` |
@@ -91,7 +90,7 @@ Put a dotted path to any field on `project` in a `data-yard` attribute. On page 
 <em data-yard="seller.username"></em>
 ```
 
-If the field is missing or `null`, the element is left untouched. Add `data-yard-html` on the same element to write `innerHTML` instead of `textContent` — useful for `description_html` or `readme_html`:
+If the field is missing or `null`, the element is left untouched. Add `data-yard-html` on the same element to write `innerHTML` instead of `textContent`, useful for `description_html`:
 
 ```html
 <article data-yard="description_html" data-yard-html></article>
@@ -367,7 +366,7 @@ Sandbox URLs are **team-only by default**: the Yard edge verifies you belong to 
 
 What you get is decided by the path, so it cannot be switched by a query parameter your page happens to carry, and a URL always says what it serves. `window.yard.project` reflects **that sandbox's** state (or the project's own, with no `/@…/` segment), its own pricing, copy, and gallery, so a preview page shows preview prices, not the storefront's.
 
-Where the serving release has no custom page there is still a landing page: the pre-built one, rendered from the project's or sandbox's own content and edited in the dashboard. So the URL always resolves, whether or not you have shipped a bundle there. Setting `"landing_page": { "type": "builtin" }` switches a release back to it without deleting your files: they still upload, they just stop being served. Leaving the `landing_page` block out entirely changes neither the type nor the files, so a release you build from an earlier one keeps whatever page it had.
+Where the serving release has no custom page there is still a landing page: the default one, rendered from the project's or sandbox's own content and edited in the dashboard. So the URL always resolves, whether or not you have shipped a bundle there. Setting `"landing_page": { "type": "default" }` switches a release back to it without deleting your files: they still upload, they just stop being served. Leaving the `landing_page` block out entirely changes neither the type nor the files, so a release you build from an earlier one keeps whatever page it had.
 
 The usual loop:
 
