@@ -19,10 +19,10 @@ A new account signing up through the CLI is walked through the browser onboardin
 
 1. Binds a local HTTP server on **port 9876** (fails immediately if port is in use)
 2. Builds the login URL:
-   - Standard: `{apiURL}/v1/auth/login?cli=true`
+   - Standard: `{webURL}/login?cli_callback={callbackURL}` (`/register` for sign-up); the page hands the browser to the identity provider
    - In Coder workspaces: uses `VSCODE_PROXY_URI` to construct workspace-aware proxy URLs for both the API and callback
 3. Opens the default browser (macOS: `open`, Linux: `xdg-open`, Windows: `rundll32`)
-4. User authorizes via GitHub OAuth in the browser
+4. User signs in through the identity provider in the browser
 5. Backend creates a session token and redirects the browser to `http://localhost:9876/callback?token={token}`
 6. CLI receives the token, calls `GET /v1/me` to fetch user info
 7. Saves to `~/.yard/config.json`:
