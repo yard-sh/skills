@@ -1036,7 +1036,7 @@ Scaffold `.yard/landing-page/` inside an existing Yard project (run `yard init` 
   "release": "9f3e1c2a-…",
   "written": ["index.html", "styles.css"],
   "skipped": [],
-  "preview_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=landing-page",
+  "preview_url": "https://dash.yard.sh/projects/my-slug/release/landing-page?release=9f3e1c2a-…",
   "live_url": null
 }
 ```
@@ -1187,7 +1187,7 @@ link.
       "remote_only": []
     }
   },
-  "review_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=overview",
+  "review_url": "https://dash.yard.sh/projects/my-slug/release?release=9f3e1c2a-…",
   "live_url": null,
   "errors": []
 }

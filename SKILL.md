@@ -491,7 +491,7 @@ Example `push --json` output (`page` and `config` at the top level, every servic
     "deleted": [],
     "remote_only": []
   },
-  "review_url": "https://dash.yard.sh/projects/my-slug/overview?release=9f3e1c2a-…&editor=overview",
+  "review_url": "https://dash.yard.sh/projects/my-slug/release?release=9f3e1c2a-…",
   "live_url": null,
   "errors": []
 }
