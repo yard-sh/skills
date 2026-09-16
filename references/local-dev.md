@@ -23,6 +23,8 @@ Requirements: `.yard/settings.json` with at least one `services` entry or a land
 
 No login is needed. Logged in, `yard dev` also fetches the project's live public data for the landing page (so `window.yard.project` is real) and warns about secrets set on Yard that have no local value.
 
+Nothing else is fetched while it runs: `embed.js` ships inside the CLI and the buyer-state bridge behind `window.yard.ownership()` is answered locally from the persona. With the runtime already downloaded the whole loop works offline; only checkout and trial links leave the machine, since a purchase needs Yard.
+
 Startup output (human mode):
 
 ```
@@ -65,12 +67,14 @@ There is no real sign-in locally. A persona decides which `X-Yard-*` headers the
 
 One `user:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project's own scope). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either.
 
+The landing page sees the persona too. `window.yard.ownership()` and every `data-yard-when` element resolve from `/<slug>/__yard/auth/ownership` instead of the hosted bridge, with the hosted shape: `anonymous` is signed out; `signed-in` and `member` are signed in without a purchase (a seller on their own page is not a buyer either); `trial` is owned with `is_trial: true`; `user:<tier>` is owned with `tier_id` and `tier_name` from the project data and `is_subscription` from the tier's pricing model. `user.username` is the persona's user id and `avatar_url` is null.
+
 Ways to choose the persona:
 
 - `--as <id>` sets the default for requests without a cookie.
 - Send the cookie directly: `curl -H 'Cookie: yard_dev_identity=user:pro' http://localhost:9875/widget/api/notes`.
 - `POST /__yard/dev/api/persona` with `{"persona":"member","default":true}` (JSON, from the same origin) changes the default for everyone.
-- In a browser, `/<slug>/<service>/__yard/auth/login` shows the picker; `__yard/auth/logout` clears it.
+- In a browser, `/<slug>/__yard/auth/login` (or `/<slug>/<service>/__yard/auth/login`) shows the picker; `__yard/auth/logout` clears it.
 
 Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `users` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
 
@@ -116,6 +120,7 @@ Every service directory, the landing page directory, `.yard/migrations`, `.yard/
 - The 50 ms CPU budget per request is not enforced locally.
 - Outbound requests to private networks and localhost are blocked as hosted, by address class only (`--allow-local-egress` lifts it).
 - Personas replace sign-in; nothing touches the Yard account.
+- `embed.js` is served by the CLI at `/__yard/embed.js` and the ownership bridge at `/<slug>/__yard/auth/ownership`; checkout and trial links still go to Yard.
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.
 - The Cache API is unavailable.

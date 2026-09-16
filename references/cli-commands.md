@@ -1641,7 +1641,9 @@ Serve the working directory locally the way Yard hosts it: the landing page at
 `http://localhost:9875/<slug>/`, every service under its mount path, the
 `X-Yard-*` identity headers, secrets, and a local SQLite database with
 `.yard/migrations` applied. Files are watched and validated on save with the
-same rules as `yard push`. No login required. Full guide: `local-dev.md`.
+same rules as `yard push`. No login required. `embed.js` and the buyer-state
+bridge are served locally, so with the runtime cached the loop works offline;
+only checkout and trial links go to Yard. Full guide: `local-dev.md`.
 
 **Flags:**
 
