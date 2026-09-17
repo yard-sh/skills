@@ -352,7 +352,8 @@ Relative URLs matter more than usual because the same bundle serves under more t
 ## Testing a page before users see it
 
 Locally, `yard dev` serves the page at `http://localhost:9875/<slug>/` with the
-`__yard__` snapshot and `embed.js` injected, so `window.yard.project`,
+`__yard__` snapshot, `embed.js` and a reload helper injected (the tab reloads
+after every save that restarts the runtime), so `window.yard.project`,
 `data-yard` bindings and Buy buttons behave as hosted (with live project data
 when logged in, otherwise a placeholder built from `.yard/settings.json`).
 `window.yard.ownership()` and `data-yard-when` follow the selected persona

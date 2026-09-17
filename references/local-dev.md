@@ -115,12 +115,14 @@ POST requests must send `Content-Type: application/json`. For an automated check
 
 Every service directory, the landing page directory, `.yard/migrations`, `.yard/settings.json` and the secrets file are watched. A save re-validates with the same rules as `yard push` (file limits, extensions, `_service.js` present, mount and name rules). A validation error is printed (`validation_error` in JSON mode) and the last good version keeps serving. Changes to code, assets, settings or secrets restart the runtime in well under a second; static files are served fresh from disk.
 
+Open landing page tabs reload themselves after each restart. The edge injects `/__yard/reload.js` into landing page HTML after `embed.js`; it listens on `/__yard/reload` (Server-Sent Events, one `reload` event per runtime generation) and calls `location.reload()` when the generation changes. That covers a save that restarts the runtime, an objects reset, and a `yard dev` restart. A validation error or a failed restart does not reload, so the tab keeps the last good page. HTML served by a service is not touched. Both paths work with `--no-panel` and `--root`.
+
 ## What differs from hosted Yard
 
 - The 50 ms CPU budget per request is not enforced locally.
 - Outbound requests to private networks and localhost are blocked as hosted, by address class only (`--allow-local-egress` lifts it).
 - Personas replace sign-in; nothing touches the Yard account.
-- `embed.js` is served by the CLI at `/__yard/embed.js` and the ownership bridge at `/<slug>/__yard/auth/ownership`; checkout and trial links still go to Yard.
+- `embed.js` is served by the CLI at `/__yard/embed.js` and the ownership bridge at `/<slug>/__yard/auth/ownership`; checkout and trial links still go to Yard. A reload helper at `/__yard/reload.js` is injected into landing page HTML so open tabs reload after a restart; hosted pages never get it.
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.
 - The Cache API is unavailable.
