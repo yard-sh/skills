@@ -25,7 +25,7 @@ The object is the JSON returned by `GET /v1/projects/{username}/{slug}/public` �
 | `description_html` | `string?` | Server-rendered HTML for `description` |
 | `price_cents` | `number` | Default tier price, in cents |
 | `discounted_price_cents` | `number?` | Effective price after any launch stage discount |
-| `launch_stage` | `string` | `draft`, `early_access`, or `published` |
+| `launch_stage` | `string` | `draft`, `pre-order`, `early_access`, or `published` |
 | `stage_discount_percent` | `number?` | Active launch-stage discount percent, if any |
 | `tiers` | `PricingTier[]` | All pricing tiers — see below |
 | `images` | `ProjectImage[]` | Uploaded screenshots/icons; each has a `url` |
@@ -148,6 +148,8 @@ Only show the trial button when a tier actually offers a trial — see the worke
 **Hooking up an existing scaffold:** if your HTML already has `data-action="trial"` (or `"checkout"`) on a button, the click is already wired by `embed.js` — there is no JS handler to attach. The only work left is **visibility**: hide the trial button when no tier has `free_trial_enabled: true`, and (when revealing it) set `data-tier-id` to the trial-enabled tier's id so the redirect targets the right tier.
 
 Clicks on `data-action` elements have their default behaviour prevented automatically — there's no need for the surrounding `<a>` to point anywhere.
+
+**The attribute wins over the `href`.** A `data-action` element keeps starting checkout or a trial no matter what its `href` or text says, so never repurpose one as a plain link later (for example, rewriting a "Buy" button into "Open in Library" for owners). Either remove the `data-action` attribute when you change what the element does, or keep two elements and let `data-yard-when` pick the visible one, as the worked example does.
 
 ---
 
@@ -301,7 +303,7 @@ if (state?.owned) {
 const state = await window.yard.ownership();
 if (state?.is_subscription) {
   document.querySelector('#manage-sub').href =
-    `https://yard.sh/library/${window.yard.project.slug}/subscription`;
+    `https://yard.sh/library/${window.yard.project.seller.username}/${window.yard.project.slug}/subscription`;
 }
 ```
 
