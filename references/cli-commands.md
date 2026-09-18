@@ -5,30 +5,26 @@
 - The CLI binary name is `yard` (production) or `yard-staging` (staging builds)
 - API URL defaults to `https://api.yard.sh` but can be overridden at build time
 - Config is stored at `~/.yard/config.json` (or `~/.yard-staging/` for staging)
-- All authenticated commands send an `Authorization: Client {token}` header (the token `yard login` saved)
+- All authenticated commands send an `Authorization: Bearer {token}` header (the access token `yard login` saved). When the server renews the token, the response carries a `Yard-Access-Token` header and the CLI stores the new value
 
 ---
 
 ## yard login
 
-Authenticate with your GitHub account.
+Sign in from the terminal with a one-time code confirmed in the browser (OAuth device authorization).
 
-A new account signing up through the CLI is walked through the browser onboarding first — profile, then **team creation** — before the token is handed back, because a seller with no team can't do anything. An existing account goes straight to the handoff. Either way, run `yard team` afterwards to see which team the session acts as.
+There is no separate `yard register`. A new account uses the sign-up link on the sign-in page, is walked through onboarding (profile, then **team creation**, because a seller with no team can't do anything) and lands back on the device page to finish authorizing the CLI. Either way, run `yard team` afterwards to see which team the session acts as.
 
 **Flow:**
 
-1. Binds a local HTTP server on **port 9876** (fails immediately if port is in use)
-2. Builds the login URL:
-   - Standard: `{webURL}/login?cli_callback={callbackURL}` (`/register` for sign-up); the page hands the browser to the identity provider
-   - In Coder workspaces: uses `VSCODE_PROXY_URI` to construct workspace-aware proxy URLs for both the API and callback
-3. Opens the default browser (macOS: `open`, Linux: `xdg-open`, Windows: `rundll32`)
-4. User signs in through the identity provider in the browser
-5. Backend creates a session token and redirects the browser to `http://localhost:9876/callback?token={token}`
-6. CLI receives the token, calls `GET /v1/me` to fetch user info
-7. Saves to `~/.yard/config.json`:
+1. `POST /v1/auth/device` returns a device code, a nine-digit one-time code and the verification URL
+2. The CLI prints the code grouped as `123 456 789` together with `https://yard.sh/login/device`, then opens that page (macOS: `open`, Linux: `xdg-open`, Windows: `rundll32`). If no browser can be opened it says so and keeps waiting; open the printed link yourself, on any device
+3. The user signs in (or signs up) if needed, enters the code, and confirms that the terminal may use the account
+4. The CLI polls `POST /v1/auth/device/token` every few seconds, backing off when asked to, until the browser side finishes
+5. On success it calls `GET /v1/me` and saves `~/.yard/config.json`:
    ```json
    {
-     "session_token": "{64-char-hex-token}",
+     "access_token": "{short-lived access token}",
      "user": {
        "id": "{uuid}",
        "github_username": "username",
@@ -38,21 +34,24 @@ A new account signing up through the CLI is walked through the browser onboardin
      "api_url": "https://api.yard.sh"
    }
    ```
-8. File permissions are set to `0600`
+6. File permissions are set to `0600`
 
-**Timeout:** 5 minutes. If the user does not complete the OAuth flow in time, login fails.
+**Code lifetime:** 15 minutes. If the code is not entered and confirmed in time, login fails with "the code expired before it was used"; run `yard login` again for a new code. Cancelling on the authorize screen leaves the CLI waiting until the code expires.
 
-**Coder workspace support:** When `VSCODE_PROXY_URI` is set, the CLI automatically constructs proxy URLs so the OAuth callback works through the Coder workspace proxy.
+**Tokens:** the access token is short-lived. When it expires, the server renews it during the next request and returns the new value in a `Yard-Access-Token` response header, which the CLI writes back to the config; nothing to do by hand. The session behind it lasts up to 90 days and is listed under command-line sessions on the account's security page, where it can be revoked.
+
+**Remote and headless machines (SSH, Coder workspaces, WSL):** nothing on the machine has to be reachable from the browser. Open the printed link anywhere, enter the code, and the CLI picks up the result.
 
 ---
 
 ## yard logout
 
-Clear stored credentials.
+Sign out.
 
+- `POST /v1/auth/logout` revokes the session on the server, so it disappears from the security page's command-line sessions
 - Deletes `~/.yard/config.json`
-- If already logged out (file doesn't exist), prints "Already logged out" and succeeds
-- Does not invalidate the server-side session
+- If the server can't be reached, prints a note and still deletes the local file
+- If already logged out (no usable config), prints "Already logged out" and succeeds
 
 ---
 
@@ -174,7 +173,7 @@ Set up a Yard project in the current directory. Interactive flow that links the 
 
 1. **Update check** — Fetches latest version from `{UpdateURL}/current_version.txt`. If a newer version exists, prompts the user to update. Update is required to continue — if the user declines, `init` aborts.
 
-2. **Login check** — Loads `~/.yard/config.json` and verifies the session is still valid via `GET /v1/me`. If not logged in or session expired, runs the login flow automatically.
+2. **Login check** — Loads `~/.yard/config.json` and verifies the session is still valid via `GET /v1/me`. If not logged in, or the server answers 401, runs the `yard login` device flow inline.
 
 3. **Best-effort git context** — All three steps here are non-fatal; on any failure `init` prints a one-line stderr notice and proceeds to create a project without a linked repo.
    - Runs `git rev-parse --show-toplevel` + `git config --get remote.origin.url` and parses owner/repo. SSH and HTTPS GitHub URLs supported.

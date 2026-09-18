@@ -17,22 +17,11 @@ You can also set `YARD_INSTALL_DIR` and re-run the installer to choose a custom 
 
 ---
 
-## Port 9876 already in use during `yard login`
+## `yard login` says the code expired
 
-The CLI starts a local callback server on port 9876 to receive the OAuth token. If another process is using that port, login fails immediately.
+The one-time code is valid for 15 minutes. If it wasn't entered and confirmed in the browser in time, the CLI stops with "the code expired before it was used".
 
-**Fix:** Find and stop the conflicting process:
-```sh
-# Linux/macOS
-lsof -i :9876
-kill <PID>
-
-# Windows
-netstat -ano | findstr :9876
-taskkill /PID <PID> /F
-```
-
-Then re-run `yard login`.
+**Fix:** Run `yard login` again and use the new code. If you cancelled on the authorize screen, the CLI keeps waiting until the code expires; press Ctrl-C and start over.
 
 ---
 
@@ -71,16 +60,16 @@ If origin points to a non-GitHub host (GitLab, Bitbucket, etc.), Yard will skip 
 
 ---
 
-## Session expired
+## Session expired or revoked
 
-Sessions last 30 days. When expired, any authenticated CLI command will fail.
+Sessions last up to 90 days; in between, the server renews the short-lived access token transparently. A session also ends when it is revoked from the security page's command-line sessions, when the password changes, or after `yard logout`. Once it has ended, any authenticated CLI command fails with a 401.
 
 **Fix:**
 ```sh
 yard login
 ```
 
-This runs a fresh OAuth flow and saves a new session token.
+This runs the device sign-in again and saves a new session.
 
 ---
 
@@ -175,21 +164,21 @@ sudo curl -fsSL cli.yard.sh | sh
 If `yard login` or the GitHub App installation can't open your browser:
 
 1. Copy the URL printed in the terminal
-2. Paste it into your browser manually
-3. Complete the flow in the browser
-4. The CLI will detect the callback automatically
+2. Paste it into a browser on any device
+3. Complete the flow there (for `yard login`, enter the printed one-time code and confirm)
+4. The CLI is polling the API and picks up the result on its own
 
 This commonly happens in headless environments, SSH sessions, or WSL without browser integration.
 
 ---
 
-## Coder workspace connectivity
+## Coder workspaces and other remote machines
 
-When running in a Coder workspace, the CLI automatically detects the `VSCODE_PROXY_URI` environment variable and constructs proxy-aware URLs for the OAuth callback. If login fails in a Coder workspace:
+`yard login` needs nothing on the workspace to be reachable from your browser: it prints a one-time code and a link, then polls the API for the result. If the workspace has no browser, the CLI says so and keeps waiting.
 
-1. Verify `VSCODE_PROXY_URI` is set: `echo $VSCODE_PROXY_URI`
-2. Ensure the workspace proxy allows traffic on port 9876
-3. Try the URL printed in the terminal manually
+1. Open the printed link in your local browser
+2. Enter the code and confirm
+3. The CLI in the workspace finishes on its own
 
 ---
 

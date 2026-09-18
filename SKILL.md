@@ -196,7 +196,7 @@ yard init --project simple-note --json
 #### Troubleshooting
 
 - **`yard init` hangs silently.** You're in the interactive wizard. Interrupt, then retry with `--spec -` (for a new project) or `--project <slug>` (for an existing one).
-- **`403 not logged in`.** Ask the user to run `yard login` in their terminal — you can't drive the OAuth browser flow.
+- **`403 not logged in`.** Ask the user to run `yard login` in their terminal: the one-time code has to be confirmed in a browser, which you can't do for them.
 - **Plan-gated 403s.** The **team's** plan doesn't include the feature you used (an extra tier, seat-based pricing, license keys, device activations, a free trial, custom pages, coupons, …). Project endpoints tag these `upgrade_required`; permission-gated endpoints like `yard coupons` answer a plain `FORBIDDEN` 403 — either way it's a plan problem, not a bad request. The CLI doesn't gate this client-side; the server decides. Either send a spec the plan supports, or ask the user to upgrade at https://yard.sh/pricing. To see what the plan includes, read `yard me --json` → `.team_permissions` (the team's map — `.permissions` is the user's own and does not gate this).
 - **`NO_TEAM` 403s.** A different failure that looks the same: `code: "NO_TEAM"`, message "A team is required". The caller belongs to no team, so there is nothing to own the project. Upgrading does **not** fix it — send them to https://yard.sh/team, then `yard team` to confirm. Never render this as an upsell.
 - **Duplicate project after a failed attempt.** Run `yard projects --json` first — if the project already exists, link it with `yard init --project <slug>` instead of re-creating.
@@ -273,11 +273,12 @@ irm https://cli.yard.sh/install.ps1 | iex
 yard login
 ```
 
-- Opens your default browser to authenticate via GitHub OAuth
-- Starts a local callback server on **port 9876** to receive the token
-- Saves credentials to `~/.yard/config.json` (file permissions 0600)
-- Sessions last **30 days** before requiring re-authentication
-- If port 9876 is already in use, login will fail — close the conflicting process first
+- Prints a one-time code and opens `https://yard.sh/login/device` in your browser
+- Enter the code on that page and confirm to authorize this terminal (new to Yard? use the sign-up link on that page first)
+- The CLI waits until the browser side finishes; the code is valid for **15 minutes**
+- Saves the session to `~/.yard/config.json` (file permissions 0600)
+- Tokens are short-lived and renewed by the server transparently; a session lasts up to **90 days** before you need to sign in again
+- The session is listed under command-line sessions on your account's security page, where it can be revoked
 
 ### 3. Initialise a Project
 
@@ -301,8 +302,8 @@ The interactive flow:
 
 | Command                                                                       | Description                                                                                                                                                                                                                                                             |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `yard login`                                                                  | Authenticate via GitHub OAuth                                                                                                                                                                                                                                           |
-| `yard logout`                                                                 | Clear local credentials (`~/.yard/config.json`)                                                                                                                                                                                                                         |
+| `yard login`                                                                  | Sign in: prints a one-time code, opens `https://yard.sh/login/device`, and waits until you enter the code and confirm in the browser. Sessions are renewed by the server; sign in again only after a revoke or 90 days.                                                  |
+| `yard logout`                                                                 | Sign out: revokes the session on the server and deletes `~/.yard/config.json`                                                                                                                                                                                          |
 | `yard me [--json]`                                                            | Show the current user (id, username, GitHub, email), plan, and the `permissions` map. Read `--json` → `.team_permissions` to see what the active team can do (`.permissions` is the user's own, and is not what seller features are gated on); feature limits are server-enforced, so you can also just attempt an action and handle `upgrade_required`.          |
 | `yard team [--json]` / `yard team use <username>`                              | Show or switch the team the CLI acts as. Projects, coupons and API keys belong to a team, so this decides what every other command reads and writes. The active team is stored on the account (shared with the dashboard), not in the local config.                       |
 | `yard init`                                                                   | Set up a Yard project in the current directory — create or select a project, scaffold `.yard/`, optional landing-page setup. Supports `--spec <file\|->`, `--project <slug>`, `--json`, `--page`/`--no-page`, `--link-repo`/`--no-link-repo` for non-interactive use.   |
@@ -508,9 +509,9 @@ Diff is SHA-256 content-addressed against the server's existing hashes, so repea
 | Config file      | `~/.yard/config.json`                                           |
 | File permissions | `0600` (owner read/write only)                                  |
 | Config directory | `~/.yard/`                                                      |
-| Contents         | `session_token`, `user` (id, github_username, email), `api_url` |
+| Contents         | `access_token`, `user` (id, github_username, email), `api_url`  |
 | Not stored       | The active team. It lives on the account (see `yard team`), so the CLI and dashboard always agree and it survives a re-login. |
-| Auth header      | `Authorization: Session {token}`                                |
+| Auth header      | `Authorization: Bearer {token}`                                 |
 
 ## Key URLs
 

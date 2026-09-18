@@ -61,13 +61,13 @@ API keys start with the `yard_` prefix and are issued **per team** in the dashbo
 
 Catalog management scopes do **not** exist — project create / update / delete are CLI-only.
 
-### Session Token (CLI and dashboard only)
+### Sessions (CLI and dashboard only)
 
 ```
-Authorization: Session {token}
+Authorization: Bearer {access token}
 ```
 
-The session token is a 64-character hex string (32 random bytes) issued to the CLI (`yard login`) and to the web dashboard. Sessions expire after 30 days. The CLI stores the token in `~/.yard/config.json`. **Third-party integrations should not use session tokens** — use an API key instead.
+The dashboard keeps its session in a cookie. The CLI holds a short-lived access token issued when `yard login` completes its device flow, sends it as a bearer token, and receives renewed tokens from the server in a `Yard-Access-Token` response header. The session behind it lasts up to 90 days and can be revoked from the security page. The CLI stores the token in `~/.yard/config.json`. **Third-party integrations should not use CLI sessions.** Use an API key instead.
 
 ---
 
