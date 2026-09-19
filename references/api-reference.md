@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **What this API covers.** The Yard REST API is the **integration surface** — it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, and manage buyer subscriptions. It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management — plus reading the seller's users and sales — happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard users`, `yard transactions`, `yard push / yard pull`) — see [cli-commands.md](./cli-commands.md).
+> **What this API covers.** The Yard REST API is the **integration surface**: it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, manage buyer subscriptions, and sign buyers in with [Yard Auth](#yard-auth-for-external-apps). It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management, plus reading the seller's users and sales, happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard users`, `yard transactions`, `yard push / yard pull`); see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://dash.yard.sh/api-keys?action=create**.
 
@@ -69,6 +69,14 @@ Authorization: Bearer {access token}
 
 The dashboard keeps its session in a cookie. The CLI holds a short-lived access token issued when `yard login` completes its device flow, sends it as a bearer token, and receives renewed tokens from the server in a `Yard-Access-Token` response header. The session behind it lasts up to 90 days and can be revoked from the security page. The CLI stores the token in `~/.yard/config.json`. **Third-party integrations should not use CLI sessions.** Use an API key instead.
 
+### Yard Auth access tokens (a buyer, in an external app)
+
+```
+Authorization: Bearer {Yard Auth access token}
+```
+
+A token a buyer's app obtained from the project's own OpenID Connect issuer. It identifies **a buyer of one project**, never the seller, and it reaches exactly one endpoint, `GET /v1/yard-auth/userinfo`. See [Yard Auth for external apps](#yard-auth-for-external-apps).
+
 ---
 
 ## API-Key Endpoints
@@ -115,6 +123,55 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release |
 
 All of these accept an optional `sandbox` parameter (see [The `sandbox` parameter](#the-sandbox-parameter)). Omitting it reads the project itself, which is what buyers get. Anything private - a private project included - answers only license keys held by a member of the project's owning team; everyone else gets a 404, as if it doesn't exist. A key also reaches only where its own purchase lives, in both directions: a sandbox key cannot pull the project's own artifacts, and a real buyer's key cannot pull a sandbox's.
+
+---
+
+## Yard Auth for external apps
+
+Inside a hosted service, Yard Auth is the edge: it signs buyers in and stamps `X-Yard-*` headers (see [service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own)). Software that runs **outside** the project (a desktop or mobile app, a backend on another host) uses the same Yard Auth as a standard **OpenID Connect** client: every project with Yard Auth is its own issuer, and any OIDC library works against it. Requires the `yard_auth` permission on the owning team (Basic and Pro; check `yard me --json` → `.team_permissions.yard_auth`).
+
+| Item | Value |
+|---|---|
+| Issuer | `https://yard.sh/auth/application/o/yard-auth-<project id>/` |
+| Discovery | `https://yard.sh/auth/application/o/yard-auth-<project id>/.well-known/openid-configuration` |
+| Client id | `yard-auth-<project id>` |
+| Client secret | From the project's **Yard Auth** tab in the dashboard (rotate it there too) |
+| Redirect URIs | Managed on the same tab: `https` only, or `http` on `localhost` while developing; up to 10, matched exactly |
+| Grant | Authorization code (PKCE recommended) |
+| Scopes | `openid email profile yard_account offline_access` |
+| Token lifetime | Access tokens last one hour; use the refresh token (`offline_access`) to get a new one |
+
+`<project id>` is the project's UUID (`yard projects --json` → `.id`), not its slug. The seller's project has exactly one client: the id above and the secret from the tab. There is no self-service client registration, so an app is always the seller's own app for their own project.
+
+**Claims** in the ID token and from the issuer's own userinfo endpoint:
+
+| Claim | Meaning |
+|---|---|
+| `sub` | Stable identifier of the person for this issuer |
+| `email` | The person's email address |
+| `email_verified` | Whether that address has been confirmed |
+| `yard_user_id` | The Yard user id, the same value the edge sends a hosted service as `X-Yard-User-Id` |
+
+Purchase status is **not** in the token, because it changes underneath a token's lifetime. Read it from Yard:
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/v1/yard-auth/userinfo` | `Authorization: Bearer <access token>` | The person behind the token and their standing on the project the token was issued for |
+
+```json
+{
+  "sub": "…",
+  "user_id": "<uuid>",
+  "email": "a@b.c",
+  "email_verified": true,
+  "entitlement": "active",
+  "tier": "Pro"
+}
+```
+
+`entitlement` is `none` \| `trial` \| `active` \| `owner`, resolved the same way as the edge header; `tier` is omitted when the entitlement carries no named tier. Call it on every launch rather than caching the verdict for the token's lifetime.
+
+**Consent and disconnecting.** The first sign-in to a project's app shows the person a consent screen naming the app and what it receives (email address, Yard account, purchase status). The answer is remembered until they disconnect the app on the security page of their Yard account ("Connected apps"), which also revokes the app's refresh tokens; the app's next refresh fails and it has to send the person through sign-in again.
 
 ---
 

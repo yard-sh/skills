@@ -55,7 +55,7 @@ Local URLs keep the hosted shape so relative links and `fetch("api/...")` behave
 
 ## Personas instead of sign-in
 
-There is no real sign-in locally. A persona decides which `X-Yard-*` headers the edge stamps and what `__yard/auth/me` returns:
+There is no real Yard Auth locally. A persona decides which `X-Yard-*` headers the edge stamps and what `__yard/auth/me` returns:
 
 | Persona id | `X-Yard-User-Id` | `X-Yard-Entitlement` | `X-Yard-Tier` | `member` |
 | --- | --- | --- | --- | --- |
@@ -121,7 +121,7 @@ Open landing page tabs reload themselves after each restart. The edge injects `/
 
 - The 50 ms CPU budget per request is not enforced locally.
 - Outbound requests to private networks and localhost are blocked as hosted, by address class only (`--allow-local-egress` lifts it).
-- Personas replace sign-in; nothing touches the Yard account.
+- Personas replace Yard Auth; nothing touches the Yard account, and no consent screen appears.
 - `embed.js` is served by the CLI at `/__yard/embed.js` and the ownership bridge at `/<slug>/__yard/auth/ownership`; checkout and trial links still go to Yard. A reload helper at `/__yard/reload.js` is injected into landing page HTML so open tabs reload after a restart; hosted pages never get it.
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.

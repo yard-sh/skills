@@ -1,8 +1,8 @@
 # Service and database on Yard
 
 A Yard Service runs a project's server-side code, with an optional
-database, secrets, and buyer sign-in (the project and each sandbox get their
-own), using the same CLI you already have. A release can carry several, each on its own path and each
+database, secrets, and buyer sign-in through Yard Auth (the project and each
+sandbox get their own), using the same CLI you already have. A release can carry several, each on its own path and each
 deployed on its own. It powers full web apps, but the same feature hosts any HTTP
 workload: a JSON API, a webhook receiver, or the backend an installed project
 calls home to. A bundle with no frontend at all (just `_service.js`) is valid.
@@ -95,11 +95,14 @@ how it deploys — so changing how a service deploys is an edit there plus a
   service the whole site (the landing page then serves nothing). Unique within
   the release; `/__yard` and `/@…` are reserved. Nesting is allowed —
   `/api` and `/api/v2` can be two services, and the longer path wins.
-- `access`: `public` (everyone) · `authenticated` (Yard sign-in required —
-  the edge redirects anonymous visitors to login) · `users` (the edge
-  paywall: non-users are redirected to the project's sales page; only
+- `access`: `public` (everyone) · `authenticated` (Yard Auth sign-in
+  required: the edge redirects anonymous visitors to login) · `users` (the
+  edge paywall: non-users are redirected to the project's sales page; only
   buyers/trialers/subscribers get in). Default `public`. Per service, so one
-  release can put a paywalled app next to a public API.
+  release can put a paywalled app next to a public API. Anything but `public`
+  needs the `yard_auth` permission (check `yard me --json` →
+  `.team_permissions.yard_auth`), or the deploy fails with
+  `upgrade_required`.
 - `database_access`: `true` lets the service reach the database as `env.DB`.
   The database itself is created by the release's migrations (see _Database_
   below), so a service flagged before the first migration deploys without
@@ -143,9 +146,10 @@ sandbox and is likewise reserved, though the bundle path rules already
 prevent a collision: every segment of a file you ship must start with a
 letter or digit.
 
-## Identity: never build your own auth
+## Identity: Yard Auth, never your own
 
-The Yard edge signs buyers in and hands your code trusted headers:
+Yard Auth is the project's sign-in. The Yard edge signs buyers in with it and
+hands your code trusted headers:
 
 | Header               | Value                                                                                                                     |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -168,11 +172,25 @@ location. An upgrade, refund, or trial expiry reaches the service within
 about a minute; there is no push signal, so a long-running UI that must
 react promptly should poll `__yard/auth/me`.
 
-### `__yard/auth/*` — the session endpoints
+**Plan:** Yard Auth needs the `yard_auth` permission (Basic and Pro; check
+`yard me --json` → `.team_permissions.yard_auth`). A service whose `access`
+is anything but `public` is refused at deploy with `upgrade_required` when
+the owning team lacks it.
+
+### `__yard/auth/*`: the Yard Auth session endpoints
 
 Relative to the service base (`…/service/__yard/auth/…`). Frontend code
 checks login state with `fetch("__yard/auth/me")` (relative URL!) and links
 to `__yard/auth/login?return=/` and `__yard/auth/logout`.
+
+`__yard/auth/login` sends the visitor through Yard's sign-in (an existing
+Yard session passes silently) and back to `return`. The **first** time a
+person signs in to a given project they see a consent screen: it names the
+project and says the app receives their email address, their Yard account
+and their purchase status. The answer is remembered, so later sign-ins to
+that project show nothing, until the person disconnects the app on the
+security page of their Yard account (https://yard.sh/library/security,
+"Connected apps"), after which the next sign-in asks again.
 
 `GET __yard/auth/me` **always returns 200** with JSON:
 
@@ -188,10 +206,14 @@ to `__yard/auth/login?return=/` and `__yard/auth/logout`.
 `authenticated: true` with `entitlement: "none"` is a real state (signed-in
 non-user on a `public` or `authenticated` service). Sessions are
 per-project: signing in to one seller's project grants nothing anywhere else,
-and covers every service of that project.
+and covers every service of that project. `__yard/auth/logout` ends the
+project session only; the person stays signed in to Yard itself.
 
 Do not implement OAuth, sessions, or password storage — with
-`access: users` even the paywall is enforced before your code runs.
+`access: users` even the paywall is enforced before your code runs. Software
+that runs **outside** the project (a desktop app, a mobile app, a backend on
+another host) signs buyers in with the same Yard Auth as a standard OpenID
+Connect client instead; see [api-reference.md](api-reference.md#yard-auth-for-external-apps).
 
 ## Database
 

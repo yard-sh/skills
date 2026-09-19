@@ -117,7 +117,7 @@ sell anything`, and every seller command will fail until they do.
 
 There are **two** grant maps, and picking the wrong one gives the wrong answer:
 
-- **`team_permissions` is the source of truth for every seller feature**: projects, tiers, coupons, license keys, custom pages, service, sandboxes, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
+- **`team_permissions` is the source of truth for every seller feature**: projects, tiers, coupons, license keys, custom pages, service, Yard Auth, sandboxes, API keys. It is the merged entitlement of the active team's _owners_, which is what the server gates those endpoints on. Read this before proposing any project capability.
 - `permissions` is the signed-in user's own entitlement, from their personal billing. It governs account-level things like `create_teams` — not what the team's projects may do.
 
 The two differ routinely: a free user who joins a Pro team can use every Pro feature on that team's projects, and a Pro user acting as a free team cannot. `team` names which team those permissions belong to, and is `null` when the user has no team (in which case `team_permissions` is absent and no seller command will work).
@@ -488,7 +488,18 @@ yard releases promote v1.4.0 --to Beta             # move it into Beta, out of P
 **`--json` output** (the channel-membership result, plus what it deployed):
 
 ```json
-{"channel": "Beta", "deployed": [{"release_id": "…", "version": "v1.4.0", "to": "beta", "action": "attach", "artifacts": ["pricing", "identity", "page", "service", "releases"]}]}
+{
+  "channel": "Beta",
+  "deployed": [
+    {
+      "release_id": "…",
+      "version": "v1.4.0",
+      "to": "beta",
+      "action": "attach",
+      "artifacts": ["pricing", "identity", "page", "service", "releases"]
+    }
+  ]
+}
 ```
 
 Each `deployed` entry's `to` names who the release shipped to: `""` is the project itself, any other value is a sandbox slug.
@@ -514,7 +525,7 @@ and a new project follows it, which is why `yard releases publish
 is done from the dashboard (Releases page). A name that doesn't exist yet is
 rejected wherever it is used (`yard releases publish --channel`, `yard releases
 promote --to`, `yard sandbox channel`), so create the channel in the dashboard
-before scripting against it. The commands that *do* move releases between
+before scripting against it. The commands that _do_ move releases between
 channels, and change who follows one, are `yard releases promote` and
 `yard sandbox channel`.
 
@@ -694,14 +705,14 @@ The code is upper-cased and must be 4-50 alphanumeric characters. `--projects` t
 
 ```jsonc
 {
-  "discount_type":         "percentage",           // or "fixed_amount"
-  "discount_value":        20,                     // percent, or CENTS for fixed_amount
-  "scope":                 "all_projects",         // or "specific_projects"
-  "project_ids":           ["<uuid>"],             // required for specific_projects
-  "max_uses":              100,                    // omit for unlimited
-  "expires_at":            "2026-12-31T23:59:59Z",
-  "valid_from":            "2026-12-01T00:00:00Z",
-  "subscription_duration": "once"                  // or "forever"
+  "discount_type": "percentage", // or "fixed_amount"
+  "discount_value": 20, // percent, or CENTS for fixed_amount
+  "scope": "all_projects", // or "specific_projects"
+  "project_ids": ["<uuid>"], // required for specific_projects
+  "max_uses": 100, // omit for unlimited
+  "expires_at": "2026-12-31T23:59:59Z",
+  "valid_from": "2026-12-01T00:00:00Z",
+  "subscription_duration": "once", // or "forever"
 }
 ```
 
@@ -778,7 +789,6 @@ Money comes back **pre-formatted** (`"total_spent_display": "$87.00"`). There is
 
 **Sandbox commerce is not here.** These rows are the seller's real books: simulated purchases made inside a sandbox are excluded from the list and from the summary figures, and there is no `--sandbox` flag to reach them. A sandbox's users live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
-
 ### yard users list
 
 **Flags:** `--json`, `--sort <col>`, `--direction <asc|desc>`, `--project <slug-or-uuid>`, `--page N`, `--limit N` (max 100).
@@ -835,7 +845,6 @@ Refunds are **not** exposed here — issuing one stays in the dashboard.
 
 **Sandbox commerce is not here.** Simulated transactions made inside a sandbox never appear in this list, in the summary figures, or in earnings and payouts, and there is no `--sandbox` flag to reach them. A sandbox's transactions live on that sandbox's pages in the dashboard. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
 
-
 ### yard transactions list
 
 **Flags:** `--json`, `--trials`, `--project <slug-or-id>`, `--start <date>`, `--end <date>`, `--sort <col>`, `--direction <asc|desc>`, `--page N`, `--limit N` (max 100).
@@ -863,12 +872,12 @@ Lengthen or shorten a live free trial. `--add-days 7` gives a week; `--add-days 
 
 Two behaviours to state plainly before running it:
 
-- **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days still leaves it in the past — add enough days to land in the future. When the new expiry *is* in the future, an expired trial is set back to `active` and the buyer has access again; the response reports this as `"reactivated": true`. If the trial stays expired, the CLI says why.
+- **Days are added to the trial's current expiry, not to today.** Extending a trial that expired a month ago by 7 days still leaves it in the past — add enough days to land in the future. When the new expiry _is_ in the future, an expired trial is set back to `active` and the buyer has access again; the response reports this as `"reactivated": true`. If the trial stays expired, the CLI says why.
 - **The buyer is emailed** about the change, same as adjusting it from the dashboard.
 
 A revival is refused in one case: the buyer already has another pending or active trial on that project. The expiry still moves, `reactivated` comes back `false`, and the status stays `expired`.
 
-Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the *running* trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard projects tiers edit`.
+Only trial transactions have a length to adjust; anything else is rejected before the request is made. This is the _running_ trial for one buyer — the trial length offered to **new** buyers is the per-tier `free_trial_days` setting, changed with `yard projects tiers edit`.
 
 Requires a plan that can sell projects (`yard me --json` → `.team_permissions.sell_projects`).
 
@@ -1080,9 +1089,7 @@ itself by its slug; anything else is a sandbox slug.
     "unchanged": ["_service.js"],
     "remote_only": []
   },
-  "serving": [
-    {"sandbox": "", "deploy": "stale"}
-  ]
+  "serving": [{ "sandbox": "", "deploy": "stale" }]
 }
 ```
 
@@ -1276,11 +1283,11 @@ sandbox's pages in the dashboard and from the buyer-facing endpoints with a
 
 What serves is decided by three settings, and the commands below move them:
 
-| State | Reached by | What serves |
-|---|---|---|
-| following a channel | `sandbox channel <name>`, or `sandbox unpin` | the channel's newest release; a new release landing in the channel takes over |
-| rolled back | `sandbox rollback <release>` | that one release, until the next release lands in the followed channel and takes over |
-| pinned | `sandbox pin [release]` (`promote` also sets a pin) | that one release, whatever the channel does, until `unpin` |
+| State               | Reached by                                          | What serves                                                                           |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| following a channel | `sandbox channel <name>`, or `sandbox unpin`        | the channel's newest release; a new release landing in the channel takes over         |
+| rolled back         | `sandbox rollback <release>`                        | that one release, until the next release lands in the followed channel and takes over |
+| pinned              | `sandbox pin [release]` (`promote` also sets a pin) | that one release, whatever the channel does, until `unpin`                            |
 
 A pin outranks a rollback, which outranks the channel. `unpin` hands control
 back to the channel and drops any rollback with it.
@@ -1321,22 +1328,43 @@ table with its error. JSON:
 ```json
 {
   "project": {
-    "slug": "my-project", "visibility": "public", "channel": "Production",
-    "created_at": "…", "deploy_status": "up_to_date",
+    "slug": "my-project",
+    "visibility": "public",
+    "channel": "Production",
+    "created_at": "…",
+    "deploy_status": "up_to_date",
     "page_url": "https://acme.yard.sh/my-project/",
-    "serving_release": { "id": "<uuid>", "version": "1.2.0", "published_at": "…" },
+    "serving_release": {
+      "id": "<uuid>",
+      "version": "1.2.0",
+      "published_at": "…"
+    },
     "releases": [
-      { "id": "<uuid>", "version": "1.2.0", "published_at": "…", "is_archived": false }
+      {
+        "id": "<uuid>",
+        "version": "1.2.0",
+        "published_at": "…",
+        "is_archived": false
+      }
     ]
   },
   "sandboxes": [
     {
-      "id": "<uuid>", "slug": "staging", "visibility": "private",
+      "id": "<uuid>",
+      "slug": "staging",
+      "visibility": "private",
       "pinned_release_id": "<uuid>",
-      "created_at": "…", "deploy_status": "stale",
+      "created_at": "…",
+      "deploy_status": "stale",
       "page_url": "https://acme.yard.sh/my-project/@staging/",
-      "serving_release": { "id": "<uuid>", "version": "1.3.0", "published_at": "…" },
-      "releases": [ /* … */ ]
+      "serving_release": {
+        "id": "<uuid>",
+        "version": "1.3.0",
+        "published_at": "…"
+      },
+      "releases": [
+        /* … */
+      ]
     }
   ]
 }
@@ -1375,7 +1403,7 @@ pinned to a release (`yard sandbox pin <release> --sandbox <sandbox>`).
 
 Renames in place. Only the name moves: releases, files, secrets and the database
 follow it, because the sandbox keeps its id. Its URLs change with the name,
-since the `/@<sandbox>/` segment *is* the name, so anything pointing at the old
+since the `/@<sandbox>/` segment _is_ the name, so anything pointing at the old
 one stops resolving. An existing name conflicts (409). Only a sandbox has a
 name to change.
 
@@ -1641,7 +1669,8 @@ Serve the working directory locally the way Yard hosts it: the landing page at
 `X-Yard-*` identity headers, secrets, and a local SQLite database with
 `.yard/migrations` applied. Files are watched and validated on save with the
 same rules as `yard push`, and open landing page tabs reload after each
-restart. No login required. `embed.js` and the buyer-state
+restart. No login required, and no Yard Auth locally: a persona picked at
+`/<slug>/__yard/auth/login` stands in for the signed-in buyer. `embed.js` and the buyer-state
 bridge are served locally, so with the runtime cached the loop works offline;
 only checkout and trial links go to Yard. Full guide: `local-dev.md`.
 

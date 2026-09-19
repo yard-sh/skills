@@ -357,8 +357,9 @@ after every save that restarts the runtime), so `window.yard.project`,
 `data-yard` bindings and Buy buttons behave as hosted (with live project data
 when logged in, otherwise a placeholder built from `.yard/settings.json`).
 `window.yard.ownership()` and `data-yard-when` follow the selected persona
-(`yard dev --as user:pro`, or the picker at `/<slug>/__yard/auth/login`), so
-signed-in and owned states can be checked without a purchase. See
+(`yard dev --as user:pro`, or the picker at `/<slug>/__yard/auth/login`, which
+stands in for Yard Auth locally), so signed-in and owned states can be checked
+without a purchase. See
 [local-dev.md](local-dev.md). Once it looks right, push and check it hosted:
 
 The project and each sandbox serve their own landing page. A sandbox serves at `https://<username>.yard.sh/<slug>/@<sandbox>/`; the project itself, which is what buyers reach, stays at `https://<username>.yard.sh/<slug>/`.
