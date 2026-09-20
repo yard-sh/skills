@@ -493,13 +493,7 @@ the prefix (`yard_a1b2c3d`) and metadata.
 
 ### Available scopes
 
-| Scope | Description |
-|---|---|
-| `projects:read` | Read project metadata |
-| `licenses:validate` | Validate license keys (called from your own software) |
-| `licenses:activate` | Activate / deactivate license keys |
-| `subscriptions:read` | Read project subscription status |
-| `subscriptions:write` | Create / cancel / reactivate project subscriptions |
+The catalog is served by the backend and printed by `yard keys create` when run without `--scopes`. For shipping inside a buyer's app: `metadata:read`, `releases:read`, `licenses:validate`, `licenses:activate`, `subscriptions:read`, `subscriptions:write`. For the team's own automation: `projects:read`, `projects:write`, `releases:write`, `sandboxes:read`, `sandboxes:write`, `services:read`, `services:write`, `secrets:write`, `db:query`, `users:read`, `transactions:read`, `transactions:write`, `coupons:read`, `coupons:write`. The full table with what each allows is in [api-reference.md](api-reference.md#authentication).
 
 Validation rules:
 

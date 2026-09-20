@@ -573,12 +573,13 @@ Lists the **active team's** API keys with the same columns the dashboard shows (
 **Table output:**
 
 ```
-NAME                     PREFIX             SCOPES                                   LAST USED      CREATED
+NAME                     PREFIX             LAST USED      CREATED      SCOPES
 --------------------------------------------------------------------------------------------------------------
-ci-runner                yard_a1b2c3d       licenses:validate, licenses:activate     2 hours ago    2026-04-12
-local-dev                yard_e5f6789       projects:read                            never          2026-03-30
+ci-runner                yard_a1b2c3d       2 hours ago    2026-04-12   licenses:validate, licenses:activate
+local-dev                yard_e5f6789       never          2026-03-30   projects:read, releases:write
+release-bot              yard_9f8e7d6       yesterday      2026-05-01   releases:read, releases:write, services:write
 
-Total: 2 / 100 keys
+Total: 3 / 100 keys
 ```
 
 ### yard keys create [name]
@@ -601,15 +602,7 @@ Mints a new API key **for the active team**. **The full secret is shown only onc
 }
 ```
 
-**Available scopes:**
-
-| Scope                 | Description                                           |
-| --------------------- | ----------------------------------------------------- |
-| `projects:read`       | Read project metadata                                 |
-| `licenses:validate`   | Validate license keys (called from your own software) |
-| `licenses:activate`   | Activate / deactivate license keys                    |
-| `subscriptions:read`  | Read project subscription status                      |
-| `subscriptions:write` | Create / cancel / reactivate project subscriptions    |
+**Available scopes:** the CLI fetches the catalog from the backend (`GET /v1/api-keys/scopes`) and prints it, grouped with a description per scope, when run without `--scopes`. Integration scopes are `metadata:read`, `releases:read`, `licenses:validate`, `licenses:activate`, `subscriptions:read`, `subscriptions:write`; management scopes are `projects:read`, `projects:write`, `releases:write`, `sandboxes:read`, `sandboxes:write`, `services:read`, `services:write`, `secrets:write`, `db:query` (sensitive), `users:read`, `transactions:read`, `transactions:write`, `coupons:read`, `coupons:write`. What each allows is in [api-reference.md](api-reference.md#authentication). An unknown scope fails client-side with the valid list.
 
 Backend caps each user at 100 API keys; on `403` from the create endpoint the CLI prints the reached-limit message.
 

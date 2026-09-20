@@ -49,17 +49,37 @@ Authorization: Bearer yard_{key}
 
 API keys start with the `yard_` prefix and are issued **per team** in the dashboard at https://dash.yard.sh/api-keys?action=create — a key is a team credential pinned to the team that created it, so it stays valid when the person who minted it leaves. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
 
-**Scopes** — each key is limited to the actions it actually needs. Pick only what you use:
+**Scopes** — a key reaches exactly the endpoints its scopes allow, and nothing else: an endpoint outside the API reference answers `401` to a key whatever it holds. Scopes do not imply one another. Pick only what you use. The catalog is served by `GET /v1/api-keys/scopes` and shown by `yard keys create`.
+
+Integration scopes are safe to ship inside a buyer's app:
 
 | Scope | What it allows |
 |-------|----------------|
-| `projects:read` | Read a project's metadata |
+| `metadata:read` | Read a project's public metadata and pricing |
+| `releases:read` | List public channels and their releases, and download release files |
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
 | `subscriptions:read` | Read a buyer's project subscription status |
-| `subscriptions:write` | Create, cancel, or reactivate a buyer's project subscription |
+| `subscriptions:write` | Create, cancel, reactivate or change a buyer's project subscription |
 
-Catalog management scopes do **not** exist — project create / update / delete are CLI-only.
+Management scopes act on the team's own account; keep keys holding them on servers the team controls:
+
+| Scope | What it allows |
+|-------|----------------|
+| `projects:read` | List and read the team's projects, including drafts and pricing history |
+| `projects:write` | Create, update and delete projects, and change pricing and page content |
+| `releases:write` | Create, edit, publish and archive releases, manage channels, and read draft contents |
+| `sandboxes:read` | List sandboxes and the releases they serve |
+| `sandboxes:write` | Create, rename and delete sandboxes, and pin or roll back what they serve |
+| `services:read` | List services, deployments, logs and metrics, and the names of secrets |
+| `services:write` | Create, update and delete services, their files and their migrations |
+| `secrets:write` | Set and delete secret values |
+| `db:query` | Run SQL, including writes, against every database of the project (sensitive) |
+| `users:read` | List the people who bought your projects, with their license keys and subscriptions |
+| `transactions:read` | List and inspect sales |
+| `transactions:write` | Change the trial on a sale |
+| `coupons:read` | List coupons, their analytics and the sales they were used on |
+| `coupons:write` | Create, update and delete coupons |
 
 ### Sessions (CLI and dashboard only)
 
@@ -81,13 +101,25 @@ A token a buyer's app obtained from the project's own OpenID Connect issuer. It 
 
 ## API-Key Endpoints
 
-Everything below accepts `Authorization: Bearer yard_...` with the listed scope. These are the endpoints you integrate into your software.
+Everything below accepts `Authorization: Bearer yard_...` with the listed scope. The tables cover the integration endpoints; the management surface (projects, releases, channels, sandboxes, services, secrets, database, users, transactions, coupons) is documented endpoint by endpoint, with request and response shapes, in the API reference at https://yard.sh/docs/v1/api, one category per resource. A key with the matching management scope can do over HTTP what the CLI does, except mint API keys, manage the team, or touch money (Stripe Connect, payouts).
 
 ### Projects
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `GET` | `/v1/projects/{username}/{slug}/metadata` | `projects:read` | Read project metadata (title, launch stage, tiers, pricing) |
+| `GET` | `/v1/projects/{username}/{slug}/metadata` | `metadata:read` | Read project metadata (title, launch stage, tiers, pricing) |
+
+### Releases (public reads for a shipped app)
+
+| Method | Path | Scope | Description |
+|---|---|---|---|
+| `GET` | `/v1/projects/{id}/channels` | `releases:read` | List the project's public channels |
+| `GET` | `/v1/projects/{id}/project-releases` | `releases:read` | List releases, optionally one channel's |
+| `GET` | `/v1/projects/{id}/project-releases/by-version/{version}` | `releases:read` | Read a release by version |
+| `GET` | `/v1/projects/{id}/project-releases/{releaseId}` | `releases:read` | Read a release by id |
+| `GET` | `/v1/projects/{id}/project-releases/{releaseId}/files/{fileId}/download` | `releases:read` | Download a release file (302 to the file) |
+
+A key holding only `releases:read` sees public channels and no drafts; a key that also holds `releases:write` sees everything a session sees.
 
 ### Licenses
 
@@ -107,6 +139,7 @@ Everything below accepts `Authorization: Bearer yard_...` with the listed scope.
 | `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a project |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
+| `POST` | `/v1/projects/{username}/{slug}/subscription/change` | `subscriptions:write` | Change a buyer's tier or billing interval |
 
 ---
 
@@ -190,20 +223,17 @@ Purchase status is **not** in the token, because it changes underneath a token's
 
 ---
 
-## CLI-only operations
+## Not reachable with an API key
 
-The following are **not** exposed over HTTP as integration endpoints — an API key can't reach them, because they manage the seller's own catalog. If an agent needs to do any of these, it must run the CLI, not issue HTTP requests:
+These stay behind a browser session or the CLI whatever scopes a key holds. If an agent needs one, it runs the CLI or hands off to the dashboard:
 
-- Create / update / delete a project (`yard init`, project edits in the dashboard)
-- Create, publish, or promote a release (`yard releases publish`, `yard releases promote`, the GitHub App on release webhook, or the dashboard)
-- Create, rename, delete, or reorder a **release channel**: dashboard-only, and not even in the CLI, which can only list them (`yard channels list`). The endpoints behind the dashboard (`POST`/`PATCH`/`DELETE /v1/projects/{id}/channels…`) are session-authenticated and gated on the `sandboxes` permission; an API key cannot reach them
-- Create, rename, delete, or configure a **sandbox**, and choose what the project or a sandbox serves (`yard sandbox …`, or the dashboard). Sandbox writes need the `sandboxes` permission and are capped by `max_sandboxes`; writes to the project itself need only ordinary project-write permission
-- Create / update / delete / bulk-generate coupons (`yard coupons create`, `yard coupons generate`, `yard coupons update`, `yard coupons rm`)
-- Read the seller's users and sales (`yard users`, `yard transactions`) — these are reporting on the selling team's own books, not an integration surface, so an API key can't reach them
-- Lengthen or shorten a buyer's running free trial (`yard transactions trial <order-id> --add-days N`)
-- Stripe Connect onboarding and payout management
-- Custom domains, project images / videos, webhook secrets
-- Custom landing page editing (`yard init --page`, `yard push`, …)
+- Minting, listing, editing or deleting API keys (`yard keys …`, the dashboard)
+- Team management: members, roles, invites, ownership, switching the active team
+- Stripe Connect onboarding, payouts, payment methods, the seller's own plan
+- Custom domains, project images and videos, webhook secrets
+- Account, session and security-device management
+
+Everything else the CLI does has a management scope; see the tables above and the API reference.
 
 See [cli-commands.md](./cli-commands.md) for the full CLI surface.
 
