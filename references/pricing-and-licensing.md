@@ -2,17 +2,26 @@
 
 ## Table of Contents
 
-- [Pricing Tiers](#pricing-tiers)
-- [Seat Types](#seat-types)
-- [Volume Brackets](#volume-brackets)
-- [Launch Stages and Discounts](#launch-stages-and-discounts)
-- [Coupons](#coupons)
-- [Free Trials](#free-trials)
-- [Gift Purchases](#gift-purchases)
-- [Commerce in a Sandbox](#commerce-in-a-sandbox)
-- [License Keys](#license-keys)
-- [Device Activations](#device-activations)
-- [Checkout Calculation Flow](#checkout-calculation-flow)
+- [Pricing, Licensing, and Monetization](#pricing-licensing-and-monetization)
+  - [Table of Contents](#table-of-contents)
+  - [Pricing Tiers](#pricing-tiers)
+  - [Seat Types](#seat-types)
+    - [single](#single)
+    - [fixed\_pack](#fixed_pack)
+    - [per\_seat](#per_seat)
+  - [Volume Brackets](#volume-brackets)
+  - [Launch Stages and Discounts](#launch-stages-and-discounts)
+  - [Coupons](#coupons)
+  - [Free Trials](#free-trials)
+  - [Gift Purchases](#gift-purchases)
+  - [Commerce in a Sandbox](#commerce-in-a-sandbox)
+    - [What a simulated purchase does](#what-a-simulated-purchase-does)
+    - [Simulated sales stay out of the books](#simulated-sales-stay-out-of-the-books)
+    - [Telling a sandbox key apart at runtime](#telling-a-sandbox-key-apart-at-runtime)
+    - [Deleting a sandbox](#deleting-a-sandbox)
+  - [License Keys](#license-keys)
+  - [Device Activations](#device-activations)
+  - [Checkout Calculation Flow](#checkout-calculation-flow)
 
 ---
 
@@ -21,6 +30,7 @@
 Each project has one or more pricing tiers. How many a seller may create depends on their plan and is enforced server-side via the `max_pricing_tiers` permission (currently Basic: 2, Pro: 10). Nothing is gated client-side — an over-limit change is rejected with `upgrade_required`. Check the current cap with `yard me --json` → `.team_permissions.max_pricing_tiers`.
 
 **Tier fields:**
+
 - `name` — Display name for the tier
 - `price_cents` — Base price in cents ($0 for free, or $3.00-$10,000.00)
 - `description` — Optional description
@@ -32,6 +42,7 @@ Each project has one or more pricing tiers. How many a seller may create depends
 - `yearly_discount_percent` — Optional discount for yearly subscription billing
 
 **Price constraints:**
+
 - Minimum: $3.00 (300 cents) for paid tiers
 - Maximum: $10,000.00 (1,000,000 cents)
 - $0 (free) tiers are allowed
@@ -42,23 +53,29 @@ Each project has one or more pricing tiers. How many a seller may create depends
 ## Seat Types
 
 ### single
+
 Individual license. Quantity is always 1. One license key per purchase.
 
 ### fixed_pack
+
 Fixed seat count (e.g., "Team 5-Pack"). Purchased as a single unit — the price is for the whole pack. Generates `seat_count` license keys per purchase.
 
 **Fields:**
+
 - `seat_count` — Number of seats in the pack (required)
 
 ### per_seat
+
 Buyer selects a quantity via a quantity selector. Supports min/max seat limits and volume bracket discounts.
 
 **Fields:**
+
 - `min_seats` — Minimum quantity (optional)
 - `max_seats` — Maximum quantity (optional, nil = unlimited)
 - `volume_brackets` — Optional volume discount brackets
 
 **Price calculation:**
+
 - No matching bracket: `base_price * quantity`
 - With bracket: `(base_price - base_price * discount_percent / 100) * quantity`
 
@@ -69,6 +86,7 @@ Buyer selects a quantity via a quantity selector. Supports min/max seat limits a
 Volume brackets apply only to `per_seat` tiers. They define percentage discounts at quantity thresholds.
 
 **Rules:**
+
 - Brackets must be contiguous (no gaps or overlaps between min/max ranges)
 - The last bracket can have unlimited max (`max_quantity = null`)
 - `discount_percent` range: 1-99
@@ -87,12 +105,12 @@ Volume brackets apply only to `per_seat` tiers. They define percentage discounts
 
 Every project has a launch stage that controls availability and pricing. New projects always start in `draft` and progress through launch stages **forward-only**: once advanced, a project can never go back. The launch stage is not the same thing as visibility. Whether strangers may view the storefront at all is the project's **own visibility** (`yard sandbox visibility <public|private>`), and the launch stage gates on top of it: a draft serves nothing publicly however visibility is set.
 
-| Launch stage | Description | Discount field |
-|---|---|---|
-| `draft` | Initial launch stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page. | — |
+| Launch stage   | Description                                                                                                                                                                            | Discount field                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `draft`        | Initial launch stage. Not visible to buyers. Use this while configuring tiers, copy, and the landing page.                                                                             | —                               |
 | `early_access` | Public, purchasable, but the seller signals the project is still being polished. Buyers see an "Early Access" indicator. Optional launch discount via `early_access_discount_percent`. | `early_access_discount_percent` |
-| `published` | General availability. Final launch stage. | — |
-| `archived` | No longer available for new purchases. (Existing buyers retain access.) | — |
+| `published`    | General availability. Final launch stage.                                                                                                                                              | —                               |
+| `archived`     | No longer available for new purchases. (Existing buyers retain access.)                                                                                                                | —                               |
 
 **Transition rules** (enforced server-side):
 
@@ -114,14 +132,17 @@ Coupons depend on the plan's `coupons` permission — check with `yard me --json
 **Manage them from the CLI** — `yard coupons` covers list / show / create / generate / update / rm / transactions / validate, all with `--json` and `--spec`. See [cli-commands.md](./cli-commands.md#yard-coupons) for the full surface.
 
 **Coupon types:**
+
 - `percentage` — 1-100% discount off the price
 - `fixed_amount` — Fixed amount in cents subtracted from the price
 
 **Coupon scopes:**
+
 - `all_projects` — Applies to all of the seller's projects (including future ones)
 - `specific_projects` — Applies only to selected projects (via `coupon_projects` junction table)
 
 **Coupon fields:**
+
 - `code` — The coupon code string (upper-cased, 4-50 alphanumeric characters)
 - `discount_type` — `percentage` or `fixed_amount`
 - `discount_value` — Percentage (1-100) or amount in **cents**
@@ -167,8 +188,9 @@ Gift purchasing is a **Pro-only** feature (check with `yard me --json` → `.tea
 - `gift_enabled` — Toggle on each pricing tier (one-time tiers only; checkout hides gifting for subscriptions)
 - Buyer provides a recipient email at checkout
 - Recipient receives activation instructions via email
-- Tracked via `gift_activations` table
-- Gift purchases create a license key that the recipient activates
+- Buyers can arm gifting from the project page's Gift button or with `?gift=true` on the checkout URL
+- The license key is minted on activation, not at purchase - an unactivated gift has none
+- Unactivated after 90 days: the gift expires and the purchase is automatically refunded
 
 ---
 
@@ -200,10 +222,10 @@ The flip side is that **the CLI cannot read a sandbox's commerce at all** - neit
 
 `POST /v1/licenses/validate` answers `valid: true` for a key minted by a simulated purchase, exactly as it does for a real one. The response carries a **`sandbox`** field saying where the key's purchase lives:
 
-| `sandbox` value | What the key is |
-|---|---|
-| absent / empty | a real purchase on the project itself |
-| a sandbox name | a simulated purchase inside that sandbox |
+| `sandbox` value | What the key is                          |
+| --------------- | ---------------------------------------- |
+| absent / empty  | a real purchase on the project itself    |
+| a sandbox name  | a simulated purchase inside that sandbox |
 
 Software that grants entitlement on a successful validation **must check this field**, or a simulated purchase entitles someone for real. The safe default in shipped software is to accept only an absent `sandbox` unless the build is a test build.
 
@@ -220,12 +242,14 @@ License keys are a **Pro-only** feature (check with `yard me --json` → `.team_
 Yard automatically generates license keys for each purchase.
 
 **Key characteristics:**
+
 - Generated per transaction based on tier's seat type and quantity
 - `single` tier: 1 key per purchase
 - `fixed_pack` tier: `seat_count` keys per purchase
 - `per_seat` tier: `quantity` keys per purchase (one per seat)
 
 **Validation endpoint:** `POST /v1/licenses/validate`
+
 - Input: license key + optional device ID
 - Output: validation result with project/tier info
 - **Requires an API key** with the `licenses:validate` scope (`Authorization: Bearer yard_<key>`). Embed it in the seller's software the same way you would for releases — see [api-reference.md](api-reference.md) for the endpoint definition and [releases-and-updates.md](releases-and-updates.md) for the embedded-API-key tradeoffs.

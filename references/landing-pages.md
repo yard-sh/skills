@@ -11,53 +11,53 @@ This document covers what you can put **inside** that bundle: the project data y
 When a custom landing page is rendered, Yard makes the project's data available to your code as a synchronous JavaScript object — no `fetch`, no API key, no async wait:
 
 ```js
-window.yard.project   // the project (or null if data couldn't be loaded)
+window.yard.project; // the project (or null if data couldn't be loaded)
 ```
 
 The object is the JSON returned by `GET /v1/projects/{username}/{slug}/public` — same snake_case field names (no camelization happens between the response and `window.yard.project`). The most useful fields:
 
-| Field | Type | Notes |
-|---|---|---|
-| `slug` | `string` | URL-safe project identifier |
-| `title` | `string` | Display name |
-| `tagline` | `string?` | Short marketing line |
-| `description` | `string?` | Markdown source of the long description |
-| `description_html` | `string?` | Server-rendered HTML for `description` |
-| `price_cents` | `number` | Default tier price, in cents |
-| `discounted_price_cents` | `number?` | Effective price after any launch stage discount |
-| `launch_stage` | `string` | `draft`, `pre-order`, `early_access`, or `published` |
-| `stage_discount_percent` | `number?` | Active launch-stage discount percent, if any |
-| `tiers` | `PricingTier[]` | All pricing tiers — see below |
-| `images` | `ProjectImage[]` | Uploaded screenshots/icons; each has a `url` |
-| `category` | `string?` | Optional category label |
-| `faq` | `{ question, answer }[]` | Seller-defined FAQ entries |
-| `metadata` | `{ key, value }[]` | Seller-defined free-form metadata pairs |
-| `license_key_enabled` | `boolean` | Whether license keys are issued |
-| `latest_release` | `PublicReleaseInfo?` | Most recent published release (tag, name, notes, date) |
-| `release_count` | `number` | Total published releases |
-| `seller` | `{ username, avatar_url?, … }` | The owning **team**: `username` carries the team's username and `avatar_url` its icon. |
+| Field                    | Type                           | Notes                                                                                  |
+| ------------------------ | ------------------------------ | -------------------------------------------------------------------------------------- |
+| `slug`                   | `string`                       | URL-safe project identifier                                                            |
+| `title`                  | `string`                       | Display name                                                                           |
+| `tagline`                | `string?`                      | Short marketing line                                                                   |
+| `description`            | `string?`                      | Markdown source of the long description                                                |
+| `description_html`       | `string?`                      | Server-rendered HTML for `description`                                                 |
+| `price_cents`            | `number`                       | Default tier price, in cents                                                           |
+| `discounted_price_cents` | `number?`                      | Effective price after any launch stage discount                                        |
+| `launch_stage`           | `string`                       | `draft`, `pre-order`, `early_access`, or `published`                                   |
+| `stage_discount_percent` | `number?`                      | Active launch-stage discount percent, if any                                           |
+| `tiers`                  | `PricingTier[]`                | All pricing tiers — see below                                                          |
+| `images`                 | `ProjectImage[]`               | Uploaded screenshots/icons; each has a `url`                                           |
+| `category`               | `string?`                      | Optional category label                                                                |
+| `faq`                    | `{ question, answer }[]`       | Seller-defined FAQ entries                                                             |
+| `metadata`               | `{ key, value }[]`             | Seller-defined free-form metadata pairs                                                |
+| `license_key_enabled`    | `boolean`                      | Whether license keys are issued                                                        |
+| `latest_release`         | `PublicReleaseInfo?`           | Most recent published release (tag, name, notes, date)                                 |
+| `release_count`          | `number`                       | Total published releases                                                               |
+| `seller`                 | `{ username, avatar_url?, … }` | The owning **team**: `username` carries the team's username and `avatar_url` its icon. |
 
 Each entry in `tiers` exposes:
 
 ```jsonc
 {
-  "id": "uuid",                  // pass to data-tier-id / window.yard.checkout({ tier })
+  "id": "uuid", // pass to data-tier-id / window.yard.checkout({ tier })
   "name": "Pro",
-  "description": "…",            // optional, may be null
+  "description": "…", // optional, may be null
   "price_cents": 4900,
   "is_default": true,
-  "seat_type": "single",         // "single" | "fixed_pack" | "per_seat"
-  "seat_count": null,            // set for fixed_pack
-  "min_seats": null,             // set for per_seat
+  "seat_type": "single", // "single" | "fixed_pack" | "per_seat"
+  "seat_count": null, // set for fixed_pack
+  "min_seats": null, // set for per_seat
   "max_seats": null,
-  "pricing_model": "one_time",   // "one_time" | "subscription"
+  "pricing_model": "one_time", // "one_time" | "subscription"
   "yearly_discount_percent": null,
   "features": ["…", "…"],
-  "free_trial_enabled": false,   // free trials are configured PER TIER, not per project
-  "free_trial_days": null,       // trial length in days, when free_trial_enabled
-  "trial_requires_card": true,   // per-tier: subscription-tier trials collect a card via checkout
-  "gift_enabled": false,         // per-tier: whether this tier can be bought as a gift
-  "volume_brackets": []          // per_seat tiers may define quantity discounts
+  "free_trial_enabled": false, // free trials are configured PER TIER, not per project
+  "free_trial_days": null, // trial length in days, when free_trial_enabled
+  "trial_requires_card": true, // per-tier: subscription-tier trials collect a card via checkout
+  "gift_enabled": false, // per-tier: whether this tier can be bought as a gift
+  "volume_brackets": [], // per_seat tiers may define quantity discounts
 }
 ```
 
@@ -128,17 +128,17 @@ Add `data-action="checkout"` (or `"trial"`) to any clickable element and Yard ha
 
 Recognised attributes on `data-action="checkout"` elements:
 
-| Attribute | Meaning |
-|---|---|
-| `data-tier-id` (or `data-tier`) | Tier UUID. Omit to use the default tier. |
-| `data-interval` | `monthly` or `yearly` (subscription tiers only). |
-| `data-quantity` | Seat count for `fixed_pack` / `per_seat` tiers. |
-| `data-gift` | Presence of the attribute opens the gift-purchase flow. |
+| Attribute                       | Meaning                                                 |
+| ------------------------------- | ------------------------------------------------------- |
+| `data-tier-id` (or `data-tier`) | Tier UUID. Omit to use the default tier.                |
+| `data-interval`                 | `monthly` or `yearly` (subscription tiers only).        |
+| `data-quantity`                 | Seat count for `fixed_pack` / `per_seat` tiers.         |
+| `data-gift`                     | Presence of the attribute opens the gift-purchase flow. |
 
 `data-action="trial"` accepts one attribute:
 
-| Attribute | Meaning |
-|---|---|
+| Attribute                       | Meaning                                                                                                                                                                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data-tier-id` (or `data-tier`) | Tier UUID to trial. Since trials are per-tier, set this to the id of a tier whose `free_trial_enabled` is true. Omit it to let yard use the default tier (or the first trial-enabled tier if the default has no trial). |
 
 A trial click redirects to yard's hosted trial flow (`/trial/<username>/<slug>`): a signed-in
@@ -150,6 +150,24 @@ Only show the trial button when a tier actually offers a trial — see the worke
 Clicks on `data-action` elements have their default behaviour prevented automatically — there's no need for the surrounding `<a>` to point anywhere.
 
 **The attribute wins over the `href`.** A `data-action` element keeps starting checkout or a trial no matter what its `href` or text says, so never repurpose one as a plain link later (for example, rewriting a "Buy" button into "Open in Library" for owners). Either remove the `data-action` attribute when you change what the element does, or keep two elements and let `data-yard-when` pick the visible one, as the worked example does.
+
+### Checkout URL parameters
+
+`data-action` and `window.yard.checkout()` build these for you. Set them by hand only when linking
+to checkout directly (`https://yard.sh/checkout/<username>/<slug>?...`).
+
+| Param      | Meaning                                                                             |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `tier`     | Tier UUID, or the tier name (case-insensitive). Omit for the default tier.          |
+| `quantity` | Seat count for `fixed_pack` / `per_seat` tiers.                                     |
+| `interval` | `monthly` or `yearly` (subscription tiers). `year` / `annual` also accepted.        |
+| `gift`     | Arms gift purchase on a `gift_enabled` one-time tier. `true`, `1`, or bare `?gift`. |
+| `ref`      | Affiliate code, carried into the sale.                                              |
+| `sandbox`  | Sandbox id - simulated checkout, no card charged.                                   |
+
+Invalid values are ignored, not rejected: `?interval=weekly` bills monthly, and `?gift=true` on a
+tier without `gift_enabled` leaves gifting off. `/trial/<username>/<slug>` takes `tier` and
+`sandbox` only.
 
 ---
 
@@ -200,10 +218,10 @@ Examples:
 ```js
 // Render tier buttons dynamically — no hardcoded UUIDs in HTML
 for (const tier of window.yard.project.tiers) {
-  const btn = document.createElement('button');
+  const btn = document.createElement("button");
   btn.textContent = `${tier.name} — $${(tier.price_cents / 100).toFixed(2)}`;
-  btn.addEventListener('click', () => window.yard.checkout({ tier: tier.id }));
-  document.querySelector('#tiers').append(btn);
+  btn.addEventListener("click", () => window.yard.checkout({ tier: tier.id }));
+  document.querySelector("#tiers").append(btn);
 }
 
 // Conditionally show a "Start free trial" CTA — trials are per-tier
@@ -211,7 +229,7 @@ const trialTier = window.yard.project.tiers.find(
   (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
 );
 if (trialTier) {
-  const cta = document.querySelector('#trial-cta');
+  const cta = document.querySelector("#trial-cta");
   cta.dataset.tierId = trialTier.id; // so data-action="trial" trials the right tier
   cta.hidden = false;
 }
@@ -237,21 +255,23 @@ const state = await window.yard.ownership();
 // state may be null on a yard.sh-direct page where no bridge is needed,
 // or in browsers that block third-party cookies on a custom merchant
 // domain. Always null-check.
-if (state?.owned) { /* … */ }
+if (state?.owned) {
+  /* … */
+}
 ```
 
 Resolved shape:
 
-| Field | Type | Notes |
-|---|---|---|
-| `signed_in` | `boolean` | Is the visitor signed in to yard at all? |
-| `user` | `{ id, username, avatar_url } \| null` | Minimal profile; `null` when signed out. |
-| `owned` | `boolean` | Does this user own this project (any tier, paid or free)? Active trials and active subscriptions count. |
-| `is_trial` | `boolean` | True when the active entitlement is a free trial. |
-| `is_subscription` | `boolean` | True when the active entitlement is a subscription. |
-| `transaction_id` | `string \| null` | The transaction or subscription ID. Useful as an opaque entitlement reference. |
-| `tier_id` | `string \| null` | UUID of the tier they hold. Match against `window.yard.project.tiers[i].id` to know **which** tier. |
-| `tier_name` | `string \| null` | Display name of the held tier (e.g. `"Pro"` or `"Monthly"`). Handy for UI copy. |
+| Field             | Type                                   | Notes                                                                                                   |
+| ----------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `signed_in`       | `boolean`                              | Is the visitor signed in to yard at all?                                                                |
+| `user`            | `{ id, username, avatar_url } \| null` | Minimal profile; `null` when signed out.                                                                |
+| `owned`           | `boolean`                              | Does this user own this project (any tier, paid or free)? Active trials and active subscriptions count. |
+| `is_trial`        | `boolean`                              | True when the active entitlement is a free trial.                                                       |
+| `is_subscription` | `boolean`                              | True when the active entitlement is a subscription.                                                     |
+| `transaction_id`  | `string \| null`                       | The transaction or subscription ID. Useful as an opaque entitlement reference.                          |
+| `tier_id`         | `string \| null`                       | UUID of the tier they hold. Match against `window.yard.project.tiers[i].id` to know **which** tier.     |
+| `tier_name`       | `string \| null`                       | Display name of the held tier (e.g. `"Pro"` or `"Monthly"`). Handy for UI copy.                         |
 
 ### Zero-JS shortcuts: `data-yard-when`
 
@@ -284,14 +304,14 @@ on first paint.
 // Show user avatar in the corner
 const state = await window.yard.ownership();
 if (state?.signed_in) {
-  document.querySelector('#avatar').src = state.user.avatar_url;
-  document.querySelector('#username').textContent = state.user.username;
+  document.querySelector("#avatar").src = state.user.avatar_url;
+  document.querySelector("#username").textContent = state.user.username;
 }
 
 // Branch by tier
 const state = await window.yard.ownership();
 if (state?.owned) {
-  const proTier = window.yard.project.tiers.find((t) => t.name === 'Pro');
+  const proTier = window.yard.project.tiers.find((t) => t.name === "Pro");
   if (state.tier_id === proTier?.id) {
     showProFeatures();
   } else {
@@ -302,7 +322,7 @@ if (state?.owned) {
 // Subscription self-service link
 const state = await window.yard.ownership();
 if (state?.is_subscription) {
-  document.querySelector('#manage-sub').href =
+  document.querySelector("#manage-sub").href =
     `https://yard.sh/library/${window.yard.project.seller.username}/${window.yard.project.slug}/subscription`;
 }
 ```
@@ -394,15 +414,15 @@ Editing a release that is already being served is live: Yard redeploys it and `y
 
 The same limits apply whether you upload via `yard push` or the dashboard editor:
 
-| Limit | Value |
-|---|---|
-| Files per bundle | 20 |
-| Max size per file | 1 MB |
-| Max total bundle size | 5 MB |
-| Allowed extensions | `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2` |
-| Path rules | letters/digits/`._-` only, at most one subdirectory level, no dotfiles |
-| Required file | `index.html` (must exist before you can publish) |
-| Applies | To the project's and each sandbox's bundle separately |
+| Limit                 | Value                                                                  |
+| --------------------- | ---------------------------------------------------------------------- |
+| Files per bundle      | 20                                                                     |
+| Max size per file     | 1 MB                                                                   |
+| Max total bundle size | 5 MB                                                                   |
+| Allowed extensions    | `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`          |
+| Path rules            | letters/digits/`._-` only, at most one subdirectory level, no dotfiles |
+| Required file         | `index.html` (must exist before you can publish)                       |
+| Applies               | To the project's and each sandbox's bundle separately                  |
 
 Anything outside these constraints is rejected client-side by `yard push` before any upload happens.
 
@@ -430,8 +450,17 @@ A complete one-file landing page for a single-tier project:
 
     <section class="cta">
       <button data-yard-when="not_owned" data-action="checkout">Buy now</button>
-      <button data-yard-when="not_owned" data-action="trial" id="trial-btn" hidden>Start free trial</button>
-      <a data-yard-when="owned" href="https://yard.sh/library">Open in your library</a>
+      <button
+        data-yard-when="not_owned"
+        data-action="trial"
+        id="trial-btn"
+        hidden
+      >
+        Start free trial
+      </button>
+      <a data-yard-when="owned" href="https://yard.sh/library"
+        >Open in your library</a
+      >
     </section>
 
     <script>
@@ -442,7 +471,7 @@ A complete one-file landing page for a single-tier project:
         (t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0,
       );
       if (trialTier) {
-        const btn = document.querySelector('#trial-btn');
+        const btn = document.querySelector("#trial-btn");
         btn.dataset.tierId = trialTier.id;
         btn.hidden = false;
       }
