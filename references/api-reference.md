@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **What this API covers.** The Yard REST API is the **integration surface**: it lets a seller's shipped software (or an agent working on that software) validate licenses, read release metadata, manage buyer subscriptions, and sign buyers in with [Yard Auth](#yard-auth-for-external-apps). It is **not** used to manage a seller's own Yard catalog. Project, release, and coupon management, plus reading the seller's users and sales, happen through the **Yard CLI** (`yard init`, `yard projects`, `yard coupons`, `yard users`, `yard transactions`, `yard push / yard pull`); see [cli-commands.md](./cli-commands.md).
+> **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing buyer subscriptions, and signing buyers in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the seller's own catalog (projects, releases, pages, services, coupons, buyers, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://dash.yard.sh/api-keys?action=create**.
 
@@ -12,17 +12,17 @@ https://api.yard.sh
 
 All API paths below are relative to this base URL (e.g., `/v1/licenses/validate` means `https://api.yard.sh/v1/licenses/validate`).
 
-## `{username}` — how projects are addressed
+## `{username}`: how projects are addressed
 
 Projects are owned by a **team**, and a project is addressed by its owning team's username plus its slug: `/v1/projects/{username}/{slug}/…`, matching the public URL `https://yard.sh/@{username}/{slug}` and the subdomain `https://{username}.yard.sh/{slug}`.
 
-A team username is **not** a user's username. They share one namespace (so neither can collide with the other), but a team username is what resolves here, and a seller's personal username resolves nothing unless they happen to own a team with the same username. Read the value from `yard team --json` → `.active_team.username`, or from `seller.username` on the public project response — never assume it matches the signed-in user.
+A team username is **not** the user's username (they share one namespace but routinely differ). Read it from `yard team --json` → `.active_team.username` or `seller.username` on the public project; never assume it matches the signed-in user.
 
 ---
 
 ## The `sandbox` parameter
 
-A project has one set of real data - its own - plus any number of **sandboxes**, each an optional copy of the project's landing page, pricing, service, database and commerce. Endpoints that read or write project state resolve the `sandbox` parameter the same way everywhere: **omitted or empty means the project itself**, which is what buyers reach and the only place where money is real. Naming a sandbox selects it, and its commerce is simulated by the platform (see [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
+A project has its own real data plus any number of **sandboxes**, each an optional copy with simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). Everywhere, an **omitted or empty `sandbox` means the project itself**, the only place money is real; naming a sandbox selects it.
 
 The parameter travels in the query string on `GET`s and on the subscription-management `POST`s, and in the JSON body on the checkout endpoints:
 
@@ -35,7 +35,7 @@ The parameter travels in the query string on `GET`s and on the subscription-mana
 | `POST /v1/subscription-intent` | JSON body (`"sandbox": "preview"`) |
 | The buyer's download and library endpoints | query string |
 
-A sandbox that does not exist is a `404` naming it. A **private** sandbox, the default for a new one, answers only callers who belong to the project's owning team, and answers everyone else with `404`, as if it did not exist; a **public** sandbox answers anyone with the URL. Responses that resolve a sandbox are never cacheable, because the same URL can answer differently to a stranger and to a team member, and visibility can flip at any moment.
+An unknown sandbox is a `404` naming it. A **private** sandbox (the default) answers only members of the owning team and gives everyone else the same `404`; a **public** one answers anyone. Responses that resolve a sandbox are never cacheable.
 
 ---
 
@@ -47,9 +47,9 @@ A sandbox that does not exist is a `404` naming it. A **private** sandbox, the d
 Authorization: Bearer yard_{key}
 ```
 
-API keys start with the `yard_` prefix and are issued **per team** in the dashboard at https://dash.yard.sh/api-keys?action=create — a key is a team credential pinned to the team that created it, so it stays valid when the person who minted it leaves. Every integration request carries the key in the `Authorization` header with the `Bearer ` prefix.
+API keys start with `yard_` and belong to a **team** (created with `yard keys create` or at https://dash.yard.sh/api-keys?action=create); a key keeps working when the person who minted it leaves. Send it as `Authorization: Bearer yard_…`.
 
-**Scopes** — a key reaches exactly the endpoints its scopes allow, and nothing else: an endpoint outside the API reference answers `401` to a key whatever it holds. Scopes do not imply one another. Pick only what you use. The catalog is served by `GET /v1/api-keys/scopes` and shown by `yard keys create`.
+**Scopes:** a key reaches exactly the endpoints its scopes allow; anything else answers `401`. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
 Integration scopes are safe to ship inside a buyer's app:
 
@@ -83,11 +83,7 @@ Management scopes act on the team's own account; keep keys holding them on serve
 
 ### Sessions (CLI and dashboard only)
 
-```
-Authorization: Bearer {access token}
-```
-
-The dashboard keeps its session in a cookie. The CLI holds a short-lived access token issued when `yard login` completes its device flow, sends it as a bearer token, and receives renewed tokens from the server in a `Yard-Access-Token` response header. The session behind it lasts up to 90 days and can be revoked from the security page. The CLI stores the token in `~/.yard/config.json`. **Third-party integrations should not use CLI sessions.** Use an API key instead.
+The CLI and dashboard use a signed-in session, not an API key. Integrations must use an API key.
 
 ### Yard Auth access tokens (a buyer, in an external app)
 
@@ -101,7 +97,7 @@ A token a buyer's app obtained from the project's own OpenID Connect issuer. It 
 
 ## API-Key Endpoints
 
-Everything below accepts `Authorization: Bearer yard_...` with the listed scope. The tables cover the integration endpoints; the management surface (projects, releases, channels, sandboxes, services, secrets, database, users, transactions, coupons) is documented endpoint by endpoint, with request and response shapes, in the API reference at https://yard.sh/docs/v1/api, one category per resource. A key with the matching management scope can do over HTTP what the CLI does, except mint API keys, manage the team, or touch money (Stripe Connect, payouts).
+Everything below takes `Authorization: Bearer yard_…` with the listed scope. The management endpoints (projects, releases, channels, sandboxes, services, secrets, database, users, transactions, coupons) are documented with request and response shapes at https://yard.sh/docs/v1/api; a key with the matching scope can do over HTTP what the CLI does, except manage API keys, the team, or money.
 
 ### Projects
 
@@ -128,7 +124,7 @@ A key holding only `releases:read` sees public channels and no drafts; a key tha
 | `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key (optionally bind to a device) |
 | `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license |
 
-`POST /v1/licenses/validate` answers `valid: true` for any live key, including one minted by a **simulated purchase inside a sandbox**. The response carries a `sandbox` field: absent or empty for a real purchase on the project itself, a sandbox name for a simulated purchase inside that sandbox. Software that grants entitlement has to check it, or a simulated purchase entitles someone for real. See [pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox).
+`validate` answers `valid: true` for a sandbox key too; check its `sandbox` field before granting anything ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 
 
 ### Subscriptions (buyer-facing)
@@ -155,7 +151,7 @@ Built-in updaters in the seller's software can reach these directly with just a 
 | `GET` | `/v1/updates/releases?license_key={key}` | List the project's or one sandbox's releases (GitHub Releases list shape) |
 | `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release |
 
-All of these accept an optional `sandbox` parameter (see [The `sandbox` parameter](#the-sandbox-parameter)). Omitting it reads the project itself, which is what buyers get. Anything private - a private project included - answers only license keys held by a member of the project's owning team; everyone else gets a 404, as if it doesn't exist. A key also reaches only where its own purchase lives, in both directions: a sandbox key cannot pull the project's own artifacts, and a real buyer's key cannot pull a sandbox's.
+All take an optional `sandbox`; details and response shapes in [releases-and-updates.md](releases-and-updates.md#downloading-releases-with-a-license-key).
 
 ---
 
@@ -212,9 +208,6 @@ Purchase status is **not** in the token, because it changes underneath a token's
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/ready` | Readiness check |
-| `GET` | `/version` | API version info |
 | `GET` | `/v1/projects/public` | List all public projects |
 | `GET` | `/v1/projects/{username}/{slug}/public` | Get a public project (addressed under the owning team's username - this is the shape `window.yard.project` exposes) |
 | `GET` | `/v1/teams/{id}` | Get a team's public profile and its projects. `{id}` is the team's UUID **or** its username (the subject is always a team, never an individual user) |
@@ -225,17 +218,13 @@ Purchase status is **not** in the token, because it changes underneath a token's
 
 ## Not reachable with an API key
 
-These stay behind a browser session or the CLI whatever scopes a key holds. If an agent needs one, it runs the CLI or hands off to the dashboard:
+These need a signed-in session (CLI or dashboard) whatever scopes a key holds:
 
 - Minting, listing, editing or deleting API keys (`yard keys …`, the dashboard)
 - Team management: members, roles, invites, ownership, switching the active team
-- Stripe Connect onboarding, payouts, payment methods, the seller's own plan
+- Payout onboarding, payouts, payment methods, the team's own plan
 - Custom domains, project images and videos, webhook secrets
 - Account, session and security-device management
-
-Everything else the CLI does has a management scope; see the tables above and the API reference.
-
-See [cli-commands.md](./cli-commands.md) for the full CLI surface.
 
 ---
 
@@ -250,10 +239,10 @@ All errors return a JSON body:
 ```
 
 Common HTTP status codes:
-- `400` — Bad request (validation error)
-- `401` — Unauthorized (missing or invalid token)
-- `403` — Forbidden (insufficient scope, or endpoint requires session auth)
-- `404` — Not found
-- `409` — Conflict (e.g., duplicate resource)
-- `429` — Rate limited
-- `500` — Internal server error
+- `400`: Bad request (validation error)
+- `401`: Unauthorized (missing or invalid token)
+- `403`: Forbidden (insufficient scope, or endpoint requires session auth)
+- `404`: Not found
+- `409`: Conflict (e.g., duplicate resource)
+- `429`: Rate limited
+- `500`: Internal server error

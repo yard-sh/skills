@@ -23,7 +23,7 @@ Requirements: `.yard/settings.json` with at least one `services` entry or a land
 
 No login is needed. Logged in, `yard dev` also fetches the project's live public data for the landing page (so `window.yard.project` is real) and warns about secrets set on Yard that have no local value.
 
-Nothing else is fetched while it runs: `embed.js` ships inside the CLI and the buyer-state bridge behind `window.yard.ownership()` is answered locally from the persona. With the runtime already downloaded the whole loop works offline; only checkout and trial links leave the machine, since a purchase needs Yard.
+Nothing else is fetched while it runs (`window.yard.ownership()` is answered from the persona), so with the runtime downloaded the loop works offline; only checkout and trial links leave the machine.
 
 Startup output (human mode):
 
@@ -51,21 +51,21 @@ Local URLs keep the hosted shape so relative links and `fetch("api/...")` behave
 | `https://<team>.yard.sh/<slug>/` | `http://localhost:9875/<slug>/` |
 | `https://<team>.yard.sh/<slug>/api/` | `http://localhost:9875/<slug>/api/` |
 
-`/` redirects to `/<slug>/`. Inside `_service.js` the path is rooted at `/` (a visit to `/<slug>/api/notes` arrives as `/notes`) and `request.url` is `http://localhost:9875/notes`. Root-absolute URLs that break when hosted break here too, which is the point.
+`/` redirects to `/<slug>/`. Paths reach `_service.js` exactly as hosted ([service-and-database.md](service-and-database.md#paths-and-static-files)): bundle files and folder `index.html` pages are served without running it, and everything else arrives unchanged, rooted at `/` (`/<slug>/api/notes` arrives as `/notes`, `request.url` is `http://localhost:9875/notes`). Root-absolute URLs that break when hosted break here too.
 
 ## Personas instead of sign-in
 
 There is no real Yard Auth locally. A persona decides which `X-Yard-*` headers the edge stamps and what `__yard/auth/me` returns:
 
-| Persona id | `X-Yard-User-Id` | `X-Yard-Entitlement` | `X-Yard-Tier` | `member` |
-| --- | --- | --- | --- | --- |
-| `anonymous` | (none) | (none) | | |
-| `signed-in` | `dev-persona-signed-in` | `none` | | false |
-| `trial` | `dev-persona-trial` | `trial` | first tier with a free trial | false |
-| `user:<tier-slug>` | `dev-persona-user-<tier-slug>` | `active` | the tier's name | false |
-| `member` | `dev-persona-member` | `owner` | | true |
+| Persona id | `X-Yard-User-Id` | `X-Yard-Entitlement` | `X-Yard-Tier` |
+| --- | --- | --- | --- |
+| `anonymous` | (none) | (none) | |
+| `signed-in` | `dev-persona-signed-in` | `none` | |
+| `trial` | `dev-persona-trial` | `trial` | first tier with a free trial |
+| `user:<tier-slug>` | `dev-persona-user-<tier-slug>` | `active` | the tier's name |
+| `member` (a team member) | `dev-persona-member` | `owner` | |
 
-One `user:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project's own scope). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either.
+One `user:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project itself). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either.
 
 The landing page sees the persona too. `window.yard.ownership()` and every `data-yard-when` element resolve from `/<slug>/__yard/auth/ownership` instead of the hosted bridge, with the hosted shape: `anonymous` is signed out; `signed-in` and `member` are signed in without a purchase (a seller on their own page is not a buyer either); `trial` is owned with `is_trial: true`; `user:<tier>` is owned with `tier_id` and `tier_name` from the project data and `is_subscription` from the tier's pricing model. `user.username` is the persona's user id and `avatar_url` is null.
 
@@ -74,7 +74,7 @@ Ways to choose the persona:
 - `--as <id>` sets the default for requests without a cookie.
 - Send the cookie directly: `curl -H 'Cookie: yard_dev_identity=user:pro' http://localhost:9875/widget/api/notes`.
 - `POST /__yard/dev/api/persona` with `{"persona":"member","default":true}` (JSON, from the same origin) changes the default for everyone.
-- In a browser, `/<slug>/__yard/auth/login` (or `/<slug>/<service>/__yard/auth/login`) shows the picker; `__yard/auth/logout` clears it.
+- In a browser, `/<slug>/__yard/auth/login` (or `/<slug>/<service>/__yard/auth/login`) shows the picker; `__yard/auth/logout` clears it. Both honor `return` exactly as hosted.
 
 Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `users` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
 
@@ -84,7 +84,7 @@ Access gating applies exactly as hosted: `authenticated` redirects anonymous vis
 
 ## Database and migrations
 
-Services with `database_access: true` get `env.DB` backed by `.yard/dev/data.sqlite`. All of `.yard/migrations/*.sql` is applied in filename order and recorded in `_yard_migrations` with `release_tag = 'local'`, exactly like a deploy: a file never runs twice, and a failing file leaves its earlier statements applied and prints the same recovery message. New files are applied the moment they are saved. `--reset-db` (or `POST /__yard/dev/api/db/reset`) starts from an empty database.
+Services with `database_access: true` get `env.DB` backed by `.yard/dev/data.sqlite`. All of `.yard/migrations/*.sql` is applied in filename order and recorded exactly like a deploy: a file never runs twice, and a failing file leaves its earlier statements applied and prints the same recovery message. New files are applied the moment they are saved. `--reset-db` (or `POST /__yard/dev/api/db/reset`) starts from an empty database.
 
 Query the local database from the panel or with `POST /__yard/dev/api/db/query` `{"sql":"select * from notes","params":[]}`; the response is `{columns, rows, meta}` or `{error}`. `yard db query` still targets the hosted database, not this one.
 
@@ -99,7 +99,7 @@ A service that declares `objects` runs them locally with the same class contract
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /__yard/dev/api/state` | Everything at a glance: URLs, services (mount, access, database, objects), personas and the current default, runtime state and validation errors, migrations applied and pending, local and remote secret names |
-| `GET /__yard/dev/api/requests?since=<id>&limit=<n>` | Recent requests: method, path, target service, status, duration, persona. `requests/stream` is the same as Server-Sent Events |
+| `GET /__yard/dev/api/requests?since=<id>&limit=<n>` | Recent requests: method, path, target, status, duration, persona, and `received`: the path (and query) the service got, or with `static: true` the bundle file served without running it. `requests/stream` is the same as Server-Sent Events |
 | `GET /__yard/dev/api/logs?service=<name>&since=<id>` | Console output and exceptions from your services. `logs/stream` for SSE |
 | `POST /__yard/dev/api/persona` | `{"persona": "<id>", "default": true|false}` |
 | `POST /__yard/dev/api/db/query` | `{"sql": "...", "params": []}` against the local database |
@@ -109,20 +109,20 @@ A service that declares `objects` runs them locally with the same class contract
 
 Services with objects add an Objects card to the page: each class, its binding, the size stored on disk, and a "Clear stored objects" button, which calls the objects reset endpoint.
 
-POST requests must send `Content-Type: application/json`. For an automated check, start `yard dev --json`, wait for `ready`, exercise the URLs with curl (choosing personas by cookie), read `/__yard/dev/api/requests` and `/api/logs` for what happened, then stop the process.
+The terminal request log shows the same: `GET /widget/api/abc/ -> service:api /abc/ 200 1.2ms`, or `GET /widget/api/ -> service:api static /index.html 200 …` for a file. POST requests must send `Content-Type: application/json`. For an automated check, start `yard dev --json`, wait for `ready`, exercise the URLs with curl (choosing personas by cookie), read `/__yard/dev/api/requests` and `/api/logs` for what happened, then stop the process.
 
 ## Reload and validation
 
 Every service directory, the landing page directory, `.yard/migrations`, `.yard/settings.json` and the secrets file are watched. A save re-validates with the same rules as `yard push` (file limits, extensions, `_service.js` present, mount and name rules). A validation error is printed (`validation_error` in JSON mode) and the last good version keeps serving. Changes to code, assets, settings or secrets restart the runtime in well under a second; static files are served fresh from disk.
 
-Open landing page tabs reload themselves after each restart. The edge injects `/__yard/reload.js` into landing page HTML after `embed.js`; it listens on `/__yard/reload` (Server-Sent Events, one `reload` event per runtime generation) and calls `location.reload()` when the generation changes. That covers a save that restarts the runtime, an objects reset, and a `yard dev` restart. A validation error or a failed restart does not reload, so the tab keeps the last good page. HTML served by a service is not touched. Both paths work with `--no-panel` and `--root`.
+Open landing page tabs reload themselves after each restart (a small helper is injected into landing page HTML; HTML served by a service is not touched). A validation error or failed restart does not reload, so the tab keeps the last good page.
 
 ## What differs from hosted Yard
 
 - The 50 ms CPU budget per request is not enforced locally.
 - Outbound requests to private networks and localhost are blocked as hosted, by address class only (`--allow-local-egress` lifts it).
 - Personas replace Yard Auth; nothing touches the Yard account, and no consent screen appears.
-- `embed.js` is served by the CLI at `/__yard/embed.js` and the ownership bridge at `/<slug>/__yard/auth/ownership`; checkout and trial links still go to Yard. A reload helper at `/__yard/reload.js` is injected into landing page HTML so open tabs reload after a restart; hosted pages never get it.
+- `embed.js` and the ownership bridge are answered locally; checkout and trial links still go to Yard.
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.
 - The Cache API is unavailable.

@@ -5,11 +5,13 @@
 The installer adds the binary directory to your shell profile (`.bashrc`, `.zshrc`, or `config.fish`), but the current terminal session doesn't pick up PATH changes automatically.
 
 **Fix:** Restart your terminal, or source your profile:
+
 ```sh
 source ~/.bashrc   # or ~/.zshrc
 ```
 
 If the binary isn't in the expected location, check:
+
 - Linux/macOS: `/usr/local/bin/yard` or `~/.local/bin/yard`
 - Windows: `$env:LOCALAPPDATA\yard\bin\yard.exe`
 
@@ -33,7 +35,7 @@ Another process (often a previous `yard dev`) holds the port. Pass `--port <n>`,
 
 ## `yard dev`: the runtime download did not verify
 
-The CLI only runs a runtime whose SHA-256 matches the digest built into it. A mismatch means an incomplete or tampered download. Run `yard update`, then `yard dev` again. If it persists, delete `~/.yard/runtime/` and retry.
+The CLI only runs a runtime whose checksum matches the one it expects; a mismatch means an incomplete or tampered download. Run `yard update`, then `yard dev` again. If it persists, delete `~/.yard/runtime/` and retry.
 
 ---
 
@@ -45,9 +47,10 @@ There is no local runtime build for Windows on ARM. Test with a sandbox instead:
 
 ## `yard init` in a non-git folder
 
-`yard init` works outside a Git repository — the project will simply be created without a linked GitHub repo. If you *want* the project linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
+`yard init` works outside a Git repository; the project is simply created without a linked GitHub repo. If you _want_ the project linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
 
 **Fix:**
+
 ```sh
 # Make sure you're in the repo root
 cd /path/to/your-repo
@@ -65,6 +68,7 @@ If origin points to a non-GitHub host (GitLab, Bitbucket, etc.), Yard will skip 
 Sessions last up to 90 days; in between, the server renews the short-lived access token transparently. A session also ends when it is revoked from the security page's command-line sessions, when the password changes, or after `yard logout`. Once it has ended, any authenticated CLI command fails with a 401.
 
 **Fix:**
+
 ```sh
 yard login
 ```
@@ -75,11 +79,12 @@ This runs the device sign-in again and saves a new session.
 
 ## "A team is required" / `NO_TEAM` 403
 
-Every seller-side command — `yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push` — acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
+Every seller-side command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push`) acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
 
 This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
 
 **Fix:** create a team at https://yard.sh/team, then confirm:
+
 ```sh
 yard team
 ```
@@ -90,25 +95,28 @@ Signup normally creates a team on the way through, so this mostly shows up on ac
 
 ## Commands act on the wrong team
 
-Projects or coupons that exist in the dashboard don't show up in the CLI (or land under an unexpected username). The CLI acts as **one** team at a time, and which one is stored on the account — the same setting the dashboard's team switcher writes — so it can change out from under a session.
+Projects or coupons that exist in the dashboard don't show up in the CLI (or land under an unexpected username). The CLI acts as **one** team at a time, and which one is stored on the account (the same setting the dashboard's team switcher writes), so it can change out from under a session.
 
 **Fix:** check and switch:
+
 ```sh
 yard team                  # who am I acting as?
 yard team use acme         # switch (the leading @ is optional)
 ```
 
-Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public project URL 404s, compare its username against `yard team --json` → `.active_team.username` — a project lives under its owning team's username, never under the seller's username.
+Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public project URL 404s, compare its username against `yard team --json` → `.active_team.username`: a project lives under its owning team's username, never under the seller's username.
 
 ---
 
 ## GitHub App not installed
 
 If you haven't installed the Yard GitHub App and you want to link a repo during `yard init`, the CLI will:
+
 1. Open your browser to the GitHub App installation page
 2. Wait up to 5 minutes for you to complete the installation
 
 If it times out, you close the browser, or the install fails, `yard init` falls back to creating the project without a linked repo. To retry the link later:
+
 1. Go to https://github.com/apps/yard-app-official/installations/new
 2. Select the account/org and grant access to the repositories you want to sell
 3. Link the repo from the dashboard, or delete the project and re-run `yard init`
@@ -123,9 +131,9 @@ Each GitHub repository can only be published as one Yard project. If you've alre
 
 ## Price validation errors
 
-- **"minimum price is $3.00"** — Paid projects must be at least $3.00. Enter `0` for a free project.
-- **"price cannot be negative"** — Prices must be zero or positive.
-- **"could not parse price"** — Enter a number like `5`, `5.00`, or `9.99`. Don't include the `$` sign.
+- **"minimum price is $3.00"**: Paid projects must be at least $3.00. Enter `0` for a free project.
+- **"price cannot be negative"**: Prices must be zero or positive.
+- **"could not parse price"**: Enter a number like `5`, `5.00`, or `9.99`. Don't include the `$` sign.
 
 ---
 
@@ -134,6 +142,7 @@ Each GitHub repository can only be published as one Yard project. If you've alre
 `yard init` checks for CLI updates before proceeding. If a newer version is available, you must update to continue.
 
 **Fix:**
+
 ```sh
 yard update
 ```
@@ -147,6 +156,7 @@ Then re-run `yard init`.
 If the installer or `yard update` can't write to the binary location:
 
 **Linux/macOS:**
+
 ```sh
 # Option 1: Install to a user-writable location
 YARD_INSTALL_DIR=~/.local/bin curl -fsSL cli.yard.sh | sh
@@ -166,19 +176,9 @@ If `yard login` or the GitHub App installation can't open your browser:
 1. Copy the URL printed in the terminal
 2. Paste it into a browser on any device
 3. Complete the flow there (for `yard login`, enter the printed one-time code and confirm)
-4. The CLI is polling the API and picks up the result on its own
+4. The CLI picks up the result on its own
 
-This commonly happens in headless environments, SSH sessions, or WSL without browser integration.
-
----
-
-## Coder workspaces and other remote machines
-
-`yard login` needs nothing on the workspace to be reachable from your browser: it prints a one-time code and a link, then polls the API for the result. If the workspace has no browser, the CLI says so and keeps waiting.
-
-1. Open the printed link in your local browser
-2. Enter the code and confirm
-3. The CLI in the workspace finishes on its own
+This is normal in headless environments, SSH sessions, remote workspaces and WSL: nothing on the machine has to be reachable from your browser.
 
 ---
 
