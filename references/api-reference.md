@@ -2,7 +2,7 @@
 
 > **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing buyer subscriptions, and signing buyers in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the seller's own catalog (projects, releases, pages, services, coupons, buyers, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
 >
-> Create an API key with the scopes you need at **https://dash.yard.sh/team/api-keys?action=create**.
+> Create an API key with the scopes you need at **https://dash.yard.sh/configure/api-keys?action=create**.
 
 ## Base URL
 
@@ -47,7 +47,7 @@ An unknown sandbox is a `404` naming it. A **private** sandbox (the default) ans
 Authorization: Bearer yard_{key}
 ```
 
-API keys start with `yard_` and belong to a **team** (created with `yard keys create` or at https://dash.yard.sh/team/api-keys?action=create); a key keeps working when the person who minted it leaves. Send it as `Authorization: Bearer yard_…`.
+API keys start with `yard_` and belong to a **team** (created with `yard keys create` or at https://dash.yard.sh/configure/api-keys?action=create); a key keeps working when the person who minted it leaves. Send it as `Authorization: Bearer yard_…`.
 
 **Scopes:** a key reaches exactly the endpoints its scopes allow; anything else answers `401`. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
