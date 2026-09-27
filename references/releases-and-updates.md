@@ -10,12 +10,15 @@ A release is a **project-wide snapshot**: landing page, pricing, download button
 - **Publishing** stamps the tag and puts the release in one **channel**. Publishing is one-way, but the release stays editable: editing one that nothing serves is harmless, editing one that is served is live on save.
 - Releases belong to the project, never to a sandbox. The project and each sandbox **follow one channel** and serve its newest release, unless **rolled back** (until the next release lands in the channel) or **pinned** (until unpinned). Landing in a followed channel is the deploy moment.
 - Every project has a protected `Production` channel that it follows, so `yard releases publish <tag>` (which defaults to `Production`) is the go-live step. Other channels are created, renamed, deleted and reordered on the project's Release Channels page in the dashboard; deleting one reassigns its releases (to `Production` by default).
+- **Archiving** takes a published release out of its channel and frees its tag; whatever followed that channel falls back to its next newest release. Buyers and the update server no longer see it unless the project or a sandbox is pinned to it. **Unarchiving** returns it to the channel it left (`Production` if that channel is gone), or to the one `--to` names, and takes the tag back (`409` if another release holds it).
 
 ## Publishing, promoting, rolling back
 
 ```sh
 yard releases publish v1.4.0 --file dist/app.zip   # live to buyers
 yard releases promote v1.4.0 --to Beta             # move it to Beta (nothing is copied; download counts carry over)
+yard releases archive v1.3.0                       # take it out of its channel
+yard releases unarchive v1.3.0                     # put it back where it was
 ```
 
 `publish` uploads the files into your draft first, then publishes it; a failed upload never leaves a half-described release. Try a release before buyers see it:
@@ -32,7 +35,7 @@ A bad release is live: `yard sandbox rollback v1.3.0` puts the earlier one back 
 
 ## Syncing releases from GitHub
 
-With the Yard GitHub App installed and the repo linked (dashboard: the project's Release Channels page, GitHub Sync), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release (buyers keep their downloads). Synced releases land in the project's **GitHub sync channel** (chosen in the same GitHub Sync dialog, default `Production`, so publishing on GitHub ships to buyers).
+With the Yard GitHub App installed and the repo linked (dashboard: the project's Release Channels page, GitHub Sync), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (chosen in the same GitHub Sync dialog, default `Production`, so publishing on GitHub ships to buyers).
 
 If the repo has `.yard/settings.json` at the tag, the sync also imports what it declares:
 

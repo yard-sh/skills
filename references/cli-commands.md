@@ -209,7 +209,15 @@ In `deployed`, `to` is `""` for the project itself, else a sandbox name.
 
 ### yard releases promote \<tag\> --to \<channel\>
 
-Moves a published release into another channel (out of the one it was in). Followers of the new channel serve it; followers of the old one fall back to its next newest release. Nothing is copied. Flags: `--to` (required, must exist), `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
+Moves a published release into another channel (out of the one it was in). Followers of the new channel serve it; followers of the old one fall back to its next newest release. Nothing is copied. An archived release is refused: unarchive it instead. Flags: `--to` (required, must exist), `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
+
+### yard releases archive \<tag|id\>
+
+Takes a published release out of its channel and frees its tag. Followers of that channel fall back to its next newest release; a pin on the release still holds. Drafts are refused (delete them in the dashboard). Flags: `--project`, `--dir`, `--json` (`{ "from_channel": "Beta", "deployed": [...] }`).
+
+### yard releases unarchive \<tag|id\> [--to \<channel\>]
+
+Returns an archived release to the channel it was archived from (`Production` if that channel is gone), or to `--to`. A tag names the newest archived release carrying it. The release takes its tag back (`409` if another release holds it). Flags: `--to`, `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
 
 ---
 

@@ -115,7 +115,7 @@ Everything below takes `Authorization: Bearer yard_…` with the listed scope. T
 | `GET` | `/v1/projects/{id}/project-releases/{releaseId}` | `releases:read` | Read a release by id |
 | `GET` | `/v1/projects/{id}/project-releases/{releaseId}/files/{fileId}/download` | `releases:read` | Download a release file (302 to the file) |
 
-A key holding only `releases:read` sees public channels and no drafts; a key that also holds `releases:write` sees everything a session sees.
+A key holding only `releases:read` sees public channels and no drafts or archived releases; a key that also holds `releases:write` sees everything a session sees.
 
 ### Licenses
 
