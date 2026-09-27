@@ -95,13 +95,13 @@ After inserting DOM yourself, call `window.yard.refresh()` to bind new nodes.
 | `data-quantity` | Seats for `fixed_pack` / `per_seat` |
 | `data-gift` | Present: start the gift flow |
 
-`data-action="trial"` takes only `data-tier-id`: a trial-enabled tier, or omit it for the default (or first trial-enabled) tier. A trial goes to Yard's trial flow (`/trial/<username>/<slug>`): signed-in visitors start at once, signed-out ones confirm by email.
+`data-action="trial"` takes only `data-tier-id`: a trial-enabled tier, or omit it for the default (or first trial-enabled) tier. A trial goes to Yard's trial flow (`https://yard.sh/trial/<username>/<slug>`): signed-in visitors start at once, signed-out ones confirm by email.
 
 Clicks are handled by `embed.js` and their default is prevented, so there is no handler to write; the only work is visibility (hide the trial button when no tier has a trial, and set `data-tier-id` when showing it). **The attribute wins over `href`:** an element with `data-action` always starts checkout or a trial, so never repurpose one as a plain link; remove the attribute, or keep two elements and let `data-yard-when` pick one.
 
 ### Checkout URL parameters
 
-Only needed when linking to `https://yard.sh/checkout/<username>/<slug>?…` by hand.
+Only needed when linking to `https://pay.yard.sh/<username>/<slug>?…` by hand.
 
 | Param | Meaning |
 | --- | --- |
@@ -121,7 +121,7 @@ Invalid values are ignored, not rejected. `/trial/<username>/<slug>` takes `tier
 ```js
 window.yard = {
   project,            // public project or null (above)
-  checkoutBase,       // e.g. "https://yard.sh"
+  checkoutBase,       // e.g. "https://pay.yard.sh"
   checkout(opts),     // redirect to checkout: { tier?, interval?, quantity?, gift? }
   trial(opts),        // redirect to the trial flow: { tier? }
   checkoutURL(opts),  // build the URL without redirecting
