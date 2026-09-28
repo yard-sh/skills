@@ -117,9 +117,9 @@ If you haven't installed the Yard GitHub App and you want to link a repo during 
 
 If it times out, you close the browser, or the install fails, `yard init` falls back to creating the project without a linked repo. To retry the link later:
 
-1. Go to https://github.com/apps/yard-app-official/installations/new
+1. In the dashboard, open the project's **Release Channels** page, click **GitHub Sync**, then **Install GitHub App**
 2. Select the account/org and grant access to the repositories you want to sell
-3. Link the repo from the dashboard, or delete the project and re-run `yard init`
+3. Link the repo from the same **GitHub Sync** dialog, or delete the project and re-run `yard init`
 
 ---
 
