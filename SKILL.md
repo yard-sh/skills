@@ -24,7 +24,7 @@ description: >-
 
 Yard lets developers sell software: checkout (Yard is the merchant of record), license keys and device activations, release downloads with an update server, custom landing pages, and hosted services with a database, buyer sign-in (Yard Auth) and realtime objects. Sellers manage it with the `yard` CLI; shipped software integrates through the REST API.
 
-Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.sh/install.ps1 | iex`). `yard login` prints a one-time code the user confirms in a browser, so ask the user to run it; you cannot finish it for them. `yard <command> --help` is always current.
+Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.sh/install.ps1 | iex`). Run `yard login` yourself (in the background if your shell only returns output on exit): it opens `https://yard.sh/login/device` and prints a nine-digit code. Show the user the code; they paste it into that page and click Authorize, and the command exits signed in. `yard <command> --help` is always current.
 
 ## Ground rules
 
