@@ -82,7 +82,7 @@ They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landi
 - `logout?return=<path>` ends the project session (the person stays signed in to Yard) and redirects with the same rule; without `return` it goes to `/` of where it was called.
 - `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro"}` when signed in (`email` may be `""`, `tier` is omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in non-buyer.
 
-A session covers every service of one project and nothing else. The session cookie is HttpOnly, Secure and SameSite=Lax. Never change state on GET, and require `Content-Type: application/json` on writes: every project under `yard.sh` counts as the same site as yours, so SameSite alone does not stop a form on another project's page from posting, while a cross-origin JSON request cannot be sent without your consent.
+A session covers every service of one project and nothing else. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.
 
 **Recipe: anyone reads, signed-in users write** (a public service, e.g. comments or a link shortener):
 

@@ -195,9 +195,11 @@ connect();
   Keep an attachment to a few hundred bytes; anything larger goes in storage.
 - **Identity** arrives on the upgrade request like any request: `X-Yard-User-Id`,
   `X-Yard-Email`, `X-Yard-Entitlement`, `X-Yard-Tier`, `X-Yard-Sandbox`.
-  Read them in the object's `fetch` before accepting. The service's `access`
-  setting gates the upgrade like any other request, so `"access":
-  "users"` keeps non-buyers out of every room with no code.
+  Read them in the object's `fetch` before accepting. A socket opened from
+  another origin (another project's page included) arrives signed out, with
+  no `X-Yard-User-Id`. The service's `access` setting gates the upgrade like
+  any other request, so `"access": "users"` keeps non-buyers out of every
+  room with no code.
 - **Every session ends after 24 hours.** Yard closes the connection with code
   1000 and reason `Session limit reached`; clients reconnect and carry on.
   Write the client so every close leads to a reconnect, as above, and it also
