@@ -90,7 +90,6 @@ A session covers every service of one project and nothing else. The session cook
 if (request.method === "GET") return listItems(env);
 const user = request.headers.get("X-Yard-User-Id");
 if (!user) return Response.json({ error: "sign in", login: "__yard/auth/login?return=/" }, { status: 401 });
-if (!request.headers.get("Content-Type")?.startsWith("application/json")) return new Response(null, { status: 415 });
 return createItem(env, user, await request.json());
 ```
 
