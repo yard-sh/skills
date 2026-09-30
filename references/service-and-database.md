@@ -66,7 +66,7 @@ The Yard edge signs visitors in and gives your code trusted headers:
 | `X-Yard-User-Id` | Stable user id; use it as your foreign key |
 | `X-Yard-Email` | Email (may be empty) |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
-| `X-Yard-Tier` | Held tier's **name**; absent when there is none (single-price projects never send it) |
+| `X-Yard-Tier` | **Name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; never with `none` or `owner` |
 | `X-Yard-Sandbox` | Sandbox name, or empty for the project itself |
 
 - Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
@@ -106,6 +106,8 @@ const { meta } = await env.DB.prepare("DELETE FROM notes WHERE id = ?1").bind(id
 ```
 
 The project and each sandbox have their own database, shared by every service there with `database_access`. Inspect it with `yard db query "select …" [--sandbox <name>] --json` (10 000 bytes of SQL, 100 bind params, 1000 rows).
+
+**Times:** store them as integer milliseconds since the epoch (`Date.now()`), written by the service.
 
 **Migrations** are flat numbered files in `.yard/migrations/` (`0001_init.sql`, `0002_add_column.sql`; the directory is `migrations.dir`), one ordered set for the whole project. Never edit an applied one; add a new file. A deploy applies pending files in filename order before new services go live, and the first migration creates the database, services or not. Each file runs once per database: applied files are recorded by filename in the `_yard_migrations` table (tables starting with `_` are reserved for Yard). `yard db migrations list` answers "did my migration run?".
 

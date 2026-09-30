@@ -21,7 +21,7 @@ yard dev --allow-local-egress  # let services reach localhost and private networ
 
 Requirements: `.yard/settings.json` with at least one `services` entry or a landing page. The first run downloads the Yard local runtime (about 40 MB) into `~/.yard/runtime/`. Linux needs glibc 2.35+, macOS 13.5+. Windows on ARM is not supported; test with a sandbox there.
 
-No login is needed. Logged in, `yard dev` also fetches the project's live public data for the landing page (so `window.yard.project` is real) and warns about secrets set on Yard that have no local value.
+No login is needed. Logged in, `yard dev` also fetches the project's live public data for the landing page (so `window.yard.project` is real) and warns about secrets set on Yard that have no local value. Offline or logged out, `window.yard.project` is built from the settings.json `pricing` block, with the same tier fields as hosted (price, pricing model, features, description, trial fields).
 
 Nothing else is fetched while it runs (`window.yard.ownership()` is answered from the persona), so with the runtime downloaded the loop works offline; only checkout and trial links leave the machine.
 
@@ -61,11 +61,11 @@ There is no real Yard Auth locally. A persona decides which `X-Yard-*` headers t
 | --- | --- | --- | --- |
 | `anonymous` | (none) | (none) | |
 | `signed-in` | `dev-persona-signed-in` | `none` | |
-| `trial` | `dev-persona-trial` | `trial` | first tier with a free trial |
+| `trial` (only when a tier offers a free trial) | `dev-persona-trial` | `trial` | first tier with a free trial |
 | `user:<tier-slug>` | `dev-persona-user-<tier-slug>` | `active` | the tier's name |
 | `member` (a team member) | `dev-persona-member` | `owner` | |
 
-One `user:*` persona exists per tier in `pricing.tiers` (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project itself). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either. As hosted, a fetch, form post or WebSocket from another origin (a page on a different port included) arrives as `anonymous` whatever the cookie or default; top-level navigations keep the persona.
+Personas come from the project's pricing tiers: the live project data when logged in, otherwise the settings.json `pricing` block. One `user:*` persona exists per tier (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project itself). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either. As hosted, a fetch, form post or WebSocket from another origin (a page on a different port included) arrives as `anonymous` whatever the cookie or default; top-level navigations keep the persona.
 
 The landing page sees the persona too. `window.yard.ownership()` and every `data-yard-when` element resolve from `/<slug>/__yard/auth/ownership` instead of the hosted bridge, with the hosted shape: `anonymous` is signed out; `signed-in` and `member` are signed in without a purchase (a seller on their own page is not a buyer either); `trial` is owned with `is_trial: true`; `user:<tier>` is owned with `tier_id` and `tier_name` from the project data and `is_subscription` from the tier's pricing model. `user.username` is the persona's user id and `avatar_url` is null.
 

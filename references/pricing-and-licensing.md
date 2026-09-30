@@ -11,7 +11,7 @@ A project has one or more tiers; how many is `max_pricing_tiers` (currently Basi
 - `is_default`: exactly one tier per project
 - `seat_type`: `single`, `fixed_pack` or `per_seat` (seat-based needs `seat_based_pricing`)
 - `pricing_model`: `one_time` or `subscription`; `yearly_discount_percent` (1-100) for subscriptions
-- Per tier: `free_trial_enabled`, `free_trial_days`, `trial_requires_card`, `gift_enabled` (below)
+- Per tier: `free_trial` (`enabled`, `days`, `requires_card`), `gift_enabled` (below)
 
 There is no first-class "enterprise" or contact-sales tier: model it as a high-priced `per_seat` tier or a separate top tier, and handle custom contracts outside Yard.
 
@@ -59,10 +59,10 @@ Needs `.team_permissions.coupons`. Managed with `yard coupons` ([cli-commands.md
 
 ## Free Trials
 
-Plan-gated and configured **per tier** (set at creation in `yard init --spec`, later with `yard projects tiers edit <slug> <tier> --spec -`). A project offers a trial when any tier has `free_trial_enabled: true`; a project-level trial field is rejected with `unknown field`.
+Plan-gated and configured **per tier** (set at creation in `yard init --spec`, later with `yard projects tiers edit <slug> <tier> --spec -`). A project offers a trial when any tier has `free_trial.enabled: true`; an omitted `free_trial` means no trial, and a project-level trial field is rejected with `unknown field`.
 
-- `free_trial_days`: 1-365, required with a trial.
-- `trial_requires_card` (default true): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.
+- `free_trial.days`: 7-365, optional; a trial enabled without days runs 7.
+- `free_trial.requires_card` (default false): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.
 - One-time tiers can be trialed as a guest (email confirmation). After expiry the buyer must purchase to keep access.
 - To change a running trial for one buyer: `yard transactions trial <order-id> --add-days N` (added to the current expiry, not today; the buyer is emailed). See [cli-commands.md](cli-commands.md#yard-transactions).
 

@@ -91,9 +91,11 @@ Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json
       "max_seats": null,            // per_seat; optional
       "yearly_discount_percent": null, // subscription only, 1..100
       "volume_brackets": [],        // per_seat only
-      "free_trial_enabled": false,  // per tier, plan-gated
-      "free_trial_days": null,      // 1..365, required with a trial
-      "trial_requires_card": true,  // subscription tiers: collect a card for the trial
+      "free_trial": {               // per tier, plan-gated
+        "enabled": false,
+        "days": null,               // 7..365; a trial without days runs 7
+        "requires_card": false      // subscription tiers: collect a card for the trial; omitted means false
+      },
       "gift_enabled": false         // one-time tiers only
     }
   ],
@@ -103,7 +105,7 @@ Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json
 }
 ```
 
-How many tiers a plan allows is `max_pricing_tiers`. Trials, `trial_requires_card` and `gift_enabled` exist only per tier; a project-level `free_trial_enabled` is rejected with `unknown field`. The launch stage and an early-access discount are set in the dashboard.
+How many tiers a plan allows is `max_pricing_tiers`. `free_trial` and `gift_enabled` exist only per tier; a project-level trial field is rejected with `unknown field`. The launch stage and an early-access discount are set in the dashboard.
 
 `--json` output:
 
@@ -148,7 +150,7 @@ Slugs and UUIDs are interchangeable wherever `<slug-or-id>` is accepted.
 One project in full, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets` and the per-tier trial and gift fields. Use it to answer "does any tier offer a trial?":
 
 ```sh
-yard projects show my-tool --json | jq '.tiers[] | select(.free_trial_enabled) | {id, name, free_trial_days}'
+yard projects show my-tool --json | jq '.tiers[] | select(.free_trial.enabled) | {id, name, days: .free_trial.days}'
 ```
 
 ### yard projects edit [slug-or-id]
@@ -166,7 +168,7 @@ Add, change or remove one tier without resending the list. All accept `--json` (
 - `yard projects tiers add <slug> --spec <file|->`: fields as in the `yard init` tier, plus `description` and `features` (max 10). `is_default: true` demotes the current default. Over `max_pricing_tiers` is `upgrade_required`.
 - `yard projects tiers edit <slug> <tier-id-or-name> --spec <file|->`: a partial spec; present fields replace, absent ones stay. Names match case-insensitively (use the UUID when two tiers share a name).
   ```sh
-  echo '{"free_trial_enabled": true, "free_trial_days": 14}' | yard projects tiers edit simple-note Base --spec -
+  echo '{"free_trial": {"enabled": true, "days": 14}}' | yard projects tiers edit simple-note Base --spec -
   ```
 - `yard projects tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]`: tiers with sales or active subscriptions are kept but made non-default. Refuses to remove the last tier, or the default without `--promote-default`. `--yes` is required without a TTY.
 
@@ -296,7 +298,7 @@ The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Refunds are issued 
 
 - `list [--json] [--trials] [--project <slug>] [--start <date>] [--end <date>] [--sort date|amount|sellerEarnings|projectName] [--direction] [--page] [--limit]`. Filters narrow the rows and the total; the summary stays team-wide. `TYPE` is `gift`, `trial`, `trial upgrade`, `subscription` or `purchase`.
 - `show <order-id>`: tier, quantity, coupon, refund date, billing period, trial expiry.
-- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless the buyer has since started another trial on that project. **The buyer is emailed.** Needs `.team_permissions.sell_projects`. The trial length offered to new buyers is the tier's `free_trial_days`.
+- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless the buyer has since started another trial on that project. **The buyer is emailed.** Needs `.team_permissions.sell_projects`. The trial length offered to new buyers is the tier's `free_trial.days`.
 
 ```sh
 yard transactions list --trials --json | jq -r '.transactions[] | "\(.id) \(.user_email) \(.trial_expires_at)"'

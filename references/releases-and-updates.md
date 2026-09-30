@@ -48,7 +48,7 @@ If the repo has `.yard/settings.json` at the tag, the sync also imports what it 
 
 Each section is independent, and **absent means not managed from GitHub**: the release keeps that part as it was. A repo with no settings.json syncs assets, name and notes only. A declared section must resolve: an empty declared directory, a service without `_service.js` or `name`, or two services with the same name or path fails the sync; a `custom` page without the plan feature records an upgrade-required sync error. `yard push` applies `pricing` and `downloads` the same way.
 
-The `pricing` section uses the release tier shape: a nested `free_trial` object instead of `yard init`'s flat trial fields. Array order is display order.
+Trials use the same `free_trial` object as everywhere else. Array order is display order.
 
 ```json
 {

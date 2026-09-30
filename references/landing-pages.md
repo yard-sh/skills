@@ -49,15 +49,16 @@ Each tier:
   "pricing_model": "one_time",   // "one_time" | "subscription"
   "yearly_discount_percent": null,
   "features": ["…"],
-  "free_trial_enabled": false,   // trials are per tier, never per project
-  "free_trial_days": null,
-  "trial_requires_card": true,
+  "free_trial": {                // trials are per tier, never per project
+    "enabled": false,            // when true, "days" (7..365) is present too
+    "requires_card": false
+  },
   "gift_enabled": false,
   "volume_brackets": []
 }
 ```
 
-> **Trials are per tier.** A project offers a trial when some tier has `free_trial_enabled: true` and `free_trial_days > 0`. Gate the trial button on that tier and pass its `id` (see the [worked example](#worked-example)). From the CLI: `yard projects show <slug> --json | jq .tiers`.
+> **Trials are per tier.** A project offers a trial when some tier has `free_trial.enabled: true`. Gate the trial button on that tier and pass its `id` (see the [worked example](#worked-example)). From the CLI: `yard projects show <slug> --json | jq .tiers`.
 
 `window.yard.project` reflects the **saved** state of the release; save dashboard edits before refreshing a preview.
 
@@ -248,7 +249,7 @@ File count, per-file size and total size come from the team's plan (Pro: 60 file
 
     <script>
       // Trials are per tier: show the button only when a tier offers one.
-      const trialTier = window.yard.project?.tiers.find((t) => t.free_trial_enabled && (t.free_trial_days ?? 0) > 0);
+      const trialTier = window.yard.project?.tiers.find((t) => t.free_trial?.enabled);
       if (trialTier) {
         const btn = document.querySelector("#trial-btn");
         btn.dataset.tierId = trialTier.id;
