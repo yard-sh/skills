@@ -223,7 +223,7 @@ yard sandbox unpin                         # the storefront serves v1.0.0
 
 ## Bundle limits
 
-20 files, 1 MB per file, 5 MB total; extensions `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish. The project and each sandbox are limited separately. `yard push` rejects violations before uploading.
+File count, per-file size and total size come from the team's plan (Pro: 60 files, 3 MB per file, 15 MB total; read `team_permissions` `page_max_*` from `yard me --json` or GET /v1/me for the exact values). Extensions `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish. Each release's bundle is limited separately. `yard push` rejects violations before uploading.
 
 ---
 

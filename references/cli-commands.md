@@ -346,11 +346,11 @@ A push uploads `settings.json` itself, which is how deploys learn each service's
 
 **Exit codes:** `0` success, `1` fatal (auth, network, validation), `2` partial (`push` only: some files uploaded, some failed; see `errors`).
 
-**Limits, checked before any upload:**
+**Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Pro's.
 
-- Landing page: ≤20 files, ≤1 MB each, ≤5 MB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
-- Service: ≤200 files, ≤5 MB each, ≤25 MB total, nesting ≤8 levels; also `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dotfiles and bundle-root `README.md` are skipped.
-- Migrations: ≤200 files, ≤1 MB each, ≤5 MB total, no subdirectories.
+- Landing page: ≤60 files, ≤3 MB each, ≤15 MB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
+- Service: ≤600 files, ≤15 MB each, ≤75 MB total, `_service.js` ≤10 MB on every plan, nesting ≤8 levels; also `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dotfiles and bundle-root `README.md` are skipped.
+- Migrations: ≤600 files, ≤3 MB each, ≤15 MB total, no subdirectories.
 
 ### yard init --page
 
@@ -440,7 +440,7 @@ A service's code ships inside a release (`yard push`, then publish); these comma
 
 - `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` object with a WebSocket client instead (no migration) and records `"objects": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
-- `yard service check`: validates every bundle offline like a deploy would, lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared object class is not exported.
+- `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared object class is not exported.
 - `yard service secrets set KEY=VALUE… | list | rm <name>`: `env.<NAME>` values for the project or one sandbox, shared by every service there, applied on the **next deploy**. Names are UPPER_SNAKE (not `DB` or `ASSETS`), ≤32 per target, ≤4 KB each. Write-only: `list` shows names and times.
 - `yard service logs [--service NAME] [--limit ≤500] [--since 2h]`: console output, uncaught exceptions and abnormal outcomes from the last 24 h, a few seconds behind. A fresh service returns an empty list.
 - `yard db query [sql] [--file PATH]` (`-` for stdin): SQL against the project's or a sandbox's database, rows as JSON. Up to 10 kB of SQL, 1000 rows.
