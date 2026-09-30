@@ -52,7 +52,7 @@ The `pricing` section uses the release tier shape: a nested `free_trial` object 
 
 ```json
 {
-  "version": 7,
+  "version": 8,
   "project_slug": "my-project",
   "pricing": {
     "tiers": [

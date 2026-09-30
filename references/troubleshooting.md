@@ -185,26 +185,32 @@ This is normal in headless environments, SSH sessions, remote workspaces and WSL
 ## `.yard/settings.json` uses an old service layout
 
 A service's settings - `name`, `url`, `access`, `database_access` - live on
-its entry in the `services` list of `.yard/settings.json`. Three retired
+its entry in the `services` list of `.yard/settings.json`. Four retired
 layouts are rejected rather than upgraded, because reading them would have to
 guess values the seller chose:
 
 **Services entries without a `"name"` (v5)** - the settings lived in each
 directory's own `settings.json`. Run `yard migrate`: it folds every
 per-directory settings file onto its entry, deletes those files, and stamps
-`"version": 7`. Or move the fields by hand and delete the files.
+`"version": 8`. Or move the fields by hand and delete the files.
 
 **A services entry carrying `database` (v6)** - the flag was renamed to
 `database_access`, because it only binds `env.DB`; the release's migrations
 are what create the database. Run `yard migrate`: it renames the key on every
-entry and stamps `"version": 7`. Or rename it by hand and set `"version": 7`.
+entry and stamps `"version": 8`. Or rename it by hand and set `"version": 8`.
+
+**A services entry carrying `objects` (v7)** - the list of realtime classes
+was renamed to `rooms` in version 8. `yard migrate` does not rewrite it and
+stops with the same error: rename the key to `rooms` by hand and set
+`"version": 8`. The classes and their `class`/`binding` values are unchanged,
+so the next deploy keeps every room and its data.
 
 **A top-level `"service"` (or `"app"`) block (v4 and older)** - convert by
 hand:
 
 1. Replace the block with a `services` list entry carrying its old values:
    `"services": [{ "dir": "service", "name": "service", "url": "/service", "access": "public", "database_access": true }]`.
-2. Set `"version": 7`.
+2. Set `"version": 8`.
 
 Or start over with `yard service init <name>`, which records the entry for
 you.
@@ -212,7 +218,8 @@ you.
 ## A GitHub tag fails to sync after upgrading
 
 Tag content is immutable. A tag whose `.yard/settings.json` still uses the
-retired v5 layout, or the retired v6 `database` key, fails the sync with an
-error naming the fix; the release on Yard keeps serving as it was. Run
-`yard migrate` in the repo, commit, and publish the next tag - or force-move
+retired v5 layout, the retired v6 `database` key or the retired v7 `objects`
+key, fails the sync with an error naming the fix; the release on Yard keeps
+serving as it was. Run `yard migrate` in the repo (or rename `objects` to
+`rooms` by hand), commit, and publish the next tag - or force-move
 the tag and use the dashboard's Re-sync.

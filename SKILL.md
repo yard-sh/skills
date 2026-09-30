@@ -11,18 +11,18 @@ metadata:
     - references/releases-and-updates.md
     - references/service-and-database.md
     - references/local-dev.md
-    - references/objects.md
+    - references/rooms.md
     - references/templates.md
     - references/troubleshooting.md
 description: >-
   Yard sells, licenses, distributes and hosts software. Use whenever the user mentions Yard or the yard CLI:
   projects, pricing, license keys, releases and updates, sandboxes, hosted services and databases, yard dev,
-  landing pages, Yard Auth sign-in, realtime objects, templates, coupons, buyers or sales.
+  landing pages, Yard Auth sign-in, realtime rooms, templates, coupons, buyers or sales.
 ---
 
 # Yard
 
-Yard lets developers sell software: checkout (Yard is the merchant of record), license keys and device activations, release downloads with an update server, custom landing pages, and hosted services with a database, buyer sign-in (Yard Auth) and realtime objects. Sellers manage it with the `yard` CLI; shipped software integrates through the REST API.
+Yard lets developers sell software: checkout (Yard is the merchant of record), license keys and device activations, release downloads with an update server, custom landing pages, and hosted services with a database, buyer sign-in (Yard Auth) and realtime rooms. Sellers manage it with the `yard` CLI; shipped software integrates through the REST API.
 
 Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.sh/install.ps1 | iex`). Run `yard login` yourself (in the background if your shell only returns output on exit): it opens `https://yard.sh/login/device` and prints a nine-digit code. Show the user the code; they paste it into that page and click Authorize, and the command exits signed in. `yard <command> --help` is always current.
 
@@ -57,7 +57,7 @@ Then cover what the project type needs:
 - `yard service init <name>` scaffolds a working bundle and records it under `services` in `.yard/settings.json`. The backend is one file, `_service.js`, exporting a fetch handler. No ports, no `listen()`, no Express: route by path and use relative URLs.
 - **Never build auth.** Yard Auth signs visitors in and gives the service trusted `X-Yard-*` headers; `"access": "users"` is a complete paywall with no code. Any access other than `public` needs `.team_permissions.yard_auth`.
 - **Loop:** `yard dev` (everything at `http://localhost:9875/<slug>/`) → `yard push` (into a draft release; nothing serves a draft) → `yard releases publish <tag>` (the go-live step: the release lands in the `Production` channel the project follows). To try it first: `yard sandbox pin` (hold the storefront), publish, `yard sandbox pin <tag> --sandbox preview`, check it, then `yard sandbox unpin`.
-- **Realtime** (chat rooms, presence, multiplayer) belongs in objects, not in a table: [objects.md](references/objects.md).
+- **Realtime** (chat rooms, presence, multiplayer) belongs in rooms, not in a table: [rooms.md](references/rooms.md).
 
 ## References
 
@@ -70,6 +70,6 @@ Then cover what the project type needs:
 | [landing-pages.md](references/landing-pages.md) | `window.yard`, `data-yard` / `data-action`, buyer state, signed-in visitors |
 | [service-and-database.md](references/service-and-database.md) | Service contract and paths, settings, Yard Auth headers and endpoints, database, secrets |
 | [local-dev.md](references/local-dev.md) | `yard dev`: personas, local database, control panel API |
-| [objects.md](references/objects.md) | Realtime objects: WebSockets, storage, limits, lifecycle |
+| [rooms.md](references/rooms.md) | Realtime rooms: WebSockets, storage, limits, lifecycle |
 | [templates.md](references/templates.md) | Making a template and the Create in Yard button |
 | [troubleshooting.md](references/troubleshooting.md) | Install, login, team and settings errors |

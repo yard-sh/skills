@@ -15,7 +15,7 @@ The link opens the dashboard's create dialog on a preview of the repository (ser
 ## What the repository needs
 
 - Public on GitHub, with at least one commit. Git submodules are not included.
-- `.yard/settings.json` at the root (at most 16 KB), in the current layout (`"version": 7`). Nothing else is required: services, a landing page, migrations and pricing are all optional.
+- `.yard/settings.json` at the root (at most 16 KB), in the current layout (`"version": 8`). Nothing else is required: services, a landing page, migrations and pricing are all optional.
 - Every declared service directory holds its files and a `_service.js`. A `custom` landing page needs files in its directory, and a `migrations` block needs `.sql` files. Files under the default `.yard/landing-page/` and `.yard/migrations/` count even without a block.
 - The creating team's plan bundle limits (on Pro: landing page 60 files, 3 MB each, 15 MB total; service 600 files, 15 MB each, 75 MB total, `_service.js` at most 10 MB; migrations 600 files, 3 MB each, 15 MB total).
 
@@ -29,7 +29,7 @@ Everything is validated before anything is created, so a broken template creates
 - Services, the landing page, migrations and download buttons become release `1.0.0`, published to the `Production` channel and deployed.
 - Secrets are not carried (settings.json has none): the owner sets them with `yard service secrets set`, which applies on the next deploy.
 - The project is not linked to the template repository.
-- Plan gates apply up front: services need `service`, a custom page `custom_project_pages`, objects `service_objects`, and the team must be under its project limit. A service whose `access` is not `public` also needs `yard_auth` to deploy.
+- Plan gates apply up front: services need `service`, a custom page `custom_project_pages`, rooms `service_rooms`, and the team must be under its project limit. A service whose `access` is not `public` also needs `yard_auth` to deploy.
 
 ## Conventions for a good template
 

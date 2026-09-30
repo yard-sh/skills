@@ -318,11 +318,11 @@ Every project command walks up from the cwd to the directory holding `.yard/sett
 └── api/_service.js                # one directory per service
 ```
 
-`.yard/settings.json` (version 7; every block is optional):
+`.yard/settings.json` (version 8; every block is optional):
 
 ```json
 {
-  "version": 7,
+  "version": 8,
   "project_slug": "my-project",
   "ignore_files": ["*.bak", "drafts/**"],
   "services": [{ "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database_access": true }],
@@ -372,7 +372,7 @@ A release's files grouped by bundle (`page`, `service`, …), each with `path`, 
 
 ### yard push
 
-Uploads every changed local file (landing page, each service, migrations, settings.json) into the draft; unchanged files are skipped. Every bundle is validated before anything uploads. `--prune` deletes release files missing locally (one confirmation unless `--yes` or `--json`). Prints a `Review:` URL; going live is `yard releases publish <tag>`. A `pricing` block is applied (invalid pricing is a 400 naming the field, before any upload). When the live deployment has an object class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
+Uploads every changed local file (landing page, each service, migrations, settings.json) into the draft; unchanged files are skipped. Every bundle is validated before anything uploads. `--prune` deletes release files missing locally (one confirmation unless `--yes` or `--json`). Prints a `Review:` URL; going live is `yard releases publish <tag>`. A `pricing` block is applied (invalid pricing is a 400 naming the field, before any upload). When the live deployment has a room class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
 
 ```json
 {
@@ -438,21 +438,21 @@ yard sandbox list --json | jq '[.project] + .sandboxes | .[] | {slug, serving: .
 
 A service's code ships inside a release (`yard push`, then publish); these commands cover everything around it. Contract: [service-and-database.md](service-and-database.md). Shared flags: `--project`, `--dir`, `--sandbox <name>` (omitted = the project itself), `--json`.
 
-- `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` object with a WebSocket client instead (no migration) and records `"objects": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
+- `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` class with a WebSocket client instead (no migration) and records `"rooms": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
-- `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared object class is not exported.
+- `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared room class is not exported.
 - `yard service secrets set KEY=VALUE… | list | rm <name>`: `env.<NAME>` values for the project or one sandbox, shared by every service there, applied on the **next deploy**. Names are UPPER_SNAKE (not `DB` or `ASSETS`), ≤32 per target, ≤4 KB each. Write-only: `list` shows names and times.
 - `yard service logs [--service NAME] [--limit ≤500] [--since 2h]`: console output, uncaught exceptions and abnormal outcomes from the last 24 h, a few seconds behind. A fresh service returns an empty list.
 - `yard db query [sql] [--file PATH]` (`-` for stdin): SQL against the project's or a sandbox's database, rows as JSON. Up to 10 kB of SQL, 1000 rows.
 - `yard db migrations list`: applied migrations merged with local files still pending (`{ sandbox, database, migrations: [{ name, applied, applied_at, local }] }`). With no database yet, every file is pending.
 - `yard db migrations mark-applied <file>`: records a migration as applied without running it; the repair step after fixing a file whose earlier statements already ran.
-- `yard migrate [--dir PATH] [--json]`: upgrades an older `.yard/settings.json` layout (folds per-directory service settings files onto their entries, renames `database` to `database_access`, stamps `"version": 7`). Idempotent. Unrelated to database migrations.
+- `yard migrate [--dir PATH] [--json]`: upgrades an older `.yard/settings.json` layout (folds per-directory service settings files onto their entries, renames `database` to `database_access`, stamps `"version": 8`). A services entry still carrying `objects` stops it with the parser's error; rename that key to `rooms` by hand. Idempotent. Unrelated to database migrations.
 
 ---
 
 ## yard dev
 
-Serves the project locally the way Yard hosts it: the landing page at `http://localhost:9875/<slug>/`, each service under its path, identity headers from a chosen persona, secrets from `.yard/dev/secrets.env`, a local database with migrations applied, and a control panel at `/__yard/dev/`. No login needed. Flags: `--port`, `--dir`, `--project`, `--as <persona>`, `--root` (serve at `/`), `--open`, `--secrets-file`, `--reset-db`, `--reset-objects`, `--allow-local-egress`, `--no-panel`, `--offline`, `--json` (one event per line). Full guide: [local-dev.md](local-dev.md).
+Serves the project locally the way Yard hosts it: the landing page at `http://localhost:9875/<slug>/`, each service under its path, identity headers from a chosen persona, secrets from `.yard/dev/secrets.env`, a local database with migrations applied, and a control panel at `/__yard/dev/`. No login needed. Flags: `--port`, `--dir`, `--project`, `--as <persona>`, `--root` (serve at `/`), `--open`, `--secrets-file`, `--reset-db`, `--reset-rooms`, `--allow-local-egress`, `--no-panel`, `--offline`, `--json` (one event per line). Full guide: [local-dev.md](local-dev.md).
 
 ---
 

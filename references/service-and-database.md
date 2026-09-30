@@ -1,6 +1,6 @@
 # Services and database on Yard
 
-A Yard service runs a project's server-side code, with an optional database, secrets, realtime objects and buyer sign-in through Yard Auth. It hosts any HTTP workload: a full web app, a JSON API, a webhook receiver, or the backend an installed app calls. A release can carry several services, each on its own path; a bundle with only `_service.js` is valid. Requires the `service` permission (check `yard me --json` → `.team_permissions` before promising a deploy).
+A Yard service runs a project's server-side code, with an optional database, secrets, realtime rooms and buyer sign-in through Yard Auth. It hosts any HTTP workload: a full web app, a JSON API, a webhook receiver, or the backend an installed app calls. A release can carry several services, each on its own path; a bundle with only `_service.js` is valid. Requires the `service` permission (check `yard me --json` → `.team_permissions` before promising a deploy).
 
 ## The runtime model: read this first
 
@@ -16,7 +16,7 @@ export default {
 };
 ```
 
-Route by path. There is no filesystem and no long-lived process: state belongs in the database (or in an object for live shared state such as rooms and presence, see [objects.md](objects.md)). Each request has about 50 ms of CPU; time spent awaiting fetches or the database does not count.
+Route by path. There is no filesystem and no long-lived process: state belongs in the database (or in a room for live shared state such as chat, presence and multiplayer, see [rooms.md](rooms.md)). Each request has about 50 ms of CPU; time spent awaiting fetches or the database does not count.
 
 ## Paths and static files
 
@@ -38,10 +38,10 @@ Each entry of `services` in `.yard/settings.json` is the whole declaration; chan
 
 ```json
 {
-  "version": 7,
+  "version": 8,
   "services": [
     { "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database_access": true },
-    { "dir": "chat", "name": "chat", "url": "/chat", "access": "users", "objects": [{ "class": "Room", "binding": "ROOMS" }] }
+    { "dir": "chat", "name": "chat", "url": "/chat", "access": "users", "rooms": [{ "class": "Room", "binding": "ROOMS" }] }
   ]
 }
 ```
@@ -51,7 +51,7 @@ Each entry of `services` in `.yard/settings.json` is the whole declaration; chan
 - `url`: where it serves. Default `/<name>`; `/` takes the whole site (the landing page then serves nothing). Unique; `/__yard` and `/@…` are reserved. `/api` and `/api/v2` can both exist; the longer path wins.
 - `access`: `public` (default, everyone) · `authenticated` (sign-in required) · `users` (buyers, trialers and subscribers only; others go to the sales page). Anything but `public` needs `yard_auth` (`upgrade_required` otherwise).
 - `database_access`: `true` binds the database as `env.DB`. The release's migrations create the database; a service flagged before the first migration deploys without `env.DB` and is redeployed with it once the database exists.
-- `objects`: object classes the service exports, each reachable as `env.<binding>`. Needs `service_objects`. See [objects.md](objects.md).
+- `rooms`: room classes the service exports, each reachable as `env.<binding>`. Needs `service_rooms`. See [rooms.md](rooms.md).
 
 ## URLs
 
