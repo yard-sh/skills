@@ -17,7 +17,7 @@ The link opens the dashboard's create dialog on a preview of the repository (ser
 - Public on GitHub, with at least one commit. Git submodules are not included.
 - `.yard/settings.json` at the root (at most 16 KB), in the current layout (`"version": 8`). Nothing else is required: services, a landing page, migrations and pricing are all optional.
 - Every declared service directory holds its files and a `_service.js`. A `custom` landing page needs files in its directory, and a `migrations` block needs `.sql` files. Files under the default `.yard/landing-page/` and `.yard/migrations/` count even without a block.
-- The creating team's plan bundle limits (on Pro: landing page 60 files, 3 MB each, 25 MB per video, 100 MB total; service 600 files, 15 MB each, 75 MB total, `_service.js` at most 10 MB; migrations 600 files, 3 MB each, 15 MB total).
+- The creating team's plan bundle limits (on Pro: landing page 60 files, 25 MB each, 100 MB total; service 600 files, 15 MB each, 75 MB total, `_service.js` at most 10 MB; migrations 600 files, 3 MB each, 15 MB total).
 
 Everything is validated before anything is created, so a broken template creates nothing.
 

@@ -224,7 +224,7 @@ yard sandbox unpin                         # the storefront serves v1.0.0
 
 ## Bundle limits
 
-File count, per-file size and total size come from the team's plan (Pro: 60 files, 3 MB per file, 25 MB per `.mp4`/`.webm`, 100 MB total; read `team_permissions` `page_max_*` from `yard me --json` or GET /v1/me for the exact values). The video cap is `page_max_media_file_bytes`; a plan without it refuses `.mp4` and `.webm`. Extensions `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish. Video: H.264/AAC `.mp4`, `muted playsinline` to autoplay, `preload="metadata"` with a `poster`, captions as `.vtt`. Each release's bundle is limited separately. `yard push` rejects violations before uploading.
+File count, per-file size and total size come from the team's plan (Pro: 60 files, 25 MB per file, 100 MB total; read `team_permissions` `page_max_*` from `yard me --json` or GET /v1/me for the exact values). Extensions `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish. Video: H.264/AAC `.mp4`, `muted playsinline` to autoplay, `preload="metadata"` with a `poster`, captions as `.vtt`. Each release's bundle is limited separately. `yard push` rejects violations before uploading.
 
 ---
 
