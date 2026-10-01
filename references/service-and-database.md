@@ -138,7 +138,7 @@ yard service logs --sandbox preview --service api  # console output + exceptions
 yard sandbox unpin                                 # ship it to buyers
 ```
 
-What runs is always what the serving release holds, so going live is a release operation. Editing a release that is already served redeploys it; `yard status` shows stale, updating, then up to date. A sandbox also has its own simulated commerce, so a `users` service can be bought and used end to end there without money moving ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
+What runs is always what the serving release holds, so going live is a release operation. Editing a release that is already served redeploys it; `yard sandbox list` shows stale, updating, then up to date. A sandbox also has its own simulated commerce, so a `users` service can be bought and used end to end there without money moving ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 
 ## Testing before users see it
 

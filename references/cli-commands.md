@@ -374,10 +374,10 @@ Scaffolds the landing-page directory in an existing project: pulls the draft's p
 
 ### yard status
 
-What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (removed only by `push --prune`). It also lists who serves the release and each one's deploy status (`up_to_date`, `stale`, `updating`, `failed`).
+What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (removed only by `push --prune`). It also lists who serves that release and each one's deploy status. Nothing serves a draft, so after a push `serving` is empty; `yard sandbox list` covers every place regardless of release.
 
 ```json
-{ "project": "my-slug", "release": "9f3e…", "version": "", "draft": true,
+{ "project": "my-slug", "release": "9f3e…", "version": "1.2.0", "draft": false,
   "page": { "dir": "…/.yard/landing-page", "to_upload": ["index.html"], "unchanged": ["styles.css"], "remote_only": [] },
   "serving": [{ "sandbox": "", "deploy": "stale" }] }
 ```
@@ -426,7 +426,7 @@ What serves:
 
 A pin outranks a rollback, which outranks the channel. A bad release is live → `rollback` (the fix takes over when published). Hold one release through later publishes → `pin`.
 
-- `list`: the project, then each sandbox, with what serves and why (`1.3.0 (pinned)`, `(rolled back)`, `(<channel>)`, `(no channel)`, `-`), release count, channel, visibility, deploy status (`stale`, `updating`, `failed` with its error; blank when up to date). JSON: `{ "project": {...}, "sandboxes": [...] }`, each with `slug`, `visibility`, `channel`, `pinned_release_id` (when pinned), `serving_release`, `releases`, `deploy_status`, `page_url`.
+- `list`: the project, then each sandbox, with what serves and why (`1.3.0 (pinned)`, `(rolled back)`, `(<channel>)`, `(no channel)`, `-`), release count, channel, visibility, deploy status (blank when up to date). `stale`: the release changed and a redeploy starts shortly. `updating`: deploying. `failed`: still serving the previous version, with the error; it is retried automatically, but a failure that persists is in the bundle, so fix it and push. JSON: `{ "project": {...}, "sandboxes": [...] }`, each with `slug`, `visibility`, `channel`, `pinned_release_id` (when pinned), `serving_release`, `releases`, `deploy_status` (`up_to_date`, `stale`, `updating`, `failed`), `deploy_error` (when failed), `page_url`.
 - `create <name>`: 2-60 letters, digits and hyphens, starting with a letter. Private, serving nothing until it follows a channel or is pinned.
 - `rename <name> <new-name>`: keeps releases, files, secrets and database; the URL changes.
 - `visibility <public|private>`: `private` (a sandbox's default) admits only the owning team; `public` lets anyone with the URL in. Without `--sandbox` it sets the project itself (that is how a project goes private). A draft project still serves nothing publicly.
