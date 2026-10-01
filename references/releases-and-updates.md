@@ -35,7 +35,7 @@ A bad release is live: `yard sandbox rollback v1.3.0` puts the earlier one back 
 
 ## Syncing releases from GitHub
 
-With the Yard GitHub App installed and the repo linked (dashboard: the project's Release Channels page, GitHub Sync), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (chosen in the same GitHub Sync dialog, default `Production`, so publishing on GitHub ships to buyers).
+With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to buyers). A private project doesn't sync.
 
 If the repo has `.yard/settings.json` at the tag, the sync also imports what it declares:
 

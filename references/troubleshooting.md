@@ -47,7 +47,7 @@ There is no local runtime build for Windows on ARM. Test with a sandbox instead:
 
 ## `yard init` in a non-git folder
 
-`yard init` works outside a Git repository; the project is simply created without a linked GitHub repo. If you _want_ the project linked to a repo, make sure you run `yard init` from inside a Git repository that has a GitHub remote named `origin`.
+`yard init` works outside a Git repository; the project just isn't linked to a GitHub repo. To link one later, run `yard github link owner/repo`. For `yard init` to link it, run it from inside a Git repository that has a GitHub remote named `origin`.
 
 **Fix:**
 
@@ -115,17 +115,16 @@ If you haven't installed the Yard GitHub App and you want to link a repo during 
 1. Open your browser to the GitHub App installation page
 2. Wait up to 5 minutes for you to complete the installation
 
-If it times out, you close the browser, or the install fails, `yard init` falls back to creating the project without a linked repo. To retry the link later:
+If it times out, you close the browser, or the install fails, `yard init` carries on without linking the repo. To link it later:
 
-1. In the dashboard, open the project's **Release Channels** page, click **GitHub Sync**, then **Install GitHub App**
-2. Select the account/org and grant access to the repositories you want to sell
-3. Link the repo from the same **GitHub Sync** dialog, or delete the project and re-run `yard init`
+1. Install the app from the dashboard's **Integrations** page (under **Configure**) and grant it access to the repo
+2. Run `yard github link` in the repo, or link it on the same **Integrations** page
 
 ---
 
-## "repository is already listed as a project"
+## "<repo> is linked to <project>"
 
-Each GitHub repository can only be published as one Yard project. If you've already published it, use the web dashboard to manage the existing project.
+A GitHub repository is linked to one Yard project at a time. To work on the project that has it, run `yard init --project <slug>`. To move the repo to this project, run `yard github link --move` (or change the row's project on the **Integrations** page); the other project stops syncing its releases.
 
 ---
 

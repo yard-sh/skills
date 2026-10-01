@@ -224,6 +224,7 @@ These need a signed-in session (CLI or dashboard) whatever scopes a key holds:
 - Team management: members, roles, invites, ownership, switching the active team
 - Payout onboarding, payouts, payment methods, the team's own plan
 - Custom domains, project images and videos, webhook secrets
+- The GitHub App install, its repo list and the team's linked repos (linking or unlinking one project's repo takes `projects:write`)
 - Account, session and security-device management
 
 ---

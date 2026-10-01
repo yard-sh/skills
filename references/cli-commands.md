@@ -64,7 +64,7 @@ A seller command with no team answers `403` with `code: "NO_TEAM"` ("A team is r
 
 ## yard init
 
-Links the current directory to a project and writes `.yard/settings.json`. No git repo is needed; inside one with a GitHub remote, the repo is linked when the Yard GitHub App is installed.
+Links the current directory to a project and writes `.yard/settings.json`. No git repo is needed. Inside a clone of a GitHub repo the Yard GitHub App can access, every mode links that repo to the project it creates or picks when neither is linked elsewhere; otherwise the wizard asks, and the non-interactive modes print the [`yard github link`](#yard-github) command to run.
 
 | Mode | Invocation | Use |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Links the current directory to a project and writes `.yard/settings.json`. No gi
 | Link | `yard init --project <slug-or-uuid> --json` | Link to an existing project. A fresh directory also pulls the latest Production release whole (settings, landing page, service bundles); `--no-pull` skips that. |
 | Interactive | `yard init` | Humans only. Driving it through stdin is a dead end. |
 
-Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json` defaults to no page); `--link-repo` / `--no-link-repo` (default: link when the cwd is a GitHub repo and the Yard GitHub App is installed, otherwise skip silently and still create the project). Not logged in, the non-interactive modes fail with `not logged in. Run 'yard login' first`.
+Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json` defaults to no page); `--link-repo` / `--no-link-repo` (default: link when possible, otherwise note why and carry on; `--link-repo` makes that an error; `--no-link-repo` skips linking). Not logged in, the non-interactive modes fail with `not logged in. Run 'yard login' first`.
 
 **Spec schema.** Only `title` and `tiers` are required.
 
@@ -119,7 +119,9 @@ How many tiers a plan allows is `max_pricing_tiers`. `free_trial` and `gift_enab
 }
 ```
 
-**Interactive flow**, for explaining it to a human: an update check (a newer CLI must be installed first), sign-in if needed, the optional GitHub App install and repo check, pick an existing project or create one (title, then a price of $3.00 or more, or $0), write `.yard/settings.json`, pull the latest Production release into a fresh directory, offer a custom landing page, then offer license keys and device activations. The wizard never blocks a choice by plan: the server answers `upgrade_required`, the CLI shows the upgrade link and offers to retry the same request once the user has upgraded.
+`github_repo_linked` is whether the project has a linked repo once init is done.
+
+**Interactive flow**, for explaining it to a human: an update check (a newer CLI must be installed first), sign-in if needed, the optional GitHub App install and repo check, pick an existing project or create one (title, then a price of $3.00 or more, or $0), write `.yard/settings.json`, link the repo (asking before moving or replacing a link), pull the latest Production release into a fresh directory, offer a custom landing page, then offer license keys and device activations. The wizard never blocks a choice by plan: the server answers `upgrade_required`, the CLI shows the upgrade link and offers to retry the same request once the user has upgraded.
 
 **Troubleshooting:** a hanging `yard init` is the interactive wizard (interrupt, retry with `--spec -` or `--project`). After a failed attempt, check `yard projects --json` and link rather than re-create.
 
@@ -234,6 +236,18 @@ Beta         2         v1.5.0-beta.1  preview, staging   private
 ```
 
 `LATEST` is the release a new follower would serve (`-` when none). `--json`: `{ "project", "channels": [{ id, name, protected, visibility, created_at, release_count, latest_version, sandboxes }] }`, where `""` in `sandboxes` is the project itself.
+
+---
+
+## yard github
+
+Links GitHub repos to the team's projects; releases published on a linked repo sync to its project ([releases-and-updates.md](releases-and-updates.md#syncing-releases-from-github)). A repo is linked to one project at a time and must be one the Yard GitHub App can access.
+
+- `yard github list [--json]`: every linked repo, its project and sync channel. `--json`: `{ "links": [{ repo_id, repo_name, project: { id, slug, title, visibility }, sync_channel, channels }] }`.
+- `yard github link [owner/repo] [--channel <name>] [--move]`: links the repo (default: the directory's `origin`), replacing the project's own. A repo linked to another project fails until `--move`, which leaves that project unlinked. `--channel` sets the sync channel; with no repo argument on a project that already has one, only the channel changes. `--json`: `{ project, repo_id, repo_name, sync_channel, moved_from? }`.
+- `yard github unlink`: stops syncing; synced releases and the sync channel stay. `--json`: `{ project, repo_name, unlinked }`.
+
+`link` and `unlink` take `--project`, `--dir` and `--json`. A missing app install or repo access fails with the link to fix it.
 
 ---
 
