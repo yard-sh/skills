@@ -247,7 +247,7 @@ Links GitHub repos to the team's projects; releases published on a linked repo s
 - `yard github link [owner/repo] [--channel <name>] [--move]`: links the repo (default: the directory's `origin`), replacing the project's own. A repo linked to another project fails until `--move`, which leaves that project unlinked. `--channel` sets the sync channel; with no repo argument on a project that already has one, only the channel changes. `--json`: `{ project, repo_id, repo_name, sync_channel, moved_from? }`.
 - `yard github unlink`: stops syncing; synced releases and the sync channel stay. `--json`: `{ project, repo_name, unlinked }`.
 
-`link` and `unlink` take `--project`, `--dir` and `--json`. A missing app install or repo access fails with the link to fix it.
+`link` and `unlink` take `--project`, `--dir` and `--json`. A missing app install or repo access fails with the link to fix it ([installing the app](releases-and-updates.md#installing-the-yard-github-app)).
 
 ---
 

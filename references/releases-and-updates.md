@@ -33,6 +33,15 @@ yard sandbox unpin                            # ships it
 
 A bad release is live: `yard sandbox rollback v1.3.0` puts the earlier one back now, and the fix takes over by itself when you publish it. `yard sandbox pin <tag>` instead holds a release through later publishes (`pin` with no tag makes a rollback permanent). A rollback is refused while pinned.
 
+## Installing the Yard GitHub App
+
+Any team member can install the app ([github.com/apps/yard-sh](https://github.com/apps/yard-sh)) once for the team, on a GitHub account or org; each account or org connects to one team at a time. Start the install from Yard so it lands on the active team (`yard team`); an install begun on the app's GitHub page may not reach the team.
+
+- **Dashboard:** https://dash.yard.sh/configure/integrations → **Install**, then pick the account and the repos. **Manage** on the same page changes which repos the app can access.
+- **CLI:** interactive `yard init` in a GitHub clone offers the install. `yard init --json` and a failing `yard github link` print an install link (works once, expires in 15 minutes): give it to the user and rerun once they finish on GitHub.
+
+Installing on an org needs a GitHub user allowed to install apps there.
+
 ## Syncing releases from GitHub
 
 With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to buyers). A private project doesn't sync.

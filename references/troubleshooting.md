@@ -110,15 +110,7 @@ Because the setting is shared, switching in the browser changes what the CLI see
 
 ## GitHub App not installed
 
-If you haven't installed the Yard GitHub App and you want to link a repo during `yard init`, the CLI will:
-
-1. Open your browser to the GitHub App installation page
-2. Wait up to 5 minutes for you to complete the installation
-
-If it times out, you close the browser, or the install fails, `yard init` carries on without linking the repo. To link it later:
-
-1. Install the app from the dashboard's **Integrations** page (under **Configure**) and grant it access to the repo
-2. Run `yard github link` in the repo, or link it on the same **Integrations** page
+Interactive `yard init` opens the install in the browser and waits up to 5 minutes; if that times out or fails, it carries on without linking the repo. To link it later, [install the app](releases-and-updates.md#installing-the-yard-github-app), then run `yard github link` in the repo or link it on the dashboard's **Integrations** page.
 
 ---
 

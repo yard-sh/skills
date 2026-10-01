@@ -65,7 +65,7 @@ Then cover what the project type needs:
 | --- | --- |
 | [cli-commands.md](references/cli-commands.md) | Every command: flags, `--spec` shapes, `--json` output, settings.json, recipes |
 | [pricing-and-licensing.md](references/pricing-and-licensing.md) | Tiers, seats, launch stages, coupons, trials, gifts, license keys, activations, sandbox commerce |
-| [releases-and-updates.md](references/releases-and-updates.md) | Releases, channels, rollback, GitHub sync, the update server |
+| [releases-and-updates.md](references/releases-and-updates.md) | Releases, channels, rollback, GitHub App install and sync, the update server |
 | [api-reference.md](references/api-reference.md) | REST API, API key scopes, Yard Auth for external apps |
 | [landing-pages.md](references/landing-pages.md) | `window.yard`, `data-yard` / `data-action`, buyer state, signed-in visitors |
 | [service-and-database.md](references/service-and-database.md) | Service contract and paths, settings, Yard Auth headers and endpoints, database, secrets |
