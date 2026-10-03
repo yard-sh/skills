@@ -28,7 +28,7 @@ The parameter travels in the query string on `GET`s and on the subscription-mana
 
 | Endpoint | Where `sandbox` goes |
 |---|---|
-| `GET /v1/updates/latest`, `/v1/updates/sandboxes`, `/v1/updates/releases`, and both download paths | query string |
+| `GET /v1/updates/latest`, `/v1/updates/sandboxes`, `/v1/updates/channels`, `/v1/updates/releases`, and both download paths | query string |
 | `GET /v1/projects/{username}/{slug}/public` | query string |
 | `GET /v1/projects/{username}/{slug}/subscription` | query string |
 | `POST /v1/projects/{username}/{slug}/subscription/cancel` \| `/reactivate` \| `/change` | query string |
@@ -51,23 +51,21 @@ API keys start with `yard_` and belong to a **team** (created with `yard keys cr
 
 **Scopes:** a key reaches exactly the endpoints its scopes allow; anything else answers `401`. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
-Integration scopes are safe to ship inside the app your users run:
+Integration scopes are safe to ship inside the app your users run. Every install shares the key and its rate limit, so validate once at launch and keep the answer:
 
 | Scope | What it allows |
 |-------|----------------|
 | `metadata:read` | Read a project's public metadata and pricing |
-| `releases:read` | List public channels and their releases, and download release files |
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
-| `subscriptions:read` | Read a user's project subscription status |
-| `subscriptions:write` | Create, cancel, reactivate or change a user's project subscription |
 
-Management scopes act on the team's own account; keep keys holding them on servers the team controls:
+Management scopes act on the team's account, its release files and its users; keep keys holding them on servers the team controls. That includes `releases:read` (downloads every file in a public channel without a purchase) and the subscription scopes (act on any user named by email). An app lists channels, checks for updates and downloads with the user's license key instead ([License-Gated Endpoints](#license-gated-endpoints-no-auth-header)):
 
 | Scope | What it allows |
 |-------|----------------|
 | `projects:read` | List and read the team's projects, including drafts and pricing history |
 | `projects:write` | Create, update and delete projects, and change pricing and page content |
+| `releases:read` | List public channels and their releases, and download release files |
 | `releases:write` | Create, edit, publish and archive releases, manage channels, and read draft contents |
 | `sandboxes:read` | List sandboxes and the releases they serve |
 | `sandboxes:write` | Create, rename and delete sandboxes, and pin or roll back what they serve |
@@ -76,6 +74,8 @@ Management scopes act on the team's own account; keep keys holding them on serve
 | `secrets:write` | Set and delete secret values |
 | `db:query` | Run SQL, including writes, against every database of the project (sensitive) |
 | `users:read` | List the people who bought your projects, with their license keys and subscriptions |
+| `subscriptions:read` | Read a user's project subscription status |
+| `subscriptions:write` | Create, cancel, reactivate or change a user's project subscription |
 | `transactions:read` | List and inspect sales |
 | `transactions:write` | Change the trial on a sale |
 | `coupons:read` | List coupons, their analytics and the sales they were used on |
@@ -105,7 +105,7 @@ Everything below takes `Authorization: Bearer yard_…` with the listed scope. T
 |---|---|---|---|
 | `GET` | `/v1/projects/{username}/{slug}/metadata` | `metadata:read` | Read project metadata (title, launch stage, tiers, pricing) |
 
-### Releases (public reads for a shipped app)
+### Releases (public channel reads)
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
@@ -127,7 +127,7 @@ A key holding only `releases:read` sees public channels and no drafts or archive
 `validate` answers `valid: true` for a sandbox key too; check its `sandbox` field before granting anything ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 
 
-### Subscriptions (user-facing)
+### Subscriptions (a user's subscription, from the team's server)
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
@@ -148,10 +148,11 @@ Built-in updaters in your software can reach these directly with just a license 
 | `GET` | `/v1/updates/latest?license_key={key}` | Check for the latest release by license key |
 | `GET` | `/v1/updates/latest/download/{filename}?license_key={key}` | Download the latest release file by license key |
 | `GET` | `/v1/updates/sandboxes?license_key={key}` | List the update streams (the project itself plus each sandbox) the key may see |
-| `GET` | `/v1/updates/releases?license_key={key}` | List the project's or one sandbox's releases (GitHub Releases list shape) |
+| `GET` | `/v1/updates/channels?license_key={key}` | List the release channels the key may see, for a channel picker |
+| `GET` | `/v1/updates/releases?license_key={key}` | List the project's, one sandbox's or one channel's releases (GitHub Releases list shape) |
 | `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release |
 
-All take an optional `sandbox`; details and response shapes in [releases-and-updates.md](releases-and-updates.md#downloading-releases-with-a-license-key).
+All take an optional `sandbox`, and `latest`, `releases` and the by-version download also take `channel`; details and response shapes in [releases-and-updates.md](releases-and-updates.md#downloading-releases-with-a-license-key).
 
 ---
 
