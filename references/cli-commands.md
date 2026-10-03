@@ -362,11 +362,11 @@ A push uploads `settings.json` itself, which is how deploys learn each service's
 
 **Exit codes:** `0` success, `1` fatal (auth, network, validation), `2` partial (`push` only: some files uploaded, some failed; see `errors`).
 
-**Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Pro's.
+**Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Basic's and Pro's.
 
 - Landing page: ≤60 files, ≤25 MB each, ≤100 MB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
 - Service: ≤600 files, ≤15 MB each, ≤75 MB total, `_service.js` ≤10 MB on every plan, nesting ≤8 levels; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dotfiles and bundle-root `README.md` are skipped.
-- Migrations: ≤600 files, ≤3 MB each, ≤15 MB total, no subdirectories.
+- Migrations: any number of files, ≤3 MB each, ≤15 MB total, no subdirectories.
 
 ### yard init --page
 
