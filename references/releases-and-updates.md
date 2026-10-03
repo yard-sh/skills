@@ -111,11 +111,11 @@ Download with `browser_download_url` (or `GET /v1/updates/latest/download/{filen
 
 Other endpoints (all take `license_key` and optional `sandbox`):
 
-- `GET /v1/updates/sandboxes`: the streams the key may see, for a stream picker. `{"global": {"visibility", "current_version", "current_published_at"}, "sandboxes": [{"slug", …}]}`, where `global` is the project itself; private sandboxes are omitted for non-members.
+- `GET /v1/updates/sandboxes`: the streams the key may see, for a stream picker. `{"project": {"visibility", "current_version", "current_published_at"}, "sandboxes": [{"slug", …}]}`, where `project` is the project itself; private sandboxes are omitted for non-members.
 - `GET /v1/updates/releases`: a bare array of that stream's releases, newest first, same shape; archived releases excluded; `page` (default 1) and `limit` (default 50, max 100). Use each `browser_download_url` verbatim.
 - `GET /v1/updates/releases/{version}/download/{filename}`: a file from a specific release (`404 Release not found` if the stream doesn't hold it).
 
-Errors: `400 Missing license key` / `Invalid license key format`; `403 Purchase not completed` / `License has been refunded` (revoked for good; invite a re-purchase) / `Trial period has expired`; `404 No releases found` (nothing published to that stream yet: `yard releases publish`), `License key not found`, `Sandbox "…" not found` (unknown, or private and the holder isn't on the team).
+Errors: `400 Missing license key` / `Invalid license key format`; `403 Purchase not completed` / `License has been refunded` (revoked for good; invite a re-purchase) / `Trial period has expired`; `404 No releases found` (nothing published to that stream yet: `yard releases publish`), `License key not found`, `Sandbox "…" not found` (unknown, or private and the holder isn't on the team), `Project not found` (no `sandbox` named, and either the project is private or a draft and the holder isn't on the team, or the key was bought in a sandbox).
 
 ## Troubleshooting
 
