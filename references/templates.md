@@ -27,7 +27,7 @@ Everything is validated before anything is created, so a broken template creates
 - `project_slug` in the template's settings.json is ignored. When the new owner runs `yard init --project <new-slug>` in a fresh directory, the pulled settings.json gets their slug.
 - Pricing comes from the `pricing` block, validated against the team's plan. Without one the project has no tiers (a landing page that isn't for sale yet).
 - Services, the landing page, migrations and download buttons become release `1.0.0`, published to the `Production` channel and deployed.
-- Secrets are not carried (settings.json has none): the owner sets them with `yard service secrets set`, which applies on the next deploy.
+- Secrets are not carried (settings.json has none): the owner sets them with `yard service secrets set`, which redeploys the services with them.
 - The project is not linked to the template repository.
 - Plan gates apply up front: services need `service`, a custom page `custom_project_pages`, rooms `service_rooms`, and the team must be under its project limit. A service whose `access` is not `public` also needs `yard_auth` to deploy.
 

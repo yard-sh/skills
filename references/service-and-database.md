@@ -115,7 +115,7 @@ The project and each sandbox have their own database, shared by every service th
 
 ## Secrets
 
-Third-party keys go in secrets, exposed as `env.<NAME>` to every service of the project or of one sandbox; the two never share values. Write-only; applied on the **next deploy**. Never commit keys into a bundle.
+Third-party keys go in secrets, exposed as `env.<NAME>` to every service of the project or of one sandbox; the two never share values. Write-only; each change **redeploys those services** right away. Never commit keys into a bundle.
 
 ```sh
 yard service secrets set OPENAI_API_KEY=sk-...                     # the project itself
