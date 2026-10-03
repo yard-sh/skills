@@ -39,10 +39,10 @@ The signed-in user, the team they act as, and what each may do. `--json`:
 }
 ```
 
-- **`team_permissions` decides every seller feature** (projects, tiers, coupons, license keys, custom pages, services, Yard Auth, sandboxes, API keys). It is the merged entitlement of the active team's owners. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not.
+- **`team_permissions` decides every team feature** (projects, tiers, coupons, license keys, custom pages, services, Yard Auth, sandboxes, API keys). It is the merged entitlement of the active team's owners. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not.
 - `permissions` is the user's own entitlement, for account-level things like `create_teams`.
 - Booleans carry `granted`; limits also carry `limit` or `unlimited: true`. Gates are permission-based, not tied to a plan name. `plan` is a display label.
-- `team` is `null` (and `team_permissions` absent) when the user belongs to no team; every seller command then fails with `NO_TEAM`.
+- `team` is `null` (and `team_permissions` absent) when the user belongs to no team; every team command then fails with `NO_TEAM`.
 
 ---
 
@@ -58,7 +58,7 @@ Projects are published at https://yard.sh/@acme/<slug>
 
 `--json` emits `{ active_team_id, active_team, teams }`. The active team lives on the account, shared with the dashboard's team switcher, so it can change between commands; re-check it rather than trusting an earlier answer. Membership is `owner` or `admin`: both run the whole project surface, but payouts and billing (reads included) are owner-only and answer `403 NOT_TEAM_OWNER` to an admin.
 
-A seller command with no team answers `403` with `code: "NO_TEAM"` ("A team is required"). It is not a plan problem: create a team at https://yard.sh/team, then run `yard team`.
+A team command run without a team answers `403` with `code: "NO_TEAM"` ("A team is required"). It is not a plan problem: create a team at https://yard.sh/team, then run `yard team`.
 
 ---
 
@@ -295,10 +295,10 @@ yard coupons list --json | jq -r '.coupons[] | select(.max_uses != null and .cur
 
 ## yard users
 
-Read-only list of buyers with at least one completed, unrefunded purchase, across the team's projects. Money is pre-formatted text (`"$87.00"`); use `yard transactions` for arithmetic. Sandbox (simulated) buyers never appear.
+Read-only list of users with at least one completed, unrefunded purchase, across the team's projects. Money is pre-formatted text (`"$87.00"`); use `yard transactions` for arithmetic. Sandbox (simulated) users never appear.
 
 - `list [--json] [--project <slug>] [--sort lastTransaction|email|username|orderCount|totalSpent|userDisplayId] [--direction] [--page] [--limit]`. `--project` narrows both the rows and the summary line.
-- `show <user-id>`: the buyer's totals and their orders, refunded ones included. Ids look like `user_deadbeef`; an ambiguous prefix is a `409` (pass the full UUID). There is no email lookup.
+- `show <user-id>`: that user's totals and their orders, refunded ones included. Ids look like `user_deadbeef`; an ambiguous prefix is a `409` (pass the full UUID). There is no email lookup.
 
 ```sh
 yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '.users[] | "\(.email) \(.total_spent_display)"'
@@ -310,13 +310,13 @@ yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '
 
 The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Refunds are issued in the dashboard. Sandbox (simulated) sales never appear here, in earnings or in payouts.
 
-- `list [--json] [--trials] [--project <slug>] [--start <date>] [--end <date>] [--sort date|amount|sellerEarnings|projectName] [--direction] [--page] [--limit]`. Filters narrow the rows and the total; the summary stays team-wide. `TYPE` is `gift`, `trial`, `trial upgrade`, `subscription` or `purchase`.
+- `list [--json] [--trials] [--project <slug>] [--start <date>] [--end <date>] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. Filters narrow the rows and the total; the summary stays team-wide. `TYPE` is `gift`, `trial`, `trial upgrade`, `subscription` or `purchase`.
 - `show <order-id>`: tier, quantity, coupon, refund date, billing period, trial expiry.
-- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless the buyer has since started another trial on that project. **The buyer is emailed.** Needs `.team_permissions.sell_projects`. The trial length offered to new buyers is the tier's `free_trial.days`.
+- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless its user has since started another trial on that project. **The user on the trial is emailed.** Needs `.team_permissions.sell_projects`. The trial length offered to new users is the tier's `free_trial.days`.
 
 ```sh
 yard transactions list --trials --json | jq -r '.transactions[] | "\(.id) \(.user_email) \(.trial_expires_at)"'
-yard transactions list --project my-tool --start 2026-07-01 --json | jq '[.transactions[].seller_earnings_cents] | add'
+yard transactions list --project my-tool --start 2026-07-01 --json | jq '[.transactions[].team_earnings_cents] | add'
 ```
 
 ---

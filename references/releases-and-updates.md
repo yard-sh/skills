@@ -1,6 +1,6 @@
 # Releases and the Update Server
 
-How a project's releases work, how they reach buyers, how GitHub releases sync in, and how shipped software downloads updates with a buyer's license key. Command flags and JSON shapes are in [cli-commands.md](cli-commands.md#yard-releases).
+How a project's releases work, how they reach users, how GitHub releases sync in, and how shipped software downloads updates with a user's license key. Command flags and JSON shapes are in [cli-commands.md](cli-commands.md#yard-releases).
 
 ## What a release is
 
@@ -10,18 +10,18 @@ A release is a **project-wide snapshot**: landing page, pricing, download button
 - **Publishing** stamps the tag and puts the release in one **channel**. Publishing is one-way, but the release stays editable: editing one that nothing serves is harmless, editing one that is served is live on save.
 - Releases belong to the project, never to a sandbox. The project and each sandbox **follow one channel** and serve its newest release, unless **rolled back** (until the next release lands in the channel) or **pinned** (until unpinned). Landing in a followed channel is the deploy moment.
 - Every project has a protected `Production` channel that it follows, so `yard releases publish <tag>` (which defaults to `Production`) is the go-live step. Other channels are created, renamed, deleted and reordered on the project's Release Channels page in the dashboard; deleting one reassigns its releases (to `Production` by default).
-- **Archiving** takes a published release out of its channel and frees its tag; whatever followed that channel falls back to its next newest release. Buyers and the update server no longer see it unless the project or a sandbox is pinned to it. **Unarchiving** returns it to the channel it left (`Production` if that channel is gone), or to the one `--to` names, and takes the tag back (`409` if another release holds it).
+- **Archiving** takes a published release out of its channel and frees its tag; whatever followed that channel falls back to its next newest release. Users and the update server no longer see it unless the project or a sandbox is pinned to it. **Unarchiving** returns it to the channel it left (`Production` if that channel is gone), or to the one `--to` names, and takes the tag back (`409` if another release holds it).
 
 ## Publishing, promoting, rolling back
 
 ```sh
-yard releases publish v1.4.0 --file dist/app.zip   # live to buyers
+yard releases publish v1.4.0 --file dist/app.zip   # live to users
 yard releases promote v1.4.0 --to Beta             # move it to Beta (nothing is copied; download counts carry over)
 yard releases archive v1.3.0                       # take it out of its channel
 yard releases unarchive v1.3.0                     # put it back where it was
 ```
 
-`publish` uploads the files into your draft first, then publishes it; a failed upload never leaves a half-described release. Try a release before buyers see it:
+`publish` uploads the files into your draft first, then publishes it; a failed upload never leaves a half-described release. Try a release before users see it:
 
 ```sh
 yard sandbox create preview
@@ -44,7 +44,7 @@ Installing on an org needs a GitHub user allowed to install apps there.
 
 ## Syncing releases from GitHub
 
-With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to buyers). A private project doesn't sync.
+With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release. Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to users). A private project doesn't sync.
 
 If the repo has `.yard/settings.json` at the tag, the sync also imports what it declares:
 
@@ -87,7 +87,7 @@ Trials use the same `free_trial` object as everywhere else. Array order is displ
 
 ## Downloading releases with a license key
 
-For shipped software that updates itself. The project must issue license keys (`license_key_enabled`); each buyer's key is their credential, so revocation, activation limits and per-user limits come for free and no shared secret ships in the binary.
+For shipped software that updates itself. The project must issue license keys (`license_key_enabled`); each user's key is their credential, so revocation, activation limits and per-user limits come for free and no shared secret ships in the binary.
 
 ```
 GET https://api.yard.sh/v1/updates/latest

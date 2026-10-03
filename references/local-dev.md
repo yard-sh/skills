@@ -1,6 +1,6 @@
 # Local development: `yard dev`
 
-`yard dev` runs a Yard project on the machine exactly as Yard hosts it: the landing page, every service under its mount path, the `X-Yard-*` identity headers, secrets, and a local database with the project's migrations applied. It is the fast loop; a sandbox remains the check with real commerce before buyers see anything.
+`yard dev` runs a Yard project on the machine exactly as Yard hosts it: the landing page, every service under its mount path, the `X-Yard-*` identity headers, secrets, and a local database with the project's migrations applied. It is the fast loop; a sandbox remains the check with real commerce before your users see anything.
 
 Use it whenever you are building or changing a service or a custom landing page. Iterate here until the behavior is right, then `yard push`.
 
@@ -67,7 +67,7 @@ There is no real Yard Auth locally. A persona decides which `X-Yard-*` headers t
 
 Personas come from the project's pricing tiers: the live project data when logged in, otherwise the settings.json `pricing` block. One `user:*` persona exists per tier (`Pro` becomes `user:pro`); with no tiers there is a single `user`. `X-Yard-Sandbox` is always empty (the project itself). Client-sent `X-Yard-*` headers are stripped, so forged identity does not work locally either. As hosted, a fetch, form post or WebSocket from another origin (a page on a different port included) arrives as `anonymous` whatever the cookie or default; top-level navigations keep the persona.
 
-The landing page sees the persona too. `window.yard.ownership()` and every `data-yard-when` element resolve from `/<slug>/__yard/auth/ownership` instead of the hosted bridge, with the hosted shape: `anonymous` is signed out; `signed-in` and `member` are signed in without a purchase (a seller on their own page is not a buyer either); `trial` is owned with `is_trial: true`; `user:<tier>` is owned with `tier_id` and `tier_name` from the project data and `is_subscription` from the tier's pricing model. `user.username` is the persona's user id and `avatar_url` is null.
+The landing page sees the persona too. `window.yard.ownership()` and every `data-yard-when` element resolve from `/<slug>/__yard/auth/ownership` instead of the hosted bridge, with the hosted shape: `anonymous` is signed out; `signed-in` and `member` are signed in without a purchase (a team member on their own page has not bought it either); `trial` is owned with `is_trial: true`; `user:<tier>` is owned with `tier_id` and `tier_name` from the project data and `is_subscription` from the tier's pricing model. `user.username` is the persona's user id and `avatar_url` is null.
 
 Ways to choose the persona:
 

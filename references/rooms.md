@@ -198,8 +198,8 @@ connect();
   Read them in the room's `fetch` before accepting. A socket opened from
   another origin (another project's page included) arrives signed out, with
   no `X-Yard-User-Id`. The service's `access` setting gates the upgrade like
-  any other request, so `"access": "users"` keeps non-buyers out of every
-  room with no code.
+  any other request, so `"access": "users"` keeps visitors who haven't
+  bought out of every room with no code.
 - **Every session ends after 24 hours.** Yard closes the connection with code
   1000 and reason `Session limit reached`; clients reconnect and carry on.
   Write the client so every close leads to a reconnect, as above, and it also
@@ -262,7 +262,7 @@ design that sends every user through one name has one budget for everyone.
 
 Pro includes an allowance per calendar month (UTC). Past it, each unit is
 billed on the monthly overage invoice; the rates below are approximate, and
-sellers see the live numbers on the Usage page of the dashboard.
+developers see the live numbers on the Usage page of the dashboard.
 
 | Meter         | Included per month | Overage, about        |
 | ------------- | ------------------ | --------------------- |

@@ -19,7 +19,7 @@ There is no first-class "enterprise" or contact-sales tier: model it as a high-p
 
 - **`single`**: one license, quantity 1, one license key per purchase.
 - **`fixed_pack`**: a fixed bundle ("Team 5-Pack") bought as one unit; `seat_count` (2-1000) keys per purchase.
-- **`per_seat`**: the buyer picks a quantity within `min_seats` / `max_seats` (null = unlimited); one key per seat; optional volume brackets.
+- **`per_seat`**: the user picks a quantity at checkout, within `min_seats` / `max_seats` (null = unlimited); one key per seat; optional volume brackets.
 
 ## Volume Brackets
 
@@ -37,10 +37,10 @@ New projects start in `draft` and move **forward only**:
 
 | Stage | Meaning |
 | --- | --- |
-| `draft` | Not visible to buyers; the owning team can still use every page and service. |
+| `draft` | Not visible to users; the owning team can still use every page and service. |
 | `early_access` | Public and purchasable, marked "Early Access". Optional launch discount `early_access_discount_percent` (1-100), which ends at `published`. |
 | `published` | General availability. Final. |
-| `archived` | No new purchases; existing buyers keep access. |
+| `archived` | No new purchases; existing users keep access. |
 
 - `draft` → `early_access` → `published`, or straight from `draft` to `published`. Going back is rejected ("Cannot move launch stage backward"); `published` can never change.
 - Leaving `draft` requires the team to have finished payout setup.
@@ -53,7 +53,7 @@ Needs `.team_permissions.coupons`. Managed with `yard coupons` ([cli-commands.md
 
 - `discount_type`: `percentage` (1-100) or `fixed_amount` (`discount_value` in **cents**).
 - `scope`: `all_projects` (every project, including future ones) or `specific_projects` (`project_ids`).
-- `code`: upper-cased, 4-50 alphanumeric. `max_uses` counts across all buyers (null = unlimited; no per-buyer limit). `valid_from` / `expires_at` are optional. `subscription_duration`: `once` (first payment, default) or `forever` (every renewal); ignored for one-time purchases.
+- `code`: upper-cased, 4-50 alphanumeric. `max_uses` counts across all users (null = unlimited; no per-user limit). `valid_from` / `expires_at` are optional. `subscription_duration`: `once` (first payment, default) or `forever` (every renewal); ignored for one-time purchases.
 - A coupon is usable only when active, started, unexpired and under its limit; `is_active` is just the on/off switch.
 - Up to 100 codes can be generated at once, returned only at creation. After the first redemption the discount cannot change and the coupon cannot be deleted (deactivate it). `null` clears `max_uses`, `expires_at` or `valid_from`; an omitted key is unchanged.
 
@@ -63,22 +63,22 @@ Plan-gated and configured **per tier** (set at creation in `yard init --spec`, l
 
 - `free_trial.days`: 7-365, optional; a trial enabled without days runs 7.
 - `free_trial.requires_card` (default false): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.
-- One-time tiers can be trialed as a guest (email confirmation). After expiry the buyer must purchase to keep access.
-- To change a running trial for one buyer: `yard transactions trial <order-id> --add-days N` (added to the current expiry, not today; the buyer is emailed). See [cli-commands.md](cli-commands.md#yard-transactions).
+- One-time tiers can be trialed as a guest (email confirmation). After expiry the trial user must purchase to keep access.
+- To change one user's running trial: `yard transactions trial <order-id> --add-days N` (added to the current expiry, not today; the user on the trial is emailed). See [cli-commands.md](cli-commands.md#yard-transactions).
 
 ## Gift Purchases
 
-Plan-gated; `gift_enabled` per tier, one-time tiers only. The buyer enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically.
+Plan-gated; `gift_enabled` per tier, one-time tiers only. The user enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically.
 
 ## Commerce in a Sandbox
 
-The project's own commerce is real: checkouts charge cards, money reaches the seller's payouts, and only it appears in the seller's books. Each **sandbox** has a parallel, **simulated** set of users, transactions, subscriptions, trials, license keys, coupon redemptions and gifts: no card is charged and no money moves, but amounts are computed exactly as a real sale would. That is how a seller rehearses checkout, entitlement, license validation and renewals without buying their own project.
+The project's own commerce is real: checkouts charge cards, money reaches the team's payouts, and only it appears in the team's books. Each **sandbox** has a parallel, **simulated** set of users, transactions, subscriptions, trials, license keys, coupon redemptions and gifts: no card is charged and no money moves, but amounts are computed exactly as a real sale would. That is how a developer rehearses checkout, entitlement, license validation and renewals without buying their own project.
 
 A simulated purchase:
 
 - records a completed transaction with the tier, quantity, discounts and amounts it would have charged;
 - mints license keys by the usual rules, identical to real ones except for the sandbox they belong to;
-- starts subscriptions that renew on schedule and trials that convert (the one-trial-per-buyer rule applies per sandbox);
+- starts subscriptions that renew on schedule and trials that convert (the one-trial-per-user rule applies per sandbox);
 - records coupon redemptions and gifts, without using up the real coupon's `current_uses`.
 
 Payout setup is not required in a sandbox.
@@ -111,7 +111,7 @@ yard sandbox delete staging --yes                 # a clean slate: keys and acti
 
 ## Device Activations
 
-Plan-gated and requires license keys. `activations_enabled` and `max_activations` (1-10000 per key), set like license keys. Each activation records the `device_id` the buyer's software sends; buyers manage their devices from their Yard library. Activations belong to their key, so a sandbox's count against that sandbox's limit only.
+Plan-gated and requires license keys. `activations_enabled` and `max_activations` (1-10000 per key), set like license keys. Each activation records the `device_id` the software sends; users manage their devices from their Yard library. Activations belong to their key, so a sandbox's count against that sandbox's limit only.
 
 ## How checkout computes the price
 
@@ -119,4 +119,4 @@ Plan-gated and requires license keys. `activations_enabled` and `max_activations
 2. Base price, with any volume bracket.
 3. Launch-stage discount (early access).
 4. Coupon discount.
-5. Tax, by the buyer's location.
+5. Tax, by the user's location.

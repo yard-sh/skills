@@ -17,18 +17,18 @@ metadata:
 description: >-
   Yard sells, licenses, distributes and hosts software. Use whenever the user mentions Yard or the yard CLI:
   projects, pricing, license keys, releases and updates, sandboxes, hosted services and databases, yard dev,
-  landing pages, Yard Auth sign-in, realtime rooms, templates, coupons, buyers or sales.
+  landing pages, Yard Auth sign-in, realtime rooms, templates, coupons, users or sales.
 ---
 
 # Yard
 
-Yard lets developers sell software: checkout (Yard is the merchant of record), license keys and device activations, release downloads with an update server, custom landing pages, and hosted services with a database, buyer sign-in (Yard Auth) and realtime rooms. Sellers manage it with the `yard` CLI; shipped software integrates through the REST API.
+Yard lets developers sell software: checkout (Yard is the merchant of record), license keys and device activations, release downloads with an update server, custom landing pages, and hosted services with a database, user sign-in (Yard Auth) and realtime rooms. Developers manage it with the `yard` CLI; shipped software integrates through the REST API.
 
 Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.sh/install.ps1 | iex`). Run `yard login` yourself (in the background if your shell only returns output on exit): it opens `https://yard.sh/login/device` and prints a nine-digit code. Show the user the code; they paste it into that page and click Authorize, and the command exits signed in. `yard <command> --help` is always current.
 
 ## Ground rules
 
-- **Manage with the CLI, integrate with the API.** Creating projects, pricing, releases, pages, services, coupons and reading buyers and sales is CLI work. The REST API is for shipped software: license validation, updates, subscriptions, Yard Auth in external apps. Never create a project over HTTP.
+- **Manage with the CLI, integrate with the API.** Creating projects, pricing, releases, pages, services, coupons and reading users and sales is CLI work. The REST API is for shipped software: license validation, updates, subscriptions, Yard Auth in external apps. Never create a project over HTTP.
 - **Non-interactive only.** Use `--json` (result on stdout, logs on stderr) and `--spec <file|->` (JSON input). Never pipe answers into a prompt; bare `yard init` is for humans.
 - **Teams own everything.** Projects, coupons, API keys and payouts belong to a team, and the CLI acts as the active team (`yard team --json` → `.active_team`), which is stored on the account and shared with the dashboard. Projects live under the team's username: `https://<team>.yard.sh/<slug>/`.
 - **Check entitlements, never assume them.** Read `yard me --json` → `.team_permissions` before proposing a feature (`.permissions` is the user's own and gates nothing on a project). Never quote a plan's features from memory.
@@ -47,7 +47,7 @@ Ask first: **guided** (the user drives and you explain each step) or **autopilot
 
 Then cover what the project type needs:
 
-- **Installed software** (desktop app, CLI, binary): publish each version with `yard releases publish` and point the app's updater at `GET https://api.yard.sh/v1/updates/latest` with the buyer's license key. Otherwise the buy page has nothing to download. See [releases-and-updates.md](references/releases-and-updates.md).
+- **Installed software** (desktop app, CLI, binary): publish each version with `yard releases publish` and point the app's updater at `GET https://api.yard.sh/v1/updates/latest` with the paying user's license key. Otherwise the buy page has nothing to download. See [releases-and-updates.md](references/releases-and-updates.md).
 - **Web app, API or backend Yard runs:** see Hosted services below. Check the `service` permission while planning, not at push time.
 - **Custom landing page:** `yard init --page`, edit `.yard/landing-page/`, preview with `yard dev`. See [landing-pages.md](references/landing-pages.md).
 - **A template others can start from:** see [templates.md](references/templates.md).
@@ -67,7 +67,7 @@ Then cover what the project type needs:
 | [pricing-and-licensing.md](references/pricing-and-licensing.md) | Tiers, seats, launch stages, coupons, trials, gifts, license keys, activations, sandbox commerce |
 | [releases-and-updates.md](references/releases-and-updates.md) | Releases, channels, rollback, GitHub App install and sync, the update server |
 | [api-reference.md](references/api-reference.md) | REST API, API key scopes, Yard Auth for external apps |
-| [landing-pages.md](references/landing-pages.md) | `window.yard`, `data-yard` / `data-action`, buyer state, signed-in visitors |
+| [landing-pages.md](references/landing-pages.md) | `window.yard`, `data-yard` / `data-action`, user state, signed-in visitors |
 | [service-and-database.md](references/service-and-database.md) | Service contract and paths, settings, Yard Auth headers and endpoints, database, secrets |
 | [local-dev.md](references/local-dev.md) | `yard dev`: personas, local database, control panel API |
 | [rooms.md](references/rooms.md) | Realtime rooms: WebSockets, storage, limits, lifecycle |

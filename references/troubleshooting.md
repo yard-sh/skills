@@ -79,7 +79,7 @@ This runs the device sign-in again and saves a new session.
 
 ## "A team is required" / `NO_TEAM` 403
 
-Every seller-side command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push`) acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
+Every team command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push`) acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
 
 This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
 
@@ -104,7 +104,7 @@ yard team                  # who am I acting as?
 yard team use acme         # switch (the leading @ is optional)
 ```
 
-Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public project URL 404s, compare its username against `yard team --json` → `.active_team.username`: a project lives under its owning team's username, never under the seller's username.
+Because the setting is shared, switching in the browser changes what the CLI sees and vice versa. If a public project URL 404s, compare its username against `yard team --json` → `.active_team.username`: a project lives under its owning team's username, never under the developer's personal username.
 
 ---
 
@@ -178,7 +178,7 @@ This is normal in headless environments, SSH sessions, remote workspaces and WSL
 A service's settings - `name`, `url`, `access`, `database_access` - live on
 its entry in the `services` list of `.yard/settings.json`. Four retired
 layouts are rejected rather than upgraded, because reading them would have to
-guess values the seller chose:
+guess values the developer chose:
 
 **Services entries without a `"name"` (v5)** - the settings lived in each
 directory's own `settings.json`. Run `yard migrate`: it folds every

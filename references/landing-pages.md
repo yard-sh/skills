@@ -27,11 +27,11 @@ It is the public project JSON (`GET /v1/projects/{username}/{slug}/public`), sna
 | `images` | `ProjectImage[]` | Screenshots and icons, each with a `url` |
 | `category` | `string?` | |
 | `faq` | `{ question, answer }[]` | |
-| `metadata` | `{ key, value }[]` | Seller-defined pairs |
+| `metadata` | `{ key, value }[]` | Developer-defined pairs |
 | `license_key_enabled` | `boolean` | |
 | `latest_release` | `object?` | Newest published release (tag, name, notes, date) |
 | `release_count` | `number` | |
-| `seller` | `{ username, avatar_url?, … }` | The owning **team** |
+| `team` | `{ username, avatar_url?, … }` | The owning **team** |
 
 Each tier:
 
@@ -127,7 +127,7 @@ window.yard = {
   trial(opts),        // redirect to the trial flow: { tier? }
   checkoutURL(opts),  // build the URL without redirecting
   trialURL(opts),
-  ownership(),        // Promise<OwnershipState | null>, see Buyer state
+  ownership(),        // Promise<OwnershipState | null>, see User state
   refresh(),          // re-run data-yard binding
 };
 ```
@@ -145,7 +145,7 @@ for (const tier of window.yard.project.tiers) {
 
 ---
 
-## Buyer state: `window.yard.ownership()`
+## User state: `window.yard.ownership()`
 
 `window.yard.project` is the same for everyone; `ownership()` is about this visitor's **yard.sh account**: are they signed in to Yard, and do they own the project? It returns a memoized Promise, which can be `null` (always null-check).
 
@@ -170,8 +170,8 @@ It never exposes email, other purchases or payment details. It is read-only UI g
 ```js
 const state = await window.yard.ownership();
 if (state?.is_subscription) {
-  const { seller, slug } = window.yard.project;
-  document.querySelector("#manage-sub").href = `https://yard.sh/library/${seller.username}/${slug}/subscription`;
+  const { team, slug } = window.yard.project;
+  document.querySelector("#manage-sub").href = `https://yard.sh/library/${team.username}/${slug}/subscription`;
 }
 ```
 

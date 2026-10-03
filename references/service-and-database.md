@@ -1,6 +1,6 @@
 # Services and database on Yard
 
-A Yard service runs a project's server-side code, with an optional database, secrets, realtime rooms and buyer sign-in through Yard Auth. It hosts any HTTP workload: a full web app, a JSON API, a webhook receiver, or the backend an installed app calls. A release can carry several services, each on its own path; a bundle with only `_service.js` is valid. Requires the `service` permission (check `yard me --json` → `.team_permissions` before promising a deploy).
+A Yard service runs a project's server-side code, with an optional database, secrets, realtime rooms and user sign-in through Yard Auth. It hosts any HTTP workload: a full web app, a JSON API, a webhook receiver, or the backend an installed app calls. A release can carry several services, each on its own path; a bundle with only `_service.js` is valid. Requires the `service` permission (check `yard me --json` → `.team_permissions` before promising a deploy).
 
 ## The runtime model: read this first
 
@@ -49,7 +49,7 @@ Each entry of `services` in `.yard/settings.json` is the whole declaration; chan
 - `dir`: the bundle directory, relative to the working directory. Directories must not nest.
 - `name`: 1-30 lowercase letters, digits and inner hyphens, unique in the release.
 - `url`: where it serves. Default `/<name>`; `/` takes the whole site (the landing page then serves nothing). Unique; `/__yard` and `/@…` are reserved. `/api` and `/api/v2` can both exist; the longer path wins.
-- `access`: `public` (default, everyone) · `authenticated` (sign-in required) · `users` (buyers, trialers and subscribers only; others go to the sales page). Anything but `public` needs `yard_auth` (`upgrade_required` otherwise).
+- `access`: `public` (default, everyone) · `authenticated` (sign-in required) · `users` (only people who bought, are on a trial or subscribe; others go to the sales page). Anything but `public` needs `yard_auth` (`upgrade_required` otherwise).
 - `database_access`: `true` binds the database as `env.DB`. The release's migrations create the database; a service flagged before the first migration deploys without `env.DB` and is redeployed with it once the database exists.
 - `rooms`: room classes the service exports, each reachable as `env.<binding>`. Needs `service_rooms`. See [rooms.md](rooms.md).
 
@@ -71,7 +71,7 @@ The Yard edge signs visitors in and gives your code trusted headers:
 
 - Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
 - Clients cannot forge them: the edge strips incoming `X-Yard-*` headers.
-- Every member of the owning team gets in everywhere with `owner`, so a seller never buys their own project. Entitlement resolves: owner → active subscription → latest completed purchase (unexpired trials count) → `none`. Verdicts are cached up to 60 seconds; there is no push signal, so a long-lived UI polls `__yard/auth/me`.
+- Every member of the owning team gets in everywhere with `owner`, so the team never buys its own project. Entitlement resolves: owner → active subscription → latest completed purchase (unexpired trials count) → `none`. Verdicts are cached up to 60 seconds; there is no push signal, so a long-lived UI polls `__yard/auth/me`.
 - Never implement OAuth, sessions or password storage. Apps running outside the project use Yard Auth as an OpenID Connect client: [api-reference.md](api-reference.md#yard-auth-for-external-apps).
 
 ### `__yard/auth/*` endpoints
@@ -80,7 +80,7 @@ They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landi
 
 - `login?return=<path>` signs the visitor in (an existing Yard session passes silently) and sends them to `return`. **`return` is a path relative to where you called login**: under a service, `return=/` is the service's root; at the project root, `return=/` is the landing page. It must start with `/`; anything else, a full URL included, falls back to `/`. The first sign-in to a project shows a consent screen (email, Yard account, purchase status), remembered until the person disconnects the app under "Connected apps" on their Yard security page.
 - `logout?return=<path>` ends the project session (the person stays signed in to Yard) and redirects with the same rule; without `return` it goes to `/` of where it was called.
-- `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro"}` when signed in (`email` may be `""`, `tier` is omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in non-buyer.
+- `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro"}` when signed in (`email` may be `""`, `tier` is omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in visitor who hasn't bought.
 
 A session covers every service of one project and nothing else. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.
 
@@ -135,7 +135,7 @@ yard releases publish v1.0.0                       # tag the draft into Producti
 yard sandbox pin v1.0.0 --sandbox preview          # serve it in the sandbox
 yard service open --sandbox preview --service api  # browse it (team only)
 yard service logs --sandbox preview --service api  # console output + exceptions
-yard sandbox unpin                                 # ship it to buyers
+yard sandbox unpin                                 # ship it to users
 ```
 
 What runs is always what the serving release holds, so going live is a release operation. Editing a release that is already served redeploys it; `yard sandbox list` shows stale, updating, then up to date. A sandbox also has its own simulated commerce, so a `users` service can be bought and used end to end there without money moving ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).

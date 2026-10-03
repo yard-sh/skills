@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing buyer subscriptions, and signing buyers in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the seller's own catalog (projects, releases, pages, services, coupons, buyers, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
+> **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing your users' subscriptions, and signing your users in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the team's own catalog (projects, releases, pages, services, coupons, users, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://dash.yard.sh/configure/api-keys?action=create**.
 
@@ -16,7 +16,7 @@ All API paths below are relative to this base URL (e.g., `/v1/licenses/validate`
 
 Projects are owned by a **team**, and a project is addressed by its owning team's username plus its slug: `/v1/projects/{username}/{slug}/…`, matching the public URL `https://yard.sh/@{username}/{slug}` and the subdomain `https://{username}.yard.sh/{slug}`.
 
-A team username is **not** the user's username (they share one namespace but routinely differ). Read it from `yard team --json` → `.active_team.username` or `seller.username` on the public project; never assume it matches the signed-in user.
+A team username is **not** the user's username (they share one namespace but routinely differ). Read it from `yard team --json` → `.active_team.username` or `team.username` on the public project; never assume it matches the signed-in user.
 
 ---
 
@@ -33,7 +33,7 @@ The parameter travels in the query string on `GET`s and on the subscription-mana
 | `GET /v1/projects/{username}/{slug}/subscription` | query string |
 | `POST /v1/projects/{username}/{slug}/subscription/cancel` \| `/reactivate` \| `/change` | query string |
 | `POST /v1/subscription-intent` | JSON body (`"sandbox": "preview"`) |
-| The buyer's download and library endpoints | query string |
+| Your users' download and library endpoints | query string |
 
 An unknown sandbox is a `404` naming it. A **private** sandbox (the default) answers only members of the owning team and gives everyone else the same `404`; a **public** one answers anyone. Responses that resolve a sandbox are never cacheable.
 
@@ -51,7 +51,7 @@ API keys start with `yard_` and belong to a **team** (created with `yard keys cr
 
 **Scopes:** a key reaches exactly the endpoints its scopes allow; anything else answers `401`. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
-Integration scopes are safe to ship inside a buyer's app:
+Integration scopes are safe to ship inside the app your users run:
 
 | Scope | What it allows |
 |-------|----------------|
@@ -59,8 +59,8 @@ Integration scopes are safe to ship inside a buyer's app:
 | `releases:read` | List public channels and their releases, and download release files |
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
-| `subscriptions:read` | Read a buyer's project subscription status |
-| `subscriptions:write` | Create, cancel, reactivate or change a buyer's project subscription |
+| `subscriptions:read` | Read a user's project subscription status |
+| `subscriptions:write` | Create, cancel, reactivate or change a user's project subscription |
 
 Management scopes act on the team's own account; keep keys holding them on servers the team controls:
 
@@ -85,13 +85,13 @@ Management scopes act on the team's own account; keep keys holding them on serve
 
 The CLI and dashboard use a signed-in session, not an API key. Integrations must use an API key.
 
-### Yard Auth access tokens (a buyer, in an external app)
+### Yard Auth access tokens (a user, in an external app)
 
 ```
 Authorization: Bearer {Yard Auth access token}
 ```
 
-A token a buyer's app obtained from the project's own OpenID Connect issuer. It identifies **a buyer of one project**, never the seller, and it reaches exactly one endpoint, `GET /v1/yard-auth/userinfo`. See [Yard Auth for external apps](#yard-auth-for-external-apps).
+A token your app obtained for one of its users from the project's own OpenID Connect issuer. It identifies **a user of one project**, never the team, and it reaches exactly one endpoint, `GET /v1/yard-auth/userinfo`. See [Yard Auth for external apps](#yard-auth-for-external-apps).
 
 ---
 
@@ -127,21 +127,21 @@ A key holding only `releases:read` sees public channels and no drafts or archive
 `validate` answers `valid: true` for a sandbox key too; check its `sandbox` field before granting anything ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 
 
-### Subscriptions (buyer-facing)
+### Subscriptions (user-facing)
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
 | `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
-| `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a buyer's subscription status for a project |
-| `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a buyer's subscription |
+| `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a user's subscription status for a project |
+| `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a user's subscription |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
-| `POST` | `/v1/projects/{username}/{slug}/subscription/change` | `subscriptions:write` | Change a buyer's tier or billing interval |
+| `POST` | `/v1/projects/{username}/{slug}/subscription/change` | `subscriptions:write` | Change a user's tier or billing interval |
 
 ---
 
 ## License-Gated Endpoints (no auth header)
 
-Built-in updaters in the seller's software can reach these directly with just a license key. No `Authorization` header.
+Built-in updaters in your software can reach these directly with just a license key. No `Authorization` header.
 
 | Method | Path | Description |
 |---|---|---|
@@ -157,7 +157,7 @@ All take an optional `sandbox`; details and response shapes in [releases-and-upd
 
 ## Yard Auth for external apps
 
-Inside a hosted service, Yard Auth is the edge: it signs buyers in and stamps `X-Yard-*` headers (see [service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own)). Software that runs **outside** the project (a desktop or mobile app, a backend on another host) uses the same Yard Auth as a standard **OpenID Connect** client: every project with Yard Auth is its own issuer, and any OIDC library works against it. Requires the `yard_auth` permission on the owning team (Basic and Pro; check `yard me --json` → `.team_permissions.yard_auth`).
+Inside a hosted service, Yard Auth is the edge: it signs users in and stamps `X-Yard-*` headers (see [service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own)). Software that runs **outside** the project (a desktop or mobile app, a backend on another host) uses the same Yard Auth as a standard **OpenID Connect** client: every project with Yard Auth is its own issuer, and any OIDC library works against it. Requires the `yard_auth` permission on the owning team (Basic and Pro; check `yard me --json` → `.team_permissions.yard_auth`).
 
 | Item | Value |
 |---|---|
@@ -170,7 +170,7 @@ Inside a hosted service, Yard Auth is the edge: it signs buyers in and stamps `X
 | Scopes | `openid email profile yard_account offline_access` |
 | Token lifetime | Access tokens last one hour; use the refresh token (`offline_access`) to get a new one |
 
-`<project id>` is the project's UUID (`yard projects --json` → `.id`), not its slug. The seller's project has exactly one client: the id above and the secret from the tab. There is no self-service client registration, so an app is always the seller's own app for their own project.
+`<project id>` is the project's UUID (`yard projects --json` → `.id`), not its slug. The project has exactly one client: the id above and the secret from the tab. There is no self-service client registration, so an app is always the team's own app for its own project.
 
 **Claims** in the ID token and from the issuer's own userinfo endpoint:
 
