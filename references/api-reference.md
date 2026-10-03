@@ -121,8 +121,8 @@ A key holding only `releases:read` sees public channels and no drafts or archive
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key (optionally bind to a device) |
-| `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license |
+| `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key for the project in `project_id` (optionally bind to a device) |
+| `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license of the project in `project_id` |
 
 `validate` answers `valid: true` for a sandbox key too; check its `sandbox` field before granting anything ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 

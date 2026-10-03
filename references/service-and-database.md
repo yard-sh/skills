@@ -71,7 +71,7 @@ The Yard edge signs visitors in and gives your code trusted headers:
 
 - Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
 - Clients cannot forge them: the edge strips incoming `X-Yard-*` headers.
-- Every member of the owning team gets in everywhere with `owner`, so the team never buys its own project. Entitlement resolves: owner → active subscription → latest completed purchase (unexpired trials count) → `none`. Verdicts are cached up to 60 seconds; there is no push signal, so a long-lived UI polls `__yard/auth/me`.
+- Every member of the owning team gets in everywhere with `owner`, so the team never buys its own project. Entitlement resolves: owner → paid subscription (`active`) → one-time purchase (`active`) → running trial, including a subscription not yet charged (`trial`) → `none`. A canceled or past-due subscription, a refund or a gift the visitor sent to someone else grants nothing. Verdicts are cached up to 60 seconds; there is no push signal, so a long-lived UI polls `__yard/auth/me`.
 - Never implement OAuth, sessions or password storage. Apps running outside the project use Yard Auth as an OpenID Connect client: [api-reference.md](api-reference.md#yard-auth-for-external-apps).
 
 ### `__yard/auth/*` endpoints

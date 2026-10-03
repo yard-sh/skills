@@ -154,7 +154,7 @@ for (const tier of window.yard.project.tiers) {
 | `signed_in` | `boolean` | Signed in to Yard at all |
 | `user` | `{ id, username, avatar_url } \| null` | |
 | `owned` | `boolean` | Owns the project (any tier; active trials and subscriptions count) |
-| `is_trial`, `is_subscription` | `boolean` | Kind of entitlement |
+| `is_trial`, `is_subscription` | `boolean` | Kind of entitlement; a subscription still in its free trial is `is_trial` |
 | `transaction_id` | `string \| null` | Opaque entitlement reference |
 | `tier_id`, `tier_name` | `string \| null` | Which tier they hold |
 

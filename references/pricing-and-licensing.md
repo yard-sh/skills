@@ -93,7 +93,7 @@ Payout setup is not required in a sandbox.
 
 Plan-gated. Enable with `license_key_enabled` in `yard init --spec` or `yard projects edit`. A purchase mints one key for `single`, `seat_count` keys for `fixed_pack`, and one per seat for `per_seat`.
 
-Validate with `POST /v1/licenses/validate` (license key and optional `device_id` in the body), which needs an API key with `licenses:validate` in the `Authorization` header ([api-reference.md](api-reference.md#licenses)). Check the response's `sandbox` field (above).
+Validate with `POST /v1/licenses/validate` (`project_id`, the license key and optional `device_id` in the body), which needs an API key with `licenses:validate` in the `Authorization` header ([api-reference.md](api-reference.md#licenses)). Validation is per project: an API key covers the whole team, so `project_id` (from `yard projects show <slug> --json | jq -r .id`) is what keeps a key bought for one project from validating in another; such a key answers `valid: false` with `License key is not for this project`. Check the response's `sandbox` field (above).
 
 License-key settings (`license_key_enabled`, `activations_enabled`, `max_activations`) exist on the project and again on each sandbox; a new sandbox copies the project's and diverges on the next edit. `yard projects edit` changes the project's own; a sandbox's are set from its License Keys page in the dashboard.
 
@@ -102,10 +102,11 @@ License-key settings (`license_key_enabled`, `activations_enabled`, `max_activat
 ```sh
 yard sandbox create staging                       # inherits the project's license-key settings
 yard keys create --spec - --json <<<'{"name":"local-validate","scopes":["licenses:validate"]}'   # capture .key
+PROJECT_ID=$(yard projects show <slug> --json | jq -r .id)
 # Buy the project inside the sandbox from its checkout page (simulated, no card), then:
 curl -X POST https://api.yard.sh/v1/licenses/validate \
   -H "Authorization: Bearer $YARD_API_KEY" -H 'Content-Type: application/json' \
-  -d '{"license_key":"XXXX-XXXX-XXXX-XXXX","device_id":"laptop-42"}'   # response has "sandbox": "staging"
+  -d '{"project_id":"'"$PROJECT_ID"'","license_key":"XXXX-XXXX-XXXX-XXXX","device_id":"laptop-42"}'   # response has "sandbox": "staging"
 yard sandbox delete staging --yes                 # a clean slate: keys and activations go with it
 ```
 
