@@ -58,7 +58,7 @@ Projects are published at https://yard.sh/@acme/<slug>
 
 `--json` emits `{ active_team_id, active_team, teams }`. The active team lives on the account, shared with the dashboard's team switcher, so it can change between commands; re-check it rather than trusting an earlier answer. Membership is `owner` or `admin`: both run the whole project surface, but payouts and billing (reads included) are owner-only and answer `403 NOT_TEAM_OWNER` to an admin.
 
-A team command run without a team answers `403` with `code: "NO_TEAM"` ("A team is required"). It is not a plan problem: create a team at https://yard.sh/team, then run `yard team`.
+A team command run without a team answers `403` with `code: "NO_TEAM"` ("A team is required"). It is not a plan problem: set one up at https://yard.sh/finish, then run `yard team`.
 
 ---
 
@@ -308,7 +308,7 @@ yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '
 
 ## yard transactions
 
-The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Refunds are issued in the dashboard. Sandbox (simulated) sales never appear here, in earnings or in payouts.
+The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Teams can't issue refunds from the CLI or the dashboard yet; Yard support (support@yard.sh) issues them. Sandbox (simulated) sales never appear here, in earnings or in payouts.
 
 - `list [--json] [--trials] [--project <slug>] [--start <date>] [--end <date>] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. Filters narrow the rows and the total; the summary stays team-wide. `TYPE` is `gift`, `trial`, `trial upgrade`, `subscription` or `purchase`.
 - `show <order-id>`: tier, quantity, coupon, refund date, billing period, trial expiry.

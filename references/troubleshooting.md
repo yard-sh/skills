@@ -83,13 +83,13 @@ Every team command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `
 
 This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
 
-**Fix:** create a team at https://yard.sh/team, then confirm:
+**Fix:** open https://yard.sh/finish, then confirm:
 
 ```sh
 yard team
 ```
 
-Signup normally creates a team on the way through, so this mostly shows up on accounts that exited onboarding early.
+Developer setup creates a team named after your username, so this shows up on accounts set up to buy software, or after leaving your last team. For the first, that page runs developer setup (the team plus the Yard Pro trial); for the second, it opens the dashboard, which asks you to create a team or accept an invitation.
 
 ---
 
@@ -144,19 +144,27 @@ Then re-run `yard init`.
 
 ## Permission denied during install or update
 
-If the installer or `yard update` can't write to the binary location:
+The installer writes to `/usr/local/bin` when it can, otherwise `~/.local/bin` (Windows: `%LOCALAPPDATA%\yard\bin`), and asks for `sudo` itself when `YARD_INSTALL_DIR` names a directory you can't write. So this error usually comes from `yard update`, on a binary installed into a directory only root can write.
 
-**Linux/macOS:**
+**Linux/macOS:** re-run the installer for the directory the binary is in; it asks for `sudo` only to move the file:
 
 ```sh
-# Option 1: Install to a user-writable location
-YARD_INSTALL_DIR=~/.local/bin curl -fsSL cli.yard.sh | sh
-
-# Option 2: Use sudo for /usr/local/bin
-sudo curl -fsSL cli.yard.sh | sh
+curl -fsSL https://cli.yard.sh | YARD_INSTALL_DIR="$(dirname "$(command -v yard)")" sh
 ```
 
-**Windows:** Run PowerShell as Administrator, or set `$env:YARD_INSTALL_DIR` to a writable location.
+Or move to a user-writable location, then remove the old binary:
+
+```sh
+curl -fsSL https://cli.yard.sh | YARD_INSTALL_DIR="$HOME/.local/bin" sh
+```
+
+Never pipe the installer into `sudo sh`: it would install the skill for root instead of you.
+
+**Windows:** re-run the installer from an elevated PowerShell, or reinstall to a writable location:
+
+```powershell
+$env:YARD_INSTALL_DIR = "$env:LOCALAPPDATA\yard\bin"; irm https://cli.yard.sh/install.ps1 | iex
+```
 
 ---
 
