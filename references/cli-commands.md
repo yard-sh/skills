@@ -167,7 +167,7 @@ The server enforces the plan: a missing feature is `upgrade_required`, printed w
 
 Add, change or remove one tier without resending the list. All accept `--json` (the refreshed tier list).
 
-- `yard projects tiers add <slug> --spec <file|->`: fields as in the `yard init` tier, plus `description` and `features` (max 15). `is_default: true` demotes the current default. Over `max_pricing_tiers` is `upgrade_required`.
+- `yard projects tiers add <slug> --spec <file|->`: fields as in the `yard init` tier, plus `description` and `features` (max 20). `is_default: true` demotes the current default. Over `max_pricing_tiers` is `upgrade_required`.
 - `yard projects tiers edit <slug> <tier-id-or-name> --spec <file|->`: a partial spec; present fields replace, absent ones stay. Names match case-insensitively (use the UUID when two tiers share a name).
   ```sh
   echo '{"free_trial": {"enabled": true, "days": 14}}' | yard projects tiers edit simple-note Base --spec -

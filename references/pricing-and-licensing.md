@@ -6,7 +6,7 @@ Every feature here is plan-gated on the **team**: read `yard me --json` → `.te
 
 A project has one or more tiers; how many is `max_pricing_tiers` (currently Basic 2, Pro 10). Fields:
 
-- `name`; `description` (optional); `features` (up to 15 strings); `sort_order` (display order, 0-based)
+- `name`; `description` (optional); `features` (up to 20 strings); `sort_order` (display order, 0-based)
 - `price_cents`: `0` (free) or 300 to 1,000,000 ($3.00 to $10,000.00)
 - `is_default`: exactly one tier per project
 - `seat_type`: `single`, `fixed_pack` or `per_seat` (seat-based needs `seat_based_pricing`)
