@@ -59,7 +59,7 @@ Needs `.team_permissions.coupons`. Managed with `yard coupons` ([cli-commands.md
 
 ## Free Trials
 
-Plan-gated and configured **per tier** (set at creation in `yard init --spec`, later with `yard projects tiers edit <slug> <tier> --spec -`). A project offers a trial when any tier has `free_trial.enabled: true`; an omitted `free_trial` means no trial, and a project-level trial field is rejected with `unknown field`.
+Plan-gated and configured **per tier** (set at creation in `yard init --spec`, later in a release's pricing with `yard projects tiers edit <slug> <tier> --spec -` or the settings.json `pricing` block). A project offers a trial when any tier has `free_trial.enabled: true`; an omitted `free_trial` means no trial, and a project-level trial field is rejected with `unknown field`.
 
 - `free_trial.days`: 7-365, optional; a trial enabled without days runs 7.
 - `free_trial.requires_card` (default false): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.

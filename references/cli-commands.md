@@ -159,20 +159,20 @@ yard projects show my-tool --json | jq '.tiers[] | select(.free_trial.enabled) |
 
 Project-level settings: `license_key_enabled`, `activations_enabled`, `max_activations`. With no argument it picks the only project or prompts (in `--spec` mode it errors with the list of slugs). Interactive mode asks each question with the current value as default. `--spec` takes a sparse JSON object (unknown fields rejected, missing fields untouched); `--json` emits `{ "project": {...}, "settings": {...} }`. Enabling activations without restating `license_key_enabled` works when the project already has license keys.
 
-A `tiers` array may be included to replace the whole tier list: tiers with a matching `id` update, tiers without `id` are added, omitted tiers are deleted (or kept non-default when they have sales). Read the current tiers first (`projects show --json | jq .tiers`) or you will drop some. For single-tier changes use `projects tiers`.
+Tiers are not project settings: a `tiers` key is rejected with `unknown field`. Pricing belongs to a release; change it with `projects tiers` or the `pricing` block in settings.json.
 
 The server enforces the plan: a missing feature is `upgrade_required`, printed with the pricing link (interactive exits 0, `--spec` exits non-zero).
 
 ### yard projects tiers
 
-Add, change or remove one tier without resending the list. All accept `--json` (the refreshed tier list).
+Add, change or remove one tier of a release's pricing without resending the list. With no `--release` they edit your open draft (or a new draft seeded from your newest published release), the same release `yard push` writes to, and the new pricing goes live with `yard releases publish`. `--release <tag|id>` edits a published release instead, live at once wherever it is served; on the release the project serves, subscribers on a subscription tier whose price changes get notice before it applies. Tiers match by name, case-insensitively (pricing has no tier ids). All accept `--json` (the release's tier list after the save). To set every tier at once, use the settings.json `pricing` block and `yard push`.
 
-- `yard projects tiers add <slug> --spec <file|->`: fields as in the `yard init` tier, plus `description` and `features` (max 20). `is_default: true` demotes the current default. Over `max_pricing_tiers` is `upgrade_required`.
-- `yard projects tiers edit <slug> <tier-id-or-name> --spec <file|->`: a partial spec; present fields replace, absent ones stay. Names match case-insensitively (use the UUID when two tiers share a name).
+- `yard projects tiers add <slug> --spec <file|->`: the spec is one entry of settings.json `pricing.tiers` (`name`, `price_cents`, `description`, `features` (max 20), `pricing_model`, `seat_type`, `seat_count`, `min_seats`, `max_seats`, `volume_brackets`, `yearly_discount_percent`, `free_trial`, `gift_enabled`, `is_default`); unknown fields are rejected. `is_default: true` demotes the current default, and a release's first tier is its default. Over `max_pricing_tiers` is `upgrade_required`.
+- `yard projects tiers edit <slug> <tier-name> --spec <file|->`: a partial spec; present fields replace, absent ones stay.
   ```sh
   echo '{"free_trial": {"enabled": true, "days": 14}}' | yard projects tiers edit simple-note Base --spec -
   ```
-- `yard projects tiers rm <slug> <tier-id-or-name> [--yes] [--promote-default]`: tiers with sales or active subscriptions are kept but made non-default. Refuses to remove the last tier, or the default without `--promote-default`. `--yes` is required without a TTY.
+- `yard projects tiers rm <slug> <tier-name> [--yes] [--promote-default]`: drops the tier from the release. Existing purchases are unaffected and its subscribers keep their price. Refuses to remove the last tier, or the default without `--promote-default`. `--yes` is required without a TTY.
 
 ---
 
