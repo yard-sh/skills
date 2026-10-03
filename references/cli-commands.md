@@ -297,8 +297,8 @@ yard coupons list --json | jq -r '.coupons[] | select(.max_uses != null and .cur
 
 Read-only list of users with at least one completed, unrefunded purchase, across the team's projects. Money is pre-formatted text (`"$87.00"`); use `yard transactions` for arithmetic. Sandbox (simulated) users never appear.
 
-- `list [--json] [--project <slug>] [--sort lastTransaction|email|username|orderCount|totalSpent|userDisplayId] [--direction] [--page] [--limit]`. `--project` narrows both the rows and the summary line.
-- `show <user-id>`: that user's totals and their orders, refunded ones included. Ids look like `user_deadbeef`; an ambiguous prefix is a `409` (pass the full UUID). There is no email lookup.
+- `list [--json] [--project <slug>] [--sort lastTransaction|firstTransaction|email|username|orderCount|totalSpent|userDisplayId] [--direction] [--page] [--limit]`. `--project` narrows both the rows and the summary line.
+- `show <user-id-or-email> [--page] [--limit]`: that user's totals and their orders (refunded, pending, failed and trial ones included). Ids look like `user_deadbeef` and are truncated account ids, so two users can share one: that is a `409` ("Two users share this id; pass their email instead"), and the email resolves it.
 
 ```sh
 yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '.users[] | "\(.email) \(.total_spent_display)"'
@@ -310,12 +310,12 @@ yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '
 
 The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Teams can't issue refunds from the CLI or the dashboard yet; Yard support (support@yard.sh) issues them. Sandbox (simulated) sales never appear here, in earnings or in payouts.
 
-- `list [--json] [--trials] [--project <slug>] [--start <date>] [--end <date>] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. Filters narrow the rows and the total; the summary stays team-wide. `TYPE` is `gift`, `trial`, `trial upgrade`, `subscription` or `purchase`.
+- `list [--json] [--project <slug>] [--start <date>] [--end <date>] [--search <text>] [--type purchase|subscription|renewal|trial|trial_upgrade|gift] [--status completed|pending|failed|converted|refunded|refund_pending] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. With `--project`, `--sort` takes `date|amount|platformFee|teamEarnings|quantity|tierName|launchStage|userDisplayId|id`. The summary covers every sale in the date range (and only that project's with `--project`); `--search`, `--type` and `--status` narrow the rows and the total only. `TYPE` is `gift`, `trial`, `trial upgrade`, `renewal`, `subscription started` or `purchase`.
 - `show <order-id>`: tier, quantity, coupon, refund date, billing period, trial expiry.
-- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless its user has since started another trial on that project. **The user on the trial is emailed.** Needs `.team_permissions.sell_projects`. The trial length offered to new users is the tier's `free_trial.days`.
+- `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless its user has since started another trial on that project. **The user on the trial is notified** (email and in-app) unless they turned off Transaction confirmations. Needs `.team_permissions.sell_projects.granted`. The trial length offered to new users is the tier's `free_trial.days`.
 
 ```sh
-yard transactions list --trials --json | jq -r '.transactions[] | "\(.id) \(.user_email) \(.trial_expires_at)"'
+yard transactions list --type trial --json | jq -r '.transactions[] | "\(.id) \(.user_email) \(.trial_expires_at)"'
 yard transactions list --project my-tool --start 2026-07-01 --json | jq '[.transactions[].team_earnings_cents] | add'
 ```
 
@@ -475,6 +475,6 @@ Serves the project locally the way Yard hosts it: the landing page at `http://lo
 ## Maintenance
 
 - `yard version`: prints `yard v2026.09.24-abc1234` followed by build details.
-- `yard update [--check]`: installs the latest CLI (`--check` only reports it). `yard init` refuses to run on an outdated CLI. Also updates an installed skill.
-- `yard skill install | update [--check] | uninstall`: the Yard agent skill, in `~/.agents/skills/yard/` plus `~/.claude/skills/yard/` and `~/.codex/skills/yard/` when those directories exist. Downloaded from GitHub; `npx skills add yard-sh/skills` is the alternative.
-- `yard uninstall [--force]`: removes the CLI and `~/.yard/`; prints the paths to delete by hand if it cannot.
+- `yard update [--check]`: installs the latest CLI (`--check` only reports it). An interactive `yard init` refuses to run on an outdated CLI. Also updates a skill the CLI installed.
+- `yard skill install | update [--check] | uninstall [--force]`: the Yard agent skill, in `~/.agents/skills/yard/` plus `~/.claude/skills/yard/` and `~/.codex/skills/yard/` when those directories exist. Downloaded from `cli.yard.sh` and checksum-verified. `npx skills add yard-sh/skills` is the alternative, but the CLI does not manage that copy (`yard update` reports it as not installed; `yard skill install` replaces it).
+- `yard uninstall [--force]`: ends the session on the server, then removes `~/.yard/`, the skill copies, the `yard-cli://` handler and the binary; prints the paths to delete by hand if it cannot. Without a terminal it refuses unless `--force` is passed (so does `yard skill uninstall`).

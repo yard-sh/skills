@@ -2,7 +2,7 @@
 
 ## "command not found: yard" after installation
 
-The installer adds the binary directory to your shell profile (`.bashrc`, `.zshrc`, or `config.fish`), but the current terminal session doesn't pick up PATH changes automatically.
+When the binary directory isn't on PATH, the installer offers to add it to your shell profile (`.bashrc`, `.zshrc`, `config.fish` or `.profile`; on Windows, the user PATH). The current terminal session doesn't pick up that change automatically. If the offer was declined, add `export PATH="$PATH:<dir>"` to the profile yourself.
 
 **Fix:** Restart your terminal, or source your profile:
 
@@ -39,9 +39,9 @@ The CLI only runs a runtime whose checksum matches the one it expects; a mismatc
 
 ---
 
-## `yard dev is not available on this platform yet`
+## `yard dev`: the runtime fails to start
 
-There is no local runtime build for Windows on ARM. Test with a sandbox instead: `yard push`, publish, `yard sandbox pin <tag> --sandbox preview`, `yard service open --sandbox preview`. On Linux the runtime needs glibc 2.35 or newer (`ldd --version`); on macOS, 13.5 or newer.
+On Linux the runtime needs glibc 2.35 or newer (`ldd --version`); on macOS, 13.5 or newer. Where it can't run, test with a sandbox instead: `yard push`, publish, `yard sandbox pin <tag> --sandbox preview`, `yard service open --sandbox preview`.
 
 ---
 
