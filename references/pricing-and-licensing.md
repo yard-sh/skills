@@ -4,7 +4,7 @@ Every feature here is plan-gated on the **team**: read `yard me --json` → `.te
 
 ## Pricing Tiers
 
-A project has one or more tiers; how many is `max_pricing_tiers` (currently Basic 2, Pro 10). Fields:
+A project has one or more tiers; how many is `max_pricing_tiers` (currently 10 on both Basic and Pro). Fields:
 
 - `name`; `description` (optional); `features` (up to 20 strings); `sort_order` (display order, 0-based)
 - `price_cents`: `0` (free) or 300 to 1,000,000 ($3.00 to $10,000.00)
