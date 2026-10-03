@@ -184,7 +184,7 @@ A release is a project-wide snapshot (landing page, pricing, download buttons, s
 
 Uploads any `--file` assets into the draft, then publishes it under the tag into a channel (default `Production`, which the project follows, so it is live). Anything `yard push` already staged in the draft ships with it.
 
-Flags: `--project`, `--name`, `--notes`, `--notes-file <path|->`, `--file <path>` (repeatable), `--channel <name>` (must exist; channels are created in the dashboard), `--release <id|tag>` (must still be a draft), `--spec <file|->`, `--json`. Tags are unique per project (`409` on reuse).
+Flags: `--project`, `--name`, `--notes`, `--notes-file <path|->`, `--file <path>` (repeatable), `--channel <name>` (must exist; channels are created in the dashboard, up to `max_channels` per project with Production included: Basic 1, Pro 10), `--release <id|tag>` (must still be a draft), `--spec <file|->`, `--json`. Tags are unique per project (`409` on reuse).
 
 ```jsonc
 {
@@ -414,7 +414,7 @@ There is no publish flag on `push`. To discard draft changes, delete the draft i
 
 ## yard sandbox
 
-A sandbox is an optional private copy of the project at `/<slug>/@<sandbox>/`, with its own files, services, database, secrets and simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). A project starts with none; `max_sandboxes` caps how many (Basic 1, Pro 10; over it is `403 sandbox_limit_reached`). Every command acts on the project itself unless `--sandbox <name>` names one. Shared flags: `--project`, `--dir`, `--json`; every `<release>` is a tag or UUID.
+A sandbox is an optional private copy of the project at `/<slug>/@<sandbox>/`, with its own files, services, database, secrets and simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). A project starts with none; sandboxes are a Pro feature and `max_sandboxes` caps how many (10; over it is `403 sandbox_limit_reached`). Every command acts on the project itself unless `--sandbox <name>` names one. Shared flags: `--project`, `--dir`, `--json`; every `<release>` is a tag or UUID.
 
 What serves:
 
