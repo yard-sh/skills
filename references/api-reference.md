@@ -166,12 +166,12 @@ Inside a hosted service, Yard Auth is the edge: it signs users in and stamps `X-
 | Discovery | `https://yard.sh/auth/application/o/yard-auth-<project id>/.well-known/openid-configuration` |
 | Client id | `yard-auth-<project id>` |
 | Client secret | From the project's **Auth** page in the dashboard (rotate it there too) |
-| Redirect URIs | Managed on the same page: `https` only, or `http` on `localhost` while developing; up to 10, matched exactly |
+| Redirect URIs | Managed on the same page: absolute `https` URLs, or `http` on `localhost` while developing; no wildcards or fragments; up to 10, matched exactly |
 | Grant | Authorization code (PKCE recommended) |
 | Scopes | `openid email profile yard_account offline_access` |
 | Token lifetime | Access tokens last one hour; use the refresh token (`offline_access`) to get a new one |
 
-`<project id>` is the project's UUID (`yard projects --json` → `.id`), not its slug. The project has exactly one client: the id above and the secret from the tab. There is no self-service client registration, so an app is always the team's own app for its own project.
+`<project id>` is the project's UUID (`yard projects --json` → `.id`), not its slug. The project has exactly one client: the id above and the secret from the page. Archived projects and teams whose plan lacks `yard_auth` have none; when the plan returns, the client is registered again with a new secret and the redirect URIs must be added again. There is no self-service client registration, so an app is always the team's own app for its own project.
 
 **Claims** in the ID token and from the issuer's own userinfo endpoint:
 
@@ -180,7 +180,7 @@ Inside a hosted service, Yard Auth is the edge: it signs users in and stamps `X-
 | `sub` | Stable identifier of the person for this issuer |
 | `email` | The person's email address |
 | `email_verified` | Whether that address has been confirmed |
-| `yard_user_id` | The Yard user id, the same value the edge sends a hosted service as `X-Yard-User-Id` |
+| `yard_user_id` | The Yard user id, the same value the edge sends a hosted service as `X-Yard-User-Id`; present from the first sign-in |
 
 Purchase status is **not** in the token, because it changes underneath a token's lifetime. Read it from Yard:
 

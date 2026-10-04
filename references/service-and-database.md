@@ -30,7 +30,7 @@ A service sees its paths rooted at `/`, whatever its mount: with `"url": "/s"`, 
 
 ## The bundle
 
-One directory per service: `_service.js` (one pre-bundled ES module; bundle dependencies with any bundler, e.g. esbuild) plus any static files. Limits per service: file count and sizes come from the team's plan (Basic and Pro: 600 files, 15 MB per file, 75 MB total); `_service.js` is capped at 10 MB on every plan; 8 levels of nesting. Dotfiles and a bundle-root `README.md` are skipped. `yard service init <name>` writes a working bundle and records it in settings.json.
+One directory per service: `_service.js` (one pre-bundled ES module; bundle dependencies with any bundler, e.g. esbuild) plus any static files. Limits per service: file count and sizes come from the team's plan (Basic and Pro: 600 files, 15 MB per file, 75 MB total); `_service.js` is capped at 10 MB on every plan; at most 7 nested folders and 200-character paths. Never uploaded: dot-files, dot-folders and `node_modules/` at any depth, and `README.md`, `wrangler.toml`, `yard.json` and `settings.json` at the bundle root. `ignore_files` does not apply to services, so keep build inputs outside the bundle directory. `yard service init <name>` writes a working bundle and records it in settings.json.
 
 ## Service settings
 
@@ -64,9 +64,9 @@ The Yard edge signs visitors in and gives your code trusted headers:
 | Header | Value |
 | --- | --- |
 | `X-Yard-User-Id` | Stable user id; use it as your foreign key |
-| `X-Yard-Email` | Email (may be empty) |
+| `X-Yard-Email` | Email; omitted when the account has none |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
-| `X-Yard-Tier` | **Name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; never with `none` or `owner` |
+| `X-Yard-Tier` | **Name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; omitted with `none` or `owner` |
 | `X-Yard-Sandbox` | Sandbox name, or empty for the project itself |
 
 - Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
@@ -76,13 +76,13 @@ The Yard edge signs visitors in and gives your code trusted headers:
 
 ### `__yard/auth/*` endpoints
 
-They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`). Call them with relative URLs.
+They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`), nowhere deeper. Call them with relative URLs from a page at that level; a page in a subfolder of the service goes up first (`../__yard/auth/me`), or its relative URL reaches the service's own code.
 
-- `login?return=<path>` signs the visitor in (an existing Yard session passes silently) and sends them to `return`. **`return` is a path relative to where you called login**: under a service, `return=/` is the service's root; at the project root, `return=/` is the landing page. It must start with `/`; anything else, a full URL included, falls back to `/`. The first sign-in to a project shows a consent screen (email, Yard account, purchase status), remembered until the person disconnects the app under "Connected apps" on their Yard security page.
+- `login?return=<path>` signs the visitor in (an existing Yard session passes silently) and sends them to `return`. **`return` is a path relative to where you called login**: under a service, `return=/` is the service's root; at the project root, `return=/` is the landing page. It must start with `/`; anything else, a full URL included, falls back to `/`. The first sign-in to a project by someone outside the owning team shows a consent screen (email; name, username and picture; Yard account and purchase status; staying signed in), remembered until the person disconnects the app under "Connected apps" on their Yard security page. Team members skip it.
 - `logout?return=<path>` ends the project session (the person stays signed in to Yard) and redirects with the same rule; without `return` it goes to `/` of where it was called.
 - `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro"}` when signed in (`email` may be `""`, `tier` is omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in visitor who hasn't bought.
 
-A session covers every service of one project and nothing else. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.
+A session covers the landing page, every service and every sandbox of one project, on one host: the `yard.sh` address and a custom domain each need their own sign-in. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.
 
 **Recipe: anyone reads, signed-in users write** (a public service, e.g. comments or a link shortener):
 
@@ -115,7 +115,7 @@ The project and each sandbox have their own database, shared by every service th
 
 ## Secrets
 
-Third-party keys go in secrets, exposed as `env.<NAME>` to every service of the project or of one sandbox; the two never share values. Write-only; each change **redeploys those services** right away. Never commit keys into a bundle.
+Third-party keys go in secrets, exposed as `env.<NAME>` to every service of the project or of one sandbox; the two never share values, and a new sandbox starts with none. Write-only; each change **redeploys those services** right away. Never commit keys into a bundle. Names match `^[A-Z][A-Z0-9_]{0,63}$` and can't be `DB`, `ASSETS` or a room binding in the serving release; values are 1-4096 bytes; up to 32 per project or sandbox. There are no plain environment variables: non-secret configuration lives in code. Locally, `yard dev` reads `.yard/dev/secrets.env` instead ([local-dev.md](local-dev.md)).
 
 ```sh
 yard service secrets set OPENAI_API_KEY=sk-...                     # the project itself

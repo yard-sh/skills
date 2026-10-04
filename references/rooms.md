@@ -5,7 +5,7 @@ several open connections at once. A chat room, a presence list, a shared
 whiteboard, a multiplayer session, a collaborative document: each is one
 room, reached by name from the service's fetch handler, holding its own
 WebSocket connections, its own storage and its own alarm. Requires the
-`service_rooms` permission (Pro; check `yard me --json` →
+`service_rooms` permission (Basic and Pro; check `yard me --json` →
 `.team_permissions.service_rooms` before building). Without it the API
 answers `upgrade_required` and `yard push` restates it with the upgrade link.
 
@@ -260,9 +260,10 @@ design that sends every user through one name has one budget for everyone.
 
 ## Allowance and overage
 
-Pro includes an allowance per calendar month (UTC). Past it, each unit is
-billed on the monthly overage invoice; the rates below are approximate, and
-developers see the live numbers on the Usage page of the dashboard.
+Basic and Pro each include an allowance per calendar month (UTC). Past it,
+each unit is billed on the monthly overage invoice; the rates below are
+approximate, and developers see the live numbers on the Usage page of the
+dashboard.
 
 | Meter         | Included per month | Overage, about        |
 | ------------- | ------------------ | --------------------- |
@@ -295,9 +296,12 @@ developers see the live numbers on the Usage page of the dashboard.
   deletes every `Room` with its data and starts `ChatRoom` empty. The class
   name is the identity; if only the name in `env` needs to change, change
   `binding` and keep `class`.
-- **Removing the whole service** from the project keeps its room data for
-  30 days before deletion, so a service removed by mistake can be declared
-  again without losing its rooms.
+- **Removing or renaming a service** leaves its rooms behind: a renamed
+  service starts with empty rooms. On the project the old rooms are kept
+  for 30 days before deletion, so a service removed or renamed by mistake
+  can be put back under its old name without losing them. In a sandbox they
+  are deleted at once.
+- **Deleting a sandbox or the project** deletes its rooms immediately.
 
 ## Local development
 

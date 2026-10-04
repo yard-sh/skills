@@ -365,7 +365,7 @@ A push uploads `settings.json` itself, which is how deploys learn each service's
 **Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Basic's and Pro's.
 
 - Landing page: ≤60 files, ≤25 MB each, ≤100 MB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
-- Service: ≤600 files, ≤15 MB each, ≤75 MB total, `_service.js` ≤10 MB on every plan, nesting ≤8 levels; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dotfiles and bundle-root `README.md` are skipped.
+- Service: ≤600 files, ≤15 MB each, ≤75 MB total, `_service.js` ≤10 MB on every plan, ≤7 nested folders, paths ≤200 characters; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dot-files, dot-folders and `node_modules/` (any depth) and bundle-root `README.md`, `wrangler.toml`, `yard.json` and `settings.json` are skipped; `ignore_files` doesn't apply.
 - Migrations: any number of files, ≤3 MB each, ≤15 MB total, no subdirectories.
 
 ### yard init --page
