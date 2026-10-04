@@ -44,14 +44,15 @@ Installing on an org needs a GitHub user allowed to install apps there.
 
 ## Syncing releases from GitHub
 
-With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release (kept instead while the project or a sandbox is pinned or rolled back to it). Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to users). A private project doesn't sync.
+With the Yard GitHub App installed and the repo linked ([`yard github link`](cli-commands.md#yard-github), or the dashboard's Integrations page under Configure), publishing a GitHub release creates a matching **published** Yard release: tag, title, notes and every asset are copied. Editing the GitHub release re-syncs it; deleting it archives the Yard release (kept instead while the project or a sandbox is pinned or rolled back to it). Synced releases land in the project's **GitHub sync channel** (`yard github link --channel <name>` or the same Integrations row; default `Production`, so publishing on GitHub ships to users). GitHub drafts and pre-releases don't sync; a pre-release syncs once it is marked a full release on GitHub. Ship a beta with `yard releases publish <tag> --channel Beta` instead. A private project doesn't sync.
 
 If the repo has `.yard/settings.json` at the tag, the sync also imports what it declares:
 
 | Section | What syncs |
 | --- | --- |
-| `services[]` | Each entry becomes a service built from its directory (which needs `_service.js`). The list is the whole set: a service the tag drops is taken down on deploy. |
-| `landing_page` | `type` and the files in `dir` (or under the default `.yard/landing-page/`), as for `yard push`. |
+| `services[]` | Each entry becomes a service built from its directory (which needs `_service.js`), with its `rooms`. The list is the whole set: a service the tag drops is taken down on deploy. An empty list counts as absent and removes nothing. |
+| `migrations` | The `.sql` files in its `dir`, or in `.yard/migrations/` without a block, become the release's migrations. |
+| `landing_page` | `type` and the files in `dir` (or under the default `.yard/landing-page/`), as for `yard push`. With no block, files in `.yard/landing-page/` make the page custom. |
 | `pricing.tiers` | Replaces the release's tiers to **match exactly**. |
 | `downloads.buttons` | Replaces the release's download buttons to **match exactly**. |
 
@@ -82,7 +83,7 @@ Trials use the same `free_trial` object as everywhere else. Array order is displ
 - Pricing is validated against the team's plan; subscribers get the standard 30-day notice when a sync changes their tier's price. An empty `tiers` takes the project off sale (existing purchases keep resolving).
 - `downloads.buttons`: `condition` is `contains`, `starts_with`, `ends_with` or `has_extension` (case-insensitive), `value` 1-255 chars, `label` 1-50 chars, at most 10. A rule matching no file triggers a warning email.
 - Tags are immutable, so a settings.json change lands with the **next** release (or a Re-sync after moving the tag). A tag with a retired settings layout fails with an error naming the fix (`yard migrate`, commit, tag again).
-- A synced release edited in the dashboard is marked **Modified since sync** and skipped by automatic syncs; **Re-sync** restores the GitHub-managed parts.
+- A synced release changed in Yard (dashboard, CLI or API) is skipped by automatic syncs, new assets included; each skip is a warning in its **Sync Logs**. Release Settings > Danger zone > **Re-sync** (confirm with **Overwrite and Re-sync**) restores the GitHub-managed parts. Deleting it on GitHub still archives it.
 - Dashboard edits to pricing, download buttons or services regenerate every release's settings.json, so `yard status` shows them as a config diff and `yard pull` retrieves them.
 
 ## Downloading releases with a license key
@@ -94,7 +95,7 @@ GET https://api.yard.sh/v1/updates/latest
 Authorization: Bearer <license_key>
 ```
 
-or `GET …/v1/updates/latest?license_key=<license_key>` when headers are awkward. The response mirrors GitHub's Releases API:
+or `GET …/v1/updates/latest?license_key=<license_key>` when headers are awkward. Every `/v1/updates/*` endpoint (and the integration-scope routes) answers any origin, so an Electron renderer or Tauri webview can call it directly; 30 requests a minute per IP. The response mirrors GitHub's Releases API:
 
 ```json
 {
