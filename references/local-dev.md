@@ -84,7 +84,7 @@ Access gating applies exactly as hosted: `authenticated` redirects anonymous vis
 
 ## Database and migrations
 
-Services with `database_access: true` get `env.DB` backed by `.yard/dev/data.sqlite`. All of `.yard/migrations/*.sql` is applied in filename order and recorded exactly like a deploy: a file never runs twice, and a failing file leaves its earlier statements applied and prints the same recovery message. New files are applied the moment they are saved. `--reset-db` (or `POST /__yard/dev/api/db/reset`) starts from an empty database.
+Services with `database_access: true` get `env.DB` backed by `.yard/dev/data.sqlite`. All of `.yard/migrations/*.sql` is applied in filename order and recorded exactly like a deploy: a file never runs twice, and a failing file leaves its earlier statements applied. The local error says to fix the file so it re-runs from the top or to start over with `--reset-db` (the hosted one suggests `yard db migrations mark-applied`). A failure at startup ends `yard dev`; one while it runs is printed and the services keep running. New files are applied the moment they are saved. There is no local database until a migration exists. `--reset-db` (or `POST /__yard/dev/api/db/reset`) starts from an empty database.
 
 Query the local database from the panel or with `POST /__yard/dev/api/db/query` `{"sql":"select * from notes","params":[]}`; the response is `{columns, rows, meta}` or `{error}`. `yard db query` still targets the hosted database, not this one.
 

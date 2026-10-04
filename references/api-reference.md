@@ -131,7 +131,7 @@ A key holding only `releases:read` sees public channels and no drafts or archive
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
+| `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent; needs the user's `billing_address`, which every invoice is taxed from |
 | `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a user's subscription status for a project |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a user's subscription |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |
