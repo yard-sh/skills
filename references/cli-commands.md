@@ -213,15 +213,15 @@ In `deployed`, `to` is `""` for the project itself, else a sandbox name.
 
 ### yard releases promote \<tag\> --to \<channel\>
 
-Moves a published release into another channel (out of the one it was in). Followers of the new channel serve it; followers of the old one fall back to its next newest release. Nothing is copied. An archived release is refused: unarchive it instead. Flags: `--to` (required, must exist), `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
+Moves a published release into another channel (out of the one it was in). A channel serves its most recently published release, so followers of the new channel serve it only if it is the newest published there (use `yard sandbox rollback` or `pin` for an older one); followers of the old one fall back to its next newest release. Nothing is copied. An archived release is refused: unarchive it instead. Flags: `--to` (required, must exist), `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
 
 ### yard releases archive \<tag|id\>
 
-Takes a published release out of its channel and frees its tag. Followers of that channel fall back to its next newest release; a pin on the release still holds. Drafts are refused (delete them in the dashboard). Flags: `--project`, `--dir`, `--json` (`{ "from_channel": "Beta", "deployed": [...] }`).
+Takes a published release out of its channel, frees its tag and deletes its download files (everything else is kept). Followers of that channel fall back to its next newest release. Refused with `409` while the project or a sandbox is pinned or rolled back to it (unpin, or roll back to a newer release, first). Drafts are refused (delete them in the dashboard). Flags: `--project`, `--dir`, `--json` (`{ "from_channel": "Beta", "deployed": [...] }`).
 
 ### yard releases unarchive \<tag|id\> [--to \<channel\>]
 
-Returns an archived release to the channel it was archived from (`Production` if that channel is gone), or to `--to`. A tag names the newest archived release carrying it. The release takes its tag back (`409` if another release holds it). Flags: `--to`, `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
+Returns an archived release to the channel it was archived from (`Production` if that channel is gone), or to `--to`, without its download files. A tag names the newest archived release carrying it. The release takes its tag back (`409` if another release holds it). Flags: `--to`, `--project`, `--dir`, `--json` (`{ "channel": "Beta", "deployed": [...] }`).
 
 ---
 
