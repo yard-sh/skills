@@ -91,7 +91,7 @@ After inserting DOM yourself, call `window.yard.refresh()` to bind new nodes.
 
 | Attribute (`checkout`) | Meaning |
 | --- | --- |
-| `data-tier-id` (or `data-tier`) | Tier UUID; omit for the default tier |
+| `data-tier-id` | Tier UUID; omit for the default tier |
 | `data-interval` | `monthly` or `yearly` (subscription tiers) |
 | `data-quantity` | Seats for `fixed_pack` / `per_seat` |
 | `data-gift` | Present: start the gift flow |
@@ -132,7 +132,7 @@ window.yard = {
 };
 ```
 
-`tier` is a tier UUID (`tierId` also works).
+`tier` is a tier UUID.
 
 ```js
 for (const tier of window.yard.project.tiers) {
@@ -160,7 +160,7 @@ for (const tier of window.yard.project.tiers) {
 
 It never exposes email, other purchases or payment details. It is read-only UI gating; deeper integrations use the REST API ([api-reference.md](api-reference.md)).
 
-**`data-yard-when`** covers the common case with no JS: `signed_in`, `signed_out`, `owned`, `not_owned`. Such elements stay hidden until the state resolves, so a non-owner never flashes an "Open in Library" link.
+**`data-yard-when`** covers the common case with no JS: `signed_in`, `signed_out`, `owned`, `not_owned`. Such elements stay hidden until the state resolves, by a style rule page CSS can't override (elements added later follow it too), so a non-owner never flashes an "Open in Library" link. `embed.js` never touches the `hidden` attribute, which stays yours.
 
 ```html
 <button data-yard-when="not_owned" data-action="checkout">Buy</button>
@@ -175,13 +175,13 @@ if (state?.is_subscription) {
 }
 ```
 
-On a custom domain, browsers with strict third-party cookie blocking (Safari and some privacy modes) may resolve `null` or `signed_in: false` for a signed-in visitor; default to the Buy button. Pages on `<username>.yard.sh` are not affected.
+On a custom domain, browsers with strict third-party cookie blocking (Safari and some privacy modes) resolve `signed_in: false` for a signed-in visitor; default to the Buy button. Pages on `<username>.yard.sh` are not affected. `null` means Yard couldn't answer (no reply within 8 s, or a draft or private project viewed by its team); treat it as signed out.
 
 ---
 
 ## Signed-in visitors on the landing page
 
-When the project has services, the landing page can use the project's **Yard Auth** session (the one services see as `X-Yard-*` headers), which is separate from `ownership()`'s yard.sh account state. The `__yard/auth/*` endpoints exist at the project root, so relative URLs from the page reach them, locally and hosted (sandbox pages included):
+When the project has services, the landing page can use the project's **Yard Auth** session (the one services see as `X-Yard-*` headers), which is separate from `ownership()`'s yard.sh account state. The `__yard/auth/*` endpoints exist at the project root, so relative URLs reach them from `index.html` and other root pages (from a subfolder page use `../__yard/auth/…`), locally and hosted (sandbox pages included):
 
 ```js
 const me = await (await fetch("__yard/auth/me")).json();
