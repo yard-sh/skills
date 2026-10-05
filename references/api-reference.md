@@ -147,7 +147,7 @@ Built-in updaters in your software can reach these directly with just a license 
 |---|---|---|
 | `GET` | `/v1/updates/latest?license_key={key}` | Check for the latest release by license key |
 | `GET` | `/v1/updates/latest/download/{filename}?license_key={key}` | Download the latest release file by license key |
-| `GET` | `/v1/updates/sandboxes?license_key={key}` | List the update streams (the project itself plus each sandbox) the key may see |
+| `GET` | `/v1/updates/sandboxes?license_key={key}` | The key's own update stream: the project itself, or the sandbox it was bought in |
 | `GET` | `/v1/updates/channels?license_key={key}` | List the release channels the key may see, for a channel picker |
 | `GET` | `/v1/updates/releases?license_key={key}` | List the project's, one sandbox's or one channel's releases (GitHub Releases list shape) |
 | `GET` | `/v1/updates/releases/{version}/download/{filename}?license_key={key}` | Download a file from a specific release |
