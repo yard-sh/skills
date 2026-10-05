@@ -224,7 +224,7 @@ These need a signed-in session (CLI or dashboard) whatever scopes a key holds:
 - Minting, listing, editing or deleting API keys (`yard keys …`, the dashboard)
 - Team management: members, roles, invites, ownership, switching the active team
 - Payout onboarding, payouts, payment methods, the team's own plan
-- Custom domains, project images and videos, webhook secrets
+- Custom domains, project images and videos, regenerating a webhook signing secret, the webhook's delivery history and test events
 - The GitHub App install, its repo list and the team's linked repos (linking or unlinking one project's repo takes `projects:write`)
 - Account, session and security-device management
 
