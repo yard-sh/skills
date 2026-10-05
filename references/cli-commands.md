@@ -414,7 +414,7 @@ There is no publish flag on `push`. To discard draft changes, delete the draft i
 
 ## yard sandbox
 
-A sandbox is an optional private copy of the project at `/<slug>/@<sandbox>/`, with its own files, services, database, secrets and simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). A project starts with none; sandboxes are a Pro feature and `max_sandboxes` caps how many (10; over it is `403 sandbox_limit_reached`). Every command acts on the project itself unless `--sandbox <name>` names one. Shared flags: `--project`, `--dir`, `--json`; every `<release>` is a tag or UUID.
+A sandbox is an optional private copy of the project at `/<slug>/@<sandbox>/`, with its own files, services, database, secrets and simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). A project starts with none; sandboxes are a Pro feature and `max_sandboxes` caps how many (10; over it is `403 sandbox_limit_reached`). `visibility`, `channel`, `rollback`, `pin` and `unpin` act on the project itself unless `--sandbox <name>` names one; `create`, `rename` and `delete` take the sandbox's name, and `promote` names its target with `--to`. Shared flags: `--project`, `--dir`, `--json`; every `<release>` is a tag or UUID.
 
 What serves:
 
@@ -452,7 +452,7 @@ yard sandbox list --json | jq '[.project] + .sandboxes | .[] | {slug, serving: .
 
 ## yard service, yard db, yard migrate
 
-A service's code ships inside a release (`yard push`, then publish); these commands cover everything around it. Contract: [service-and-database.md](service-and-database.md). Shared flags: `--project`, `--dir`, `--sandbox <name>` (omitted = the project itself), `--json`.
+A service's code ships inside a release (`yard push`, then publish); these commands cover everything around it. Contract: [service-and-database.md](service-and-database.md). Commands that reach the project (`service open`, `service logs`, `service secrets`, `db`) take `--project`, `--dir`, `--sandbox <name>` (omitted = the project itself) and `--json`; `service init`, `service check` and `migrate` work on the local directory and take `--dir` and `--json`.
 
 - `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` class with a WebSocket client instead (no migration) and records `"rooms": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
