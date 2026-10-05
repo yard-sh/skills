@@ -184,11 +184,11 @@ A release is a project-wide snapshot (landing page, pricing, download buttons, s
 
 Uploads any `--file` assets into the draft, then publishes it under the tag into a channel (default `Production`, which the project follows, so it is live). Anything `yard push` already staged in the draft ships with it.
 
-Flags: `--project`, `--dir`, `--name`, `--notes`, `--notes-file <path|->`, `--file <path>` (repeatable), `--channel <name>` (must exist; channels are created in the dashboard, up to `max_channels` per project with Production included: Basic 1, Pro 10), `--release <id|tag>` (must still be a draft), `--spec <file|->`, `--json`. Tags are unique per project (`409` on reuse).
+Flags: `--project`, `--dir`, `--name`, `--notes`, `--notes-file <path|->`, `--file <path>` (repeatable), `--channel <name>` (must exist; channels are created in the dashboard, up to `max_channels` per project with Production included: Basic 1, Pro 10), `--release <id|tag>` (must still be a draft), `--spec <file|->`, `--json`. With `--spec` the spec is the whole request: the tag argument, `--project`, `--name`, `--notes`, `--notes-file`, `--file` and `--channel` are refused (set the field instead); `--dir`, `--release` and `--json` still apply. Tags are unique per project (`409` on reuse).
 
 ```jsonc
 {
-  "project": "my-slug",                 // optional in the project's folder or with one project; --project wins
+  "project": "my-slug",                 // optional in the project's folder or with one project
   "tag_name": "v1.4.0",                 // required, ≤255 chars
   "release_name": "Late April fixes",   // ≤255 chars
   "release_notes": "## Highlights\n…",  // markdown, ≤125,000 chars
