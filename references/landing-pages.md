@@ -207,7 +207,7 @@ Pages serve under `<username>.yard.sh/<slug>/` (and `/<slug>/@<sandbox>/` in a s
 
 `yard dev` serves the page at `http://localhost:9875/<slug>/` with `embed.js` injected and tab reload on save, so `window.yard.project`, `data-yard` and Buy buttons behave as hosted (live project data when logged in, else a placeholder from settings.json). `ownership()` and `data-yard-when` follow the persona (`yard dev --as user:pro`, or the picker at `/<slug>/__yard/auth/login`). See [local-dev.md](local-dev.md).
 
-Hosted, the project serves at `https://<username>.yard.sh/<slug>/` and each sandbox at `…/<slug>/@<sandbox>/`, with that sandbox's own pricing and copy in `window.yard.project`. Sandbox URLs are team-only (others get a 403, anonymous visitors sign in first) until `yard sandbox visibility public --sandbox <name>`.
+Hosted, the project serves at `https://<username>.yard.sh/<slug>/` and each sandbox at `…/<slug>/@<sandbox>/`, with that sandbox's own pricing and copy in `window.yard.project`. Sandbox URLs are team-only (others get a 403, anonymous visitors sign in first) until `yard sandbox visibility public --sandbox <name>`, which opens one only while the project itself is public and past draft.
 
 A release without a custom page serves the default page (edited in the dashboard), so the URL always resolves. `"landing_page": { "type": "default" }` switches back to it without deleting your files; leaving the block out keeps whatever the release had.
 

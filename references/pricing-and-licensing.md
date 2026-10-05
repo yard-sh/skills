@@ -112,7 +112,7 @@ yard sandbox delete staging --yes                 # a clean slate: keys and acti
 
 ## Device Activations
 
-Plan-gated and requires license keys. `activations_enabled` and `max_activations` (1-10000 per key), set like license keys. Each activation records the `device_id` the software sends; users manage their devices from their Yard library. Activations belong to their key, so a sandbox's count against that sandbox's limit only.
+Plan-gated and requires license keys. `activations_enabled` and `max_activations` (1-10000 per key), set like license keys. Each activation records the `device_id` the software sends; users manage their devices from their Yard library. Only a validate that sends `device_id` enforces the limit: a new device is refused once every slot is used, an activated one keeps validating, and a validate without `device_id` checks the key alone, so send it on every check. Activations belong to their key, so a sandbox's count against that sandbox's limit only.
 
 ## How checkout computes the price
 

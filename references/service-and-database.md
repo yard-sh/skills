@@ -144,7 +144,7 @@ What runs is always what the serving release holds, so going live is a release o
 
 Start with `yard dev` ([local-dev.md](local-dev.md)): personas, access gating, header stripping and `__yard/auth/*` all behave as hosted. Real purchases and trials need a sandbox.
 
-Sandbox URLs (`…/<slug>/@preview/<service>/`) sign the visitor in and serve only members of the owning team; everyone else gets an explanatory 403. `yard sandbox visibility public --sandbox <name>` opens one to anyone with the URL. A `draft` or private project's services work the same way for the owning team, so everything can be verified before the launch stage moves (it only moves forward).
+Sandbox URLs (`…/<slug>/@preview/<service>/`) sign the visitor in and serve only members of the owning team; everyone else gets an explanatory 403. `yard sandbox visibility public --sandbox <name>` opens one to anyone with the URL while the project itself is public and past draft. A `draft` or private project's services work the same way for the owning team, so everything can be verified before the launch stage moves (it only moves forward).
 
 ## Debugging
 
