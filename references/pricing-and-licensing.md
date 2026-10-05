@@ -53,7 +53,7 @@ Needs `.team_permissions.coupons`. Managed with `yard coupons` ([cli-commands.md
 
 - `discount_type`: `percentage` (1-100) or `fixed_amount` (`discount_value` in **cents**).
 - `scope`: `all_projects` (every project, including future ones) or `specific_projects` (`project_ids`).
-- `code`: upper-cased, 4-50 alphanumeric. `max_uses` counts across all users (null = unlimited; no per-user limit). `valid_from` / `expires_at` are optional. `subscription_duration`: `once` (first payment, default) or `forever` (every renewal); ignored for one-time purchases.
+- `code`: upper-cased with spaces removed, then 4-50 letters, digits, `-` or `_`. `max_uses` counts across all users (null = unlimited; no per-user limit). `valid_from` / `expires_at` are optional. `subscription_duration`: `once` (first payment, default) or `forever` (every renewal); ignored for one-time purchases.
 - A coupon is usable only when active, started, unexpired and under its limit; `is_active` is just the on/off switch.
 - Up to 100 codes can be generated at once, returned only at creation. After the first redemption the discount cannot change and the coupon cannot be deleted (deactivate it). `null` clears `max_uses`, `expires_at` or `valid_from`; an omitted key is unchanged.
 

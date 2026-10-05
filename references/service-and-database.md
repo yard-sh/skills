@@ -30,7 +30,7 @@ A service sees its paths rooted at `/`, whatever its mount: with `"url": "/s"`, 
 
 ## The bundle
 
-One directory per service: `_service.js` (one pre-bundled ES module; bundle dependencies with any bundler, e.g. esbuild) plus any static files. Limits per service: file count and sizes come from the team's plan (Basic and Pro: 600 files, 15 MB per file, 75 MB total); `_service.js` is capped at 10 MB on every plan; at most 7 nested folders and 200-character paths. Never uploaded: dot-files, dot-folders and `node_modules/` at any depth, and `README.md`, `wrangler.toml`, `yard.json` and `settings.json` at the bundle root. `ignore_files` does not apply to services, so keep build inputs outside the bundle directory. `yard service init <name>` writes a working bundle and records it in settings.json.
+One directory per service: `_service.js` (one pre-bundled ES module; bundle dependencies with any bundler, e.g. esbuild) plus any static files. Limits per service: file count and sizes come from the team's plan (Basic and Pro: 600 files, 15 MiB per file, 75 MiB total); `_service.js` is capped at 10 MiB on every plan; at most 7 nested folders and 200-character paths. Never uploaded: dot-files, dot-folders and `node_modules/` at any depth, and `README.md`, `wrangler.toml`, `yard.json` and `settings.json` at the bundle root. `ignore_files` does not apply to services, so keep build inputs outside the bundle directory. `yard service init <name>` writes a working bundle and records it in settings.json.
 
 ## Service settings
 

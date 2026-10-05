@@ -159,7 +159,7 @@ yard projects show my-tool --json | jq '.tiers[] | select(.free_trial.enabled) |
 
 Project-level settings: `license_key_enabled`, `activations_enabled`, `max_activations`. With no argument it picks the only project or prompts (in `--spec` mode it errors with the list of slugs). Interactive mode asks each question with the current value as default. `--spec` takes a sparse JSON object (unknown fields rejected, missing fields untouched); `--json` emits `{ "project": {...}, "settings": {...} }`. Enabling activations without restating `license_key_enabled` works when the project already has license keys.
 
-Tiers are not project settings: a `tiers` key is rejected with `unknown field`. Pricing belongs to a release; change it with `projects tiers` or the `pricing` block in settings.json.
+Tiers are not project settings: a `tiers` key is rejected with an error naming `projects tiers add`, `edit` and `rm`. Pricing belongs to a release; change it with `projects tiers` or the `pricing` block in settings.json.
 
 The server enforces the plan: a missing feature is `upgrade_required`, printed with the pricing link (interactive exits 0, `--spec` exits non-zero).
 
@@ -274,7 +274,7 @@ Discount codes (needs `.team_permissions.coupons`; the server answers `403` with
 
 - `list [--json] [--sort <col>] [--direction] [--page] [--limit ≤100]`. Sort by `createdAt`, `lastModified`, `code`, `discountValue`, `scopeDisplay`, `currentUses`, `status`, `savingsCents`. `STATUS` is derived: `inactive`, `expired`, `scheduled`, `used up`, `active`; in JSON, `is_active` is only the on/off switch.
 - `show <code>`: `{ "coupon": {...}, "analytics": {...} }`.
-- `create <code>`: `--percent N | --amount D`, `--projects <csv>` (slugs or UUIDs; without it the coupon covers every project, including future ones), `--max-uses N`, `--expires`, `--valid-from`, `--subscription-duration once|forever` (first payment, the default, or every renewal). Codes are upper-cased, 4-50 alphanumeric.
+- `create <code>`: `--percent N | --amount D`, `--projects <csv>` (slugs or UUIDs; without it the coupon covers every project, including future ones), `--max-uses N`, `--expires`, `--valid-from`, `--subscription-duration once|forever` (first payment, the default, or every renewal). Codes are upper-cased with spaces removed, then 4-50 letters, digits, `-` or `_`.
   ```jsonc
   { "discount_type": "percentage", "discount_value": 20, "scope": "all_projects", "project_ids": [],
     "max_uses": 100, "expires_at": "2026-12-31T23:59:59Z", "valid_from": null, "subscription_duration": "once" }
@@ -364,9 +364,9 @@ A push uploads `settings.json` itself, which is how deploys learn each service's
 
 **Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Basic's and Pro's.
 
-- Landing page: ≤60 files, ≤25 MB each, ≤100 MB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
-- Service: ≤600 files, ≤15 MB each, ≤75 MB total, `_service.js` ≤10 MB on every plan, ≤7 nested folders, paths ≤200 characters; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dot-files, dot-folders and `node_modules/` (any depth) and bundle-root `README.md`, `wrangler.toml`, `yard.json` and `settings.json` are skipped; `ignore_files` doesn't apply.
-- Migrations: any number of files, ≤3 MB each, ≤15 MB total, no subdirectories.
+- Landing page: ≤60 files, ≤25 MiB each, ≤100 MiB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
+- Service: ≤600 files, ≤15 MiB each, ≤75 MiB total, `_service.js` ≤10 MiB on every plan, ≤7 nested folders, paths ≤200 characters; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dot-files, dot-folders and `node_modules/` (any depth) and bundle-root `README.md`, `wrangler.toml`, `yard.json` and `settings.json` are skipped; `ignore_files` doesn't apply.
+- Migrations: any number of files, ≤3 MiB each, ≤15 MiB total, no subdirectories.
 
 ### yard init --page
 
@@ -457,7 +457,7 @@ A service's code ships inside a release (`yard push`, then publish); these comma
 - `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` class with a WebSocket client instead (no migration) and records `"rooms": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
 - `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared room class is not exported.
-- `yard service secrets set KEY=VALUE… | list | rm <name>`: `env.<NAME>` values for the project or one sandbox, shared by every service there; each change **redeploys those services** right away. Names are UPPER_SNAKE (not `DB` or `ASSETS`), ≤32 per target, ≤4 KB each. Write-only: `list` shows names and times.
+- `yard service secrets set KEY=VALUE… | list | rm <name>`: `env.<NAME>` values for the project or one sandbox, shared by every service there; each change **redeploys those services** right away. Names are UPPER_SNAKE (not `DB` or `ASSETS`), ≤32 per target, ≤4 KiB each. Write-only: `list` shows names and times.
 - `yard service logs [--service NAME] [--limit ≤500] [--since 2h]`: console output, uncaught exceptions and abnormal outcomes from the last 24 h, a few seconds behind. A fresh service returns an empty list.
 - `yard db query [sql] [--file PATH]` (`-` for stdin): SQL against the project's or a sandbox's database, rows as JSON. Up to 10 kB of SQL, 1000 rows.
 - `yard db migrations list`: applied migrations merged with local files still pending (`{ sandbox, database, migrations: [{ name, applied, applied_at, local }] }`). With no database yet, every file is pending.

@@ -19,7 +19,7 @@ yard dev --no-panel            # disable the control panel
 yard dev --allow-local-egress  # let services reach localhost and private networks
 ```
 
-Requirements: `.yard/settings.json` with at least one `services` entry or a landing page. The first run downloads the Yard local runtime (about 40 MB) into `~/.yard/runtime/`. Linux needs glibc 2.35+, macOS 13.5+.
+Requirements: `.yard/settings.json` with at least one `services` entry or a landing page. The first run downloads the Yard local runtime (about 40 MiB) into `~/.yard/runtime/`. Linux needs glibc 2.35+, macOS 13.5+.
 
 No login is needed. Logged in, `yard dev` also fetches the project's live public data for the landing page (so `window.yard.project` is real) and warns about secrets set on Yard that have no local value. Offline or logged out, `window.yard.project` is built from the settings.json `pricing` block, with the same tier fields as hosted (price, pricing model, features, description, trial fields).
 

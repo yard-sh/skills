@@ -269,7 +269,7 @@ dashboard.
 | ------------- | ------------------ | --------------------- |
 | Room requests | 1,000,000          | $0.30 per million     |
 | Compute       | 400,000 GB-seconds | $25 per million GB-s  |
-| Storage       | 2 GB               | $0.40 per GB-month    |
+| Storage       | 2 GiB              | $0.40 per GiB-month   |
 
 - A request is one call into a room: a forwarded HTTP request, a WebSocket
   upgrade, or an alarm. An inbound WebSocket message counts as one twentieth
