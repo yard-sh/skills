@@ -49,7 +49,7 @@ Authorization: Bearer yard_{key}
 
 API keys start with `yard_` and belong to a **team** (created with `yard keys create` or at https://dash.yard.sh/configure/api-keys?action=create); a key keeps working when the person who minted it leaves. Send it as `Authorization: Bearer yard_…`.
 
-**Scopes:** a key reaches exactly the endpoints its scopes allow; anything else answers `401`. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
+**Scopes:** a key reaches exactly the endpoints its scopes allow. A listed endpoint whose scope the key lacks answers `403` `INSUFFICIENT_SCOPE`; an endpoint outside this reference answers `401` whatever the scopes. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
 Integration scopes are safe to ship inside the app your users run. Every install shares the key and its rate limit, so validate once at launch and keep the answer:
 

@@ -68,7 +68,7 @@ Plan-gated and configured **per tier** (set at creation in `yard init --spec`, l
 
 ## Gift Purchases
 
-Plan-gated; `gift_enabled` per tier, one-time tiers only. The user enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically.
+Plan-gated; `gift_enabled` per tier, one-time tiers only. The user enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically. Refunding a gift takes it back: an unactivated link stops working, and an activated gift leaves the recipient's library and its license keys stop validating.
 
 ## Commerce in a Sandbox
 
