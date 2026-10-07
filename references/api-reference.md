@@ -124,10 +124,10 @@ A key holding only `releases:read` sees public channels and no drafts or archive
 
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key for the project in `project_id` (optionally bind to a device) |
-| `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license of the project in `project_id` |
+| `POST` | `/v1/licenses/validate` | `licenses:validate` | Validate a license key for the project in `project_id`, or its sandbox in `sandbox` (optionally bind to a device) |
+| `POST` | `/v1/licenses/deactivate` | `licenses:activate` | Deactivate a device from a license of the project in `project_id`, or its sandbox in `sandbox` |
 
-`validate` answers `valid: true` for a sandbox key too; check its `sandbox` field before granting anything ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
+Both look only where the request points: with no `sandbox`, at the project's own keys (a sandbox key answers like an unknown key); with `sandbox`, at that sandbox's keys alone ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)).
 
 
 ### Subscriptions (a user's subscription, from the team's server)

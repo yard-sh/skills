@@ -102,7 +102,7 @@ Payout setup is not required in a sandbox.
 
 **Out of the books.** Earnings, payouts, subscribers, `yard transactions` and `yard users` read the project itself only, and take no `--sandbox` flag. A sandbox's commerce is on that sandbox's pages in the dashboard; don't send users to the CLI for it.
 
-**Telling a sandbox key apart.** `POST /v1/licenses/validate` answers `valid: true` for a sandbox key too, with a **`sandbox`** field: absent or empty for a real purchase on the project, a sandbox name for a simulated one. Software that grants entitlement **must check it**; the safe default in shipped builds is to accept only an absent `sandbox`.
+**Sandbox keys are opt-in.** `POST /v1/licenses/validate` and `/v1/licenses/deactivate` find a sandbox key only when the request's **`sandbox`** field names that sandbox; without it they find only the project's own keys, and a sandbox key answers exactly like an unknown key (`License key not found`). Shipped builds never send `sandbox`, so a simulated purchase can't entitle anyone; a test build sends the sandbox's name. The response's `sandbox` echoes the sandbox the key was found in.
 
 **Deleting a sandbox** deletes all of its commerce immediately (transactions, subscriptions, trials, license keys, device activations, coupon usages, gifts, affiliate commissions). The project's own books are untouched.
 
@@ -110,7 +110,7 @@ Payout setup is not required in a sandbox.
 
 Plan-gated. Enable with `license_key_enabled` in `yard init --spec` or `yard projects edit`. A purchase mints one key for `single`, `seat_count` keys for `fixed_pack`, and one per seat for `per_seat`.
 
-Validate with `POST /v1/licenses/validate` (`project_id`, the license key and optional `device_id` in the body), which needs an API key with `licenses:validate` in the `Authorization` header, plus `licenses:activate` when it sends `device_id` ([api-reference.md](api-reference.md#licenses)). Letter case and surrounding spaces in the key are ignored. Only a `200` answers for the key: `401`/`402`/`403` mean the team's API key or plan, `429` and `5xx` are transient, so shipped software keeps its last answer rather than locking the user out. Validation is per project: an API key covers the whole team, so `project_id` (from `yard projects show <slug> --json | jq -r .id`) is what keeps a key bought for one project from validating in another; such a key answers `valid: false` with `License key is not for this project`. Check the response's `sandbox` field (above).
+Validate with `POST /v1/licenses/validate` (`project_id`, the license key and optional `sandbox` and `device_id` in the body), which needs an API key with `licenses:validate` in the `Authorization` header, plus `licenses:activate` when it sends `device_id` ([api-reference.md](api-reference.md#licenses)). Letter case and surrounding spaces in the key are ignored. Only a `200` answers for the key: `401`/`402`/`403` mean the team's API key or plan, `429` and `5xx` are transient, so shipped software keeps its last answer rather than locking the user out. Validation is per project: an API key covers the whole team, so `project_id` (from `yard projects show <slug> --json | jq -r .id`) is what keeps a key bought for one project from validating in another; such a key answers `valid: false` with `License key is not for this project`. A sandbox key validates only with `sandbox` set (above).
 
 License-key settings (`license_key_enabled`, `activations_enabled`, `max_activations`) exist on the project and again on each sandbox; a new sandbox copies the project's and diverges on the next edit. `yard projects edit` changes the project's own; a sandbox's are set from its License Keys page in the dashboard.
 
@@ -123,7 +123,7 @@ PROJECT_ID=$(yard projects show <slug> --json | jq -r .id)
 # Buy the project inside the sandbox from its checkout page (simulated, no card), then:
 curl -X POST https://api.yard.sh/v1/licenses/validate \
   -H "Authorization: Bearer $YARD_API_KEY" -H 'Content-Type: application/json' \
-  -d '{"project_id":"'"$PROJECT_ID"'","license_key":"XXXX-XXXX-XXXX-XXXX","device_id":"laptop-42"}'   # response has "sandbox": "staging"
+  -d '{"project_id":"'"$PROJECT_ID"'","sandbox":"staging","license_key":"XXXX-XXXX-XXXX-XXXX","device_id":"laptop-42"}'   # without "sandbox" the key is not found
 yard sandbox delete staging --yes                 # a clean slate: keys and activations go with it
 ```
 

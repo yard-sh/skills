@@ -172,6 +172,7 @@ for (const tier of window.yard.project.tiers) {
 | `user` | `{ id, username, avatar_url } \| null` | |
 | `owned` | `boolean` | Owns the project (any tier; active trials and subscriptions count) |
 | `is_trial`, `is_subscription` | `boolean` | Kind of entitlement; a subscription still in its free trial is `is_trial` |
+| `trial_expires_at` | `string \| null` | When the trial ends (ISO 8601); `null` when not on a trial |
 | `transaction_id` | `string \| null` | Opaque entitlement reference |
 | `tier_key`, `tier_name`, `tier_id` | `string \| null` | The tier they hold. Match `tier_key` against `project.tiers[i].key`: a holder from an earlier pricing revision has a `tier_id` the page no longer lists |
 | `tier_keys` | `string[]` | Tiers that let them buy products (trials don't count); compare with each product's `requires`. Empty when signed out |

@@ -36,7 +36,7 @@ Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.s
 - **Check entitlements, never assume them.** Read `yard me --json` → `.team_permissions` before proposing a feature (`.permissions` is the user's own and gates nothing on a project). Never quote a plan's features from memory.
 - **Read errors by code.** `upgrade_required` or a permission `FORBIDDEN`: the team's plan lacks the feature; send a spec it supports or point to https://yard.sh/pricing. `NO_TEAM`: the user has no team; send them to https://yard.sh/finish (developer setup creates one), upgrading does not help. `NOT_TEAM_OWNER`: payouts and billing are owner-only.
 - **Launch stages are one-way** (`draft` → `early_access` → `published`, set in the dashboard). Never advance one to test: a draft project already serves its pages and services to its own team.
-- **Sandboxes are for testing.** A sandbox (`/<slug>/@<name>/`) is a private copy of the project with its own data, secrets and simulated commerce: purchases, trials and license keys work, no money moves. A sandbox license key validates as `valid: true` with a `sandbox` field, so shipped software must reject keys whose `sandbox` is set.
+- **Sandboxes are for testing.** A sandbox (`/<slug>/@<name>/`) is a private copy of the project with its own data, secrets and simulated commerce: purchases, trials and license keys work, no money moves. A sandbox license key is valid only when the validate request names its sandbox (`"sandbox": "<name>"`); shipped software never sends `sandbox`, so sandbox keys never unlock it.
 - **Look before creating.** Run `yard projects --json` first so a retry never creates a duplicate.
 
 ## New project
