@@ -24,6 +24,7 @@ It is the public project JSON (`GET /v1/projects/{username}/{slug}/public`), sna
 | `launch_stage` | `string` | `draft`, `pre-order`, `early_access` or `published` |
 | `stage_discount_percent` | `number?` | Active launch-stage discount |
 | `tiers` | `PricingTier[]` | Below |
+| `products` | `Product[]` | Products on sale on top of a tier: `key`, `name`, `description?`, `type` (`one_time`, `consumable`, `subscription`), `price_cents`, `yearly_discount_percent?`, `yearly_price_cents?` (subscriptions), `requires` (tier keys), `icon_url?`. Empty when none. See [products.md](products.md) |
 | `images` | `ProjectImage[]` | Screenshots and icons, each with a `url` |
 | `category` | `string?` | |
 | `faq` | `{ question, answer }[]` | |
@@ -37,8 +38,9 @@ Each tier:
 
 ```jsonc
 {
-  "id": "uuid",                  // for data-tier-id / checkout({ tier })
-  "name": "Pro",
+  "id": "uuid",                  // changes with every pricing revision
+  "key": "pro",                  // stable identity: match on it, and pass it as data-tier-id / checkout({ tier })
+  "name": "Pro",                 // display only
   "description": "…",            // may be null
   "price_cents": 4900,
   "is_default": true,
@@ -58,7 +60,7 @@ Each tier:
 }
 ```
 
-> **Trials are per tier.** A project offers a trial when some tier has `free_trial.enabled: true`. Gate the trial button on that tier and pass its `id` (see the [worked example](#worked-example)). From the CLI: `yard projects show <slug> --json | jq .tiers`.
+> **Trials are per tier.** A project offers a trial when some tier has `free_trial.enabled: true`. Gate the trial button on that tier and pass its `key` (see the [worked example](#worked-example)). From the CLI: `yard projects show <slug> --json | jq .tiers`.
 
 `window.yard.project` reflects the **saved** state of the release; save dashboard edits before refreshing a preview.
 
@@ -82,19 +84,21 @@ After inserting DOM yourself, call `window.yard.refresh()` to bind new nodes.
 
 ```html
 <button data-action="checkout">Buy now</button>                                   <!-- default tier -->
-<button data-action="checkout" data-tier-id="…uuid…">Buy Pro</button>
-<button data-action="checkout" data-tier-id="…" data-interval="yearly">Subscribe yearly</button>
-<button data-action="checkout" data-tier-id="…" data-quantity="5" data-gift>Gift 5 seats</button>
+<button data-action="checkout" data-tier-id="pro">Buy Pro</button>
+<button data-action="checkout" data-tier-id="pro" data-interval="yearly">Subscribe yearly</button>
+<button data-action="checkout" data-tier-id="team" data-quantity="5" data-gift>Gift 5 seats</button>
 <button data-action="trial">Start free trial</button>                             <!-- default or first trial tier -->
-<button data-action="trial" data-tier-id="…uuid…">Start Pro trial</button>
+<button data-action="trial" data-tier-id="pro">Start Pro trial</button>
+<button data-action="checkout" data-product="gems" data-quantity="3">Buy 3 gem packs</button>
 ```
 
 | Attribute (`checkout`) | Meaning |
 | --- | --- |
-| `data-tier-id` | Tier UUID; omit for the default tier |
-| `data-interval` | `monthly` or `yearly` (subscription tiers) |
-| `data-quantity` | Seats for `fixed_pack` / `per_seat` |
+| `data-tier-id` | Tier key (or id, which changes with every pricing revision); omit for the default tier |
+| `data-interval` | `monthly` or `yearly` (subscription tiers and subscription products) |
+| `data-quantity` | Seats for `fixed_pack` / `per_seat`; 1-99 of a consumable product |
 | `data-gift` | Present: start the gift flow |
+| `data-product` | A product key: buy that product instead of a tier (`data-tier-id` and `data-gift` are ignored). The buyer must be signed in and hold a required tier ([products.md](products.md#selling)) |
 
 `data-action="trial"` takes only `data-tier-id`: a trial-enabled tier, or omit it for the default (or first trial-enabled) tier. A trial goes to Yard's trial flow (`https://yard.sh/trial/<username>/<slug>`): signed-in visitors start at once, signed-out ones confirm by email.
 
@@ -106,12 +110,14 @@ Only needed when linking to `https://pay.yard.sh/<username>/<slug>?…` by hand.
 
 | Param | Meaning |
 | --- | --- |
-| `tier` | Tier UUID or name (case-insensitive); omit for the default |
-| `quantity` | Seats for `fixed_pack` / `per_seat` |
-| `interval` | `monthly` or `yearly` (`year` / `annual` accepted) |
+| `tier` | Tier id or key (never a name); omit for the default |
+| `product` | A product key, instead of `tier` |
+| `quantity` | Seats for `fixed_pack` / `per_seat`; 1-99 of a consumable product |
+| `interval` | `monthly` or `yearly` (`year` / `annual` accepted), for subscription tiers and products |
 | `gift` | Gift purchase on a `gift_enabled` one-time tier (`true`, `1` or bare) |
 | `ref` | Affiliate code |
 | `sandbox` | Sandbox name: simulated checkout, no card charged |
+| `return_to`, `for` | With `product` only: where to send the buyer afterwards, and the Yard user id the purchase is for ([products.md](products.md#checkout-links)) |
 
 Invalid values are ignored, not rejected. `/trial/<username>/<slug>` takes `tier` and `sandbox` only.
 
@@ -123,7 +129,7 @@ Invalid values are ignored, not rejected. `/trial/<username>/<slug>` takes `tier
 window.yard = {
   project,            // public project or null (above)
   checkoutBase,       // e.g. "https://pay.yard.sh"
-  checkout(opts),     // redirect to checkout: { tier?, interval?, quantity?, gift? }
+  checkout(opts),     // redirect to checkout: { tier?, interval?, quantity?, gift? } or { product, quantity?, interval? }
   trial(opts),        // redirect to the trial flow: { tier? }
   checkoutURL(opts),  // build the URL without redirecting
   trialURL(opts),
@@ -132,13 +138,13 @@ window.yard = {
 };
 ```
 
-`tier` is a tier UUID.
+`tier` is a tier key or id; `product` is a product key. Neither `checkout()` nor `data-action` sends `return_to` or `for`: to bring a product buyer back, add them to `checkoutURL({ product })` yourself ([products.md](products.md#checkout-links)).
 
 ```js
 for (const tier of window.yard.project.tiers) {
   const btn = document.createElement("button");
   btn.textContent = `${tier.name}: $${(tier.price_cents / 100).toFixed(2)}`;
-  btn.addEventListener("click", () => window.yard.checkout({ tier: tier.id }));
+  btn.addEventListener("click", () => window.yard.checkout({ tier: tier.key }));
   document.querySelector("#tiers").append(btn);
 }
 ```
@@ -156,9 +162,11 @@ for (const tier of window.yard.project.tiers) {
 | `owned` | `boolean` | Owns the project (any tier; active trials and subscriptions count) |
 | `is_trial`, `is_subscription` | `boolean` | Kind of entitlement; a subscription still in its free trial is `is_trial` |
 | `transaction_id` | `string \| null` | Opaque entitlement reference |
-| `tier_id`, `tier_name` | `string \| null` | Which tier they hold |
+| `tier_key`, `tier_name`, `tier_id` | `string \| null` | The tier they hold. Match `tier_key` against `project.tiers[i].key`: a holder from an earlier pricing revision has a `tier_id` the page no longer lists |
+| `tier_keys` | `string[]` | Tiers that let them buy products (trials don't count); compare with each product's `requires`. Empty when signed out |
+| `products` | `object[]` | Products they hold on this project ([shape](products.md#what-someone-holds)); use one while its `active` is `true`. Empty when signed out |
 
-It never exposes email, other purchases or payment details. It is read-only UI gating; deeper integrations use the REST API ([api-reference.md](api-reference.md)).
+It never exposes email, purchases of other projects or payment details. Products never change `owned`, which is about tiers. It is read-only UI gating; deeper integrations use the REST API ([api-reference.md](api-reference.md)).
 
 **`data-yard-when`** covers the common case with no JS: `signed_in`, `signed_out`, `owned`, `not_owned`. Such elements stay hidden until the state resolves, by a style rule page CSS can't override (elements added later follow it too), so a non-owner never flashes an "Open in Library" link. `embed.js` never touches the `hidden` attribute, which stays yours.
 
@@ -185,13 +193,15 @@ When the project has services, the landing page can use the project's **Yard Aut
 
 ```js
 const me = await (await fetch("__yard/auth/me")).json();
-// { authenticated: true, user_id, email, entitlement, tier? } or { authenticated: false, entitlement: "none" }
+// { authenticated: true, user_id, email, entitlement, tier?, tier_key? } or { authenticated: false, entitlement: "none" }
 ```
 
 ```html
 <a href="__yard/auth/login?return=/">Sign in</a>      <!-- back to the landing page -->
 <a href="__yard/auth/logout?return=/">Sign out</a>
 ```
+
+`__yard/products` sits next to them and answers `{ authenticated, tier_keys, products }` for the same session; `POST __yard/purchases/{transaction_id}/fulfill` marks a consumable delivered ([products.md](products.md#delivering-consumables)).
 
 `return` is relative to the project root here (`return=/` is this page, `return=/app/` a service). Called under a service, it is relative to that service instead. Send writes to a service with relative `fetch("app/items", …)` calls and `Content-Type: application/json`; see [service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own).
 
@@ -205,7 +215,7 @@ Pages serve under `<username>.yard.sh/<slug>/` (and `/<slug>/@<sandbox>/` in a s
 
 ## Testing a page before users see it
 
-`yard dev` serves the page at `http://localhost:9875/<slug>/` with `embed.js` injected and tab reload on save, so `window.yard.project`, `data-yard` and Buy buttons behave as hosted (live project data when logged in, else a placeholder from settings.json). `ownership()` and `data-yard-when` follow the persona (`yard dev --as user:pro`, or the picker at `/<slug>/__yard/auth/login`). See [local-dev.md](local-dev.md).
+`yard dev` serves the page at `http://localhost:9875/<slug>/` with `embed.js` injected and tab reload on save, so `window.yard.project`, `data-yard` and Buy buttons behave as hosted (live project data when logged in, else a placeholder from settings.json). `ownership()`, `data-yard-when` and `__yard/products` follow the persona (`yard dev --as user:<tier key>` or `--as buyer:<product key>`, or the picker at `/<slug>/__yard/auth/login`). See [local-dev.md](local-dev.md).
 
 Hosted, the project serves at `https://<username>.yard.sh/<slug>/` and each sandbox at `…/<slug>/@<sandbox>/`, with that sandbox's own pricing and copy in `window.yard.project`. Sandbox URLs are team-only (others get a 403, anonymous visitors sign in first) until `yard sandbox visibility public --sandbox <name>`, which opens one only while the project itself is public and past draft.
 
@@ -252,7 +262,7 @@ File count, per-file size and total size come from the team's plan (Basic and Pr
       const trialTier = window.yard.project?.tiers.find((t) => t.free_trial?.enabled);
       if (trialTier) {
         const btn = document.querySelector("#trial-btn");
-        btn.dataset.tierId = trialTier.id;
+        btn.dataset.tierId = trialTier.key;
         btn.hidden = false;
       }
     </script>

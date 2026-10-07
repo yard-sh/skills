@@ -49,7 +49,7 @@ Each entry of `services` in `.yard/settings.json` is the whole declaration; chan
 - `dir`: the bundle directory, relative to the working directory. Directories must not nest.
 - `name`: 1-30 lowercase letters, digits and inner hyphens, unique in the release.
 - `url`: where it serves. Default `/<name>`; `/` takes the whole site (the landing page then serves nothing). Unique; `/__yard` and `/@…` are reserved. `/api` and `/api/v2` can both exist; the longer path wins.
-- `access`: `public` (default, everyone) · `authenticated` (sign-in required) · `users` (only people who bought, are on a trial or subscribe; others go to the sales page). Anything but `public` needs `yard_auth` (`upgrade_required` otherwise).
+- `access`: `public` (default, everyone) · `authenticated` (sign-in required) · `users` (only people who bought a tier, are on a trial or subscribe; others go to the sales page; [products](products.md) don't count). Anything but `public` needs `yard_auth` (`upgrade_required` otherwise).
 - `database_access`: `true` binds the database as `env.DB`. The release's migrations create the database; a service flagged before the first migration deploys without `env.DB` and is redeployed with it once the database exists.
 - `rooms`: room classes the service exports, each reachable as `env.<binding>`. Needs `service_rooms`. See [rooms.md](rooms.md).
 
@@ -66,21 +66,25 @@ The Yard edge signs visitors in and gives your code trusted headers:
 | `X-Yard-User-Id` | Stable user id; use it as your foreign key |
 | `X-Yard-Email` | Email; omitted when the account has none |
 | `X-Yard-Entitlement` | `none` \| `trial` \| `active` \| `owner` |
-| `X-Yard-Tier` | **Name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; omitted with `none` or `owner` |
+| `X-Yard-Tier` | Display **name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; omitted with `none` or `owner`. For display only |
+| `X-Yard-Tier-Key` | **Key** of that same tier (`pro`), sent exactly when `X-Yard-Tier` is. Gate tier features on it: a renamed tier keeps its key ([tier keys](pricing-and-licensing.md#tier-keys)) |
 | `X-Yard-Sandbox` | Sandbox name, or empty for the project itself |
 
 - Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
 - Clients cannot forge them: the edge strips incoming `X-Yard-*` headers.
+- Gate a tier feature with `request.headers.get("X-Yard-Tier-Key") === "pro"`, never with the name.
+- Products bought on top of a tier change none of these headers. A page reads the visitor's products from `__yard/products`; `_service.js` reads them through the API with a `products:read` key ([products.md](products.md#what-someone-holds)).
 - Every member of the owning team gets in everywhere with `owner`, so the team never buys its own project. Entitlement resolves: owner → paid subscription (`active`) → one-time purchase (`active`) → running trial, including a subscription not yet charged (`trial`) → `none`. A canceled or past-due subscription, a refund or a gift the visitor sent to someone else grants nothing. Verdicts are cached up to 60 seconds; there is no push signal, so a long-lived UI polls `__yard/auth/me`.
 - Never implement OAuth, sessions or password storage. Apps running outside the project use Yard Auth as an OpenID Connect client: [api-reference.md](api-reference.md#yard-auth-for-external-apps).
 
-### `__yard/auth/*` endpoints
+### `__yard/*` endpoints
 
-They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`), nowhere deeper. Call them with relative URLs from a page at that level; a page in a subfolder of the service goes up first (`../__yard/auth/me`), or its relative URL reaches the service's own code.
+`__yard/auth/*`, `__yard/products` and `__yard/purchases/{transaction_id}/fulfill` are answered by the edge, before your code runs. They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`), nowhere deeper. Call them with relative URLs from a page at that level; a page in a subfolder of the service goes up first (`../__yard/auth/me`), or its relative URL reaches the service's own code.
 
 - `login?return=<path>` signs the visitor in (an existing Yard session passes silently) and sends them to `return`. **`return` is a path relative to where you called login**: under a service, `return=/` is the service's root; at the project root, `return=/` is the landing page. It must start with `/`; anything else, a full URL included, falls back to `/`. The first sign-in to a project by someone outside the owning team shows a consent screen (email; name, username and picture; Yard account and purchase status; staying signed in), remembered until the person disconnects the app under "Connected apps" on their Yard security page. Team members skip it.
 - `logout?return=<path>` ends the project session (the person stays signed in to Yard) and redirects with the same rule; without `return` it goes to `/` of where it was called.
-- `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro"}` when signed in (`email` may be `""`, `tier` is omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in visitor who hasn't bought.
+- `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro", "tier_key": "pro"}` when signed in (`email` may be `""`, `tier` and `tier_key` are omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in visitor who hasn't bought.
+- `products` (GET) always answers 200: `{"authenticated": true, "tier_keys": [...], "products": [...]}` for the visitor, `{"authenticated": false, "tier_keys": [], "products": []}` signed out. `purchases/{transaction_id}/fulfill` (POST) marks one of the visitor's consumable purchases delivered. Shapes and errors: [products.md](products.md#what-someone-holds). In a sandbox both act on that sandbox's purchases.
 
 A session covers the landing page, every service and every sandbox of one project, on one host: the `yard.sh` address and a custom domain each need their own sign-in. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.
 
@@ -142,7 +146,7 @@ What runs is always what the serving release holds, so going live is a release o
 
 ## Testing before users see it
 
-Start with `yard dev` ([local-dev.md](local-dev.md)): personas, access gating, header stripping and `__yard/auth/*` all behave as hosted. Real purchases and trials need a sandbox.
+Start with `yard dev` ([local-dev.md](local-dev.md)): personas (`buyer:<product key>` ones included), access gating, header stripping and the `__yard/*` endpoints all behave as hosted. Real purchases, trials and the API's product endpoints need a sandbox.
 
 Sandbox URLs (`…/<slug>/@preview/<service>/`) sign the visitor in and serve only members of the owning team; everyone else gets an explanatory 403. `yard sandbox visibility public --sandbox <name>` opens one to anyone with the URL while the project itself is public and past draft. A `draft` or private project's services work the same way for the owning team, so everything can be verified before the launch stage moves (it only moves forward).
 

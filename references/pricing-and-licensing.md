@@ -6,7 +6,7 @@ Every feature here is plan-gated on the **team**: read `yard me --json` → `.te
 
 A project has one or more tiers; how many is `max_pricing_tiers` (currently 10 on both Basic and Pro). Fields:
 
-- `name`; `description` (optional); `features` (up to 20 strings); `sort_order` (display order, 0-based)
+- `key`: the tier's stable identity ([Tier keys](#tier-keys)); `name`: display text, unique within a release; `description` (optional); `features` (up to 20 strings); `sort_order` (display order, 0-based)
 - `price_cents`: `0` (free) or 300 to 1,000,000 ($3.00 to $10,000.00)
 - `is_default`: exactly one tier per project
 - `seat_type`: `single`, `fixed_pack` or `per_seat` (seat-based needs `seat_based_pricing`)
@@ -14,6 +14,16 @@ A project has one or more tiers; how many is `max_pricing_tiers` (currently 10 o
 - Per tier: `free_trial` (`enabled`, `days`, `requires_card`), `gift_enabled` (below)
 
 There is no first-class "enterprise" or contact-sales tier: model it as a high-priced `per_seat` tier or a separate top tier, and handle custom contracts outside Yard.
+
+### Tier keys
+
+A tier's `key` (`pro`, `team-5-pack`) is its identity across releases and pricing revisions; the name is only what people see. Up to 64 lowercase letters, digits, `-` and `_`, starting with a letter or digit, unique within a release.
+
+- Renaming a tier keeps its key, and with it its holders and subscribers. A different key is a different tier: holders of the old key keep it under that key, and the new tier starts with none.
+- `key` is optional on input (settings.json `pricing.tiers[]`, `--spec`, the API): a tier without one takes the key that name was last published with, unless another tier in the same save uses that key; otherwise one derived from its name (lowercased, anything but letters and digits turned into `-`, `-2` and so on added so it never reuses a key another tier has had). So a tier renamed in settings.json without a `key` becomes a new tier: always write `key`. The dashboard locks a published tier's key.
+- A price change moves the subscribers of the same key to the new price (after the 30-day notice); `subscription.tier_changed` fires only when a subscriber's key changes.
+- Tier ids change with every pricing revision, so code matches on keys: `X-Yard-Tier-Key` in a service ([service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own)), `tier_key` from `__yard/auth/me`, Yard Auth userinfo and `window.yard.ownership()`, `tier_key` on the `sale.completed`, `sale.refunded`, `subscription.canceled`, `trial.started`, `trial.ended` and `gift.activated` webhooks, and `old_tier_key` / `new_tier_key` on `subscription.tier_changed`. Checkout's `?tier=` takes an id or a key, never a name.
+- Products name the tiers they require by key, and a tier a product requires can't be removed.
 
 ## Seat Types
 
@@ -30,6 +40,10 @@ There is no first-class "enterprise" or contact-sales tier: model it as a high-p
 | 1 | 10 | 0% | $10.00 |
 | 11 | 50 | 15% | $8.50 |
 | 51 | unlimited | 25% | $7.50 |
+
+## Products
+
+Products are sold on top of a tier, never instead of one: one-time add-ons and DLC, consumables (gem packs, credits) and add-on subscriptions. A release needs at least one tier before it has products, the buyer must be signed in and hold a tier the product `requires`, and buying one never grants access or changes the buyer's tier. Gated by `max_products`. Everything about them: [products.md](products.md).
 
 ## Launch Stages and Discounts
 
@@ -55,6 +69,7 @@ Needs `.team_permissions.coupons`. Managed with `yard coupons` ([cli-commands.md
 - `scope`: `all_projects` (every project, including future ones) or `specific_projects` (`project_ids`).
 - `code`: upper-cased with spaces removed, then 4-50 letters, digits, `-` or `_`. `max_uses` counts across all users (null = unlimited; no per-user limit). `valid_from` / `expires_at` are optional. `subscription_duration`: `once` (first payment, default) or `forever` (every renewal); ignored for one-time purchases.
 - A coupon is usable only when active, started, unexpired and under its limit; `is_active` is just the on/off switch.
+- Coupons discount tiers only: products always sell at full price.
 - Up to 100 codes can be generated at once, returned only at creation. After the first redemption the discount cannot change and the coupon cannot be deleted (deactivate it). `null` clears `max_uses`, `expires_at` or `valid_from`; an omitted key is unchanged.
 
 ## Free Trials
@@ -64,11 +79,12 @@ Plan-gated and configured **per tier** (set at creation in `yard init --spec`, l
 - `free_trial.days`: 7-365, optional; a trial enabled without days runs 7.
 - `free_trial.requires_card` (default false): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.
 - One-time tiers can be trialed as a guest (email confirmation). After expiry the trial user must purchase to keep access.
+- Trials are for tiers only. A trial (or a subscription still in its trial) doesn't count as holding the tier, so it never lets anyone buy a product.
 - To change one user's running trial: `yard transactions trial <order-id> --add-days N` (added to the current expiry, not today; a card-required trial's first charge moves with it; the user on the trial is emailed). See [cli-commands.md](cli-commands.md#yard-transactions).
 
 ## Gift Purchases
 
-Plan-gated; `gift_enabled` per tier, one-time tiers only. The user enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically. Refunding a gift takes it back: an unactivated link stops working, and an activated gift leaves the recipient's library and its license keys stop validating.
+Plan-gated; `gift_enabled` per tier, one-time tiers only (products can't be gifted). The user enters a recipient email at checkout (from the Gift button or `?gift=true`); the recipient gets activation instructions. The license key is minted on activation. A gift unactivated after 90 days expires and is refunded automatically. Refunding a gift takes it back: an unactivated link stops working, and an activated gift leaves the recipient's library and its license keys stop validating.
 
 ## Commerce in a Sandbox
 
@@ -79,7 +95,8 @@ A simulated purchase:
 - records a completed transaction with the tier, quantity, discounts and amounts it would have charged;
 - mints license keys by the usual rules, identical to real ones except for the sandbox they belong to;
 - starts subscriptions that renew on schedule and trials that convert (the one-trial-per-user rule applies per sandbox);
-- records coupon redemptions and gifts, without using up the real coupon's `current_uses`.
+- records coupon redemptions and gifts, without using up the real coupon's `current_uses`;
+- buys products too: a consumable bought in a sandbox is listed and fulfilled there (`__yard/products` and `__yard/purchases/…/fulfill` on the sandbox's pages, or the API with `?sandbox=<name>`), and refunded after 3 days unfulfilled like a real one ([products.md](products.md#delivering-consumables)).
 
 Payout setup is not required in a sandbox.
 
@@ -116,8 +133,12 @@ Plan-gated and requires license keys. `activations_enabled` and `max_activations
 
 ## How checkout computes the price
 
-1. The tier (given, or the default) and a quantity valid for its seat type.
+For a tier:
+
+1. The tier (given by id or key, or the default) and a quantity valid for its seat type.
 2. Base price, with any volume bracket.
 3. Launch-stage discount (early access).
 4. Coupon discount.
 5. Tax, by the user's location.
+
+A product is its price (times `quantity` for a consumable; the yearly price, after `yearly_discount_percent`, for a yearly subscription) plus tax, with no launch-stage or coupon discount.

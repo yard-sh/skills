@@ -128,6 +128,23 @@ A GitHub repository is linked to one Yard project at a time. To work on the proj
 
 ---
 
+## Tier and product errors
+
+Tiers and products are addressed by key, never by name ([tier keys](pricing-and-licensing.md#tier-keys), [products.md](products.md)). List the keys with `yard projects show <slug> --json | jq -r '.tiers[].key'` and `yard projects products <slug> --json | jq -r '.[].key'`.
+
+- **`no tier "Pro"`** from `yard projects tiers edit|rm`: pass the tier's key (`pro`), not its name.
+- **"price must be at least $0.99"** / **"price cannot exceed $10,000.00"**: a product's `price_cents` is 99 to 1,000,000 (tiers start at $3.00).
+- **"products are sold on top of a pricing tier, so add a tier first"**: the release has products but no tiers. Add a tier in the same push or first.
+- **`requires "Pro", which is not a valid tier key`**: `requires` holds tier keys (lowercase slugs), not names.
+- **`requires the tier "team", which this release does not have`**: add that tier to the release, or drop it from `requires`.
+- **`has been published as a one-time product and cannot become a consumable product`**: a published key keeps its type for good. Sell the new type under a new key.
+- **`the tier "pro" is required by product "gems"`** from `yard projects tiers rm`, a push or the dashboard: remove the tier from every product's `requires` first (`yard projects products edit`).
+- **"products aren't included in your plan"** / **"your plan supports up to N products"**: the team's `max_products`.
+- **`product icons declared in … not found locally`** from `yard push`: an `icon` path in settings.json has no file. Fix the path, or `yard pull` to bring the release's icons down. Nothing was uploaded.
+- **An icon is refused**: it must be exactly 256x256 PNG, JPEG or WebP, at most 1 MiB; only the dashboard resizes uploads.
+
+---
+
 ## Update required to init
 
 `yard init` checks for CLI updates before proceeding. If a newer version is available, you must update to continue.

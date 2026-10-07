@@ -194,10 +194,11 @@ connect();
   lookup; attachments are for state (display name, cursor colour, last seen).
   Keep an attachment to a few hundred bytes; anything larger goes in storage.
 - **Identity** arrives on the upgrade request like any request: `X-Yard-User-Id`,
-  `X-Yard-Email`, `X-Yard-Entitlement`, `X-Yard-Tier`, `X-Yard-Sandbox`.
-  Read them in the room's `fetch` before accepting. A socket opened from
-  another origin (another project's page included) arrives signed out, with
-  no `X-Yard-User-Id`. The service's `access` setting gates the upgrade like
+  `X-Yard-Email`, `X-Yard-Entitlement`, `X-Yard-Tier`, `X-Yard-Tier-Key`,
+  `X-Yard-Sandbox`. Read them in the room's `fetch` before accepting, and gate
+  per-tier features on `X-Yard-Tier-Key`, not the display name. A socket
+  opened from another origin (another project's page included) arrives signed
+  out, with no `X-Yard-User-Id`. The service's `access` setting gates the upgrade like
   any other request, so `"access": "users"` keeps visitors who haven't
   bought out of every room with no code.
 - **Every session ends after 24 hours.** Yard closes the connection with code

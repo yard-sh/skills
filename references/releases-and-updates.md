@@ -4,7 +4,7 @@ How a project's releases work, how they reach users, how GitHub releases sync in
 
 ## What a release is
 
-A release is a **project-wide snapshot**: landing page, pricing, download buttons, services and file assets together. It has a `tag_name` (≤255 chars, unique per project across non-archived releases; reuse is a `409`), an optional `release_name` (≤255) and `release_notes` (markdown, ≤125,000), and zero or more files stored by Yard.
+A release is a **project-wide snapshot**: landing page, pricing, products, download buttons, services and file assets together. It has a `tag_name` (≤255 chars, unique per project across non-archived releases; reuse is a `409`), an optional `release_name` (≤255) and `release_notes` (markdown, ≤125,000), and zero or more files stored by Yard.
 
 - Every release starts as a **draft**. Nothing serves a draft, so editing one has no side effects. A project can hold 10 open drafts.
 - **Publishing** stamps the tag and puts the release in one **channel**. Publishing is one-way, but the release stays editable: editing one that nothing serves is harmless, editing one that is served is live on save.
@@ -53,10 +53,11 @@ If the repo has `.yard/settings.json` at the tag, the sync also imports what it 
 | `services[]` | Each entry becomes a service built from its directory (which needs `_service.js`), with its `rooms`. The list is the whole set: a service the tag drops is taken down on deploy. An empty list counts as absent and removes nothing. |
 | `migrations` | The `.sql` files in its `dir`, or in `.yard/migrations/` without a block, become the release's migrations. |
 | `landing_page` | `type` and the files in `dir` (or under the default `.yard/landing-page/`), as for `yard push`. With no block, files in `.yard/landing-page/` make the page custom. |
-| `pricing.tiers` | Replaces the release's tiers to **match exactly**. |
+| `pricing.tiers` | Replaces the release's tiers to **match exactly**, matched by `key`: give every tier one and keep it across renames. |
+| `products` | Replaces the release's [products](products.md) to **match exactly** (`[]` removes them all). Each `icon` is a path relative to the repo root, uploaded when it changed. A section that doesn't validate (say, a `requires` key the release has no tier for) is left out: the release keeps the products it inherits and records a sync error naming the problem. |
 | `downloads.buttons` | Replaces the release's download buttons to **match exactly**. |
 
-Each section is independent, and **absent means not managed from GitHub**: the release keeps that part as it was. A repo with no settings.json syncs assets, name and notes only. A declared section must resolve: an empty declared directory, a service without `_service.js` or `name`, or two services with the same name or path fails the sync; a `custom` page without the plan feature records an upgrade-required sync error. `yard push` applies `pricing` and `downloads` the same way.
+Each section is independent, and **absent means not managed from GitHub**: the release keeps that part as it was. A repo with no settings.json syncs assets, name and notes only. A declared section must resolve: an empty declared directory, a service without `_service.js` or `name`, or two services with the same name or path fails the sync; a `custom` page without the plan feature records an upgrade-required sync error. `yard push` applies `pricing`, `products` and `downloads` the same way.
 
 Trials use the same `free_trial` object as everywhere else. Array order is display order.
 
@@ -66,11 +67,14 @@ Trials use the same `free_trial` object as everywhere else. Array order is displ
   "project_slug": "my-project",
   "pricing": {
     "tiers": [
-      { "name": "Personal", "price_cents": 900, "is_default": true, "pricing_model": "one_time", "features": ["Lifetime updates"] },
-      { "name": "Team", "price_cents": 4900, "pricing_model": "subscription", "seat_type": "per_seat", "min_seats": 2,
+      { "key": "personal", "name": "Personal", "price_cents": 900, "is_default": true, "pricing_model": "one_time", "features": ["Lifetime updates"] },
+      { "key": "team", "name": "Team", "price_cents": 4900, "pricing_model": "subscription", "seat_type": "per_seat", "min_seats": 2,
         "yearly_discount_percent": 20, "free_trial": { "enabled": true, "days": 14, "requires_card": true } }
     ]
   },
+  "products": [
+    { "key": "theme-pack", "name": "Theme Pack", "type": "one_time", "price_cents": 499, "icon": ".yard/products/theme-pack.png" }
+  ],
   "downloads": {
     "buttons": [
       { "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" },
@@ -80,11 +84,11 @@ Trials use the same `free_trial` object as everywhere else. Array order is displ
 }
 ```
 
-- Pricing is validated against the team's plan; subscribers get the standard 30-day notice when a sync changes their tier's price. An empty `tiers` takes the project off sale (existing purchases keep resolving).
+- Pricing is validated against the team's plan; subscribers get the standard 30-day notice when a sync changes their tier's price (subscribers follow the tier's `key`, so a tier synced under a new key is a new tier). Products are validated against the plan (`max_products`) and the release's tiers. An empty `tiers` takes the project off sale (existing purchases keep resolving).
 - `downloads.buttons`: `condition` is `contains`, `starts_with`, `ends_with` or `has_extension` (case-insensitive), `value` 1-255 chars, `label` 1-50 chars, at most 10. A rule matching no file triggers a warning email.
 - Tags are immutable, so a settings.json change lands with the **next** release (or a Re-sync after moving the tag). A tag with a retired settings layout fails with an error naming the fix (`yard migrate`, commit, tag again).
 - A synced release changed in Yard (dashboard, CLI or API) is skipped by automatic syncs, new assets included; each skip is a warning in its **Sync Logs**. Release Settings > Danger zone > **Re-sync** (confirm with **Overwrite and Re-sync**) restores the GitHub-managed parts. Deleting it on GitHub still archives it.
-- Dashboard edits to pricing, download buttons or services regenerate every release's settings.json, so `yard status` shows them as a config diff and `yard pull` retrieves them.
+- Dashboard edits to pricing, products, download buttons or services regenerate every release's settings.json, so `yard status` shows them as a config diff and `yard pull` retrieves them.
 
 ## Downloading releases with a license key
 

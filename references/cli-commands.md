@@ -34,12 +34,13 @@ The signed-in user, the team they act as, and what each may do. `--json`:
     "license_keys": { "granted": true, "value_type": "boolean" },
     "coupons": { "granted": true, "value_type": "boolean" },
     "max_pricing_tiers": { "granted": true, "limit": 10, "value_type": "limit" },
+    "max_products": { "granted": true, "limit": 100, "value_type": "limit" },
     "max_projects": { "granted": true, "unlimited": true, "value_type": "limit" }
   }
 }
 ```
 
-- **`team_permissions` decides every team feature** (projects, tiers, coupons, license keys, custom pages, services, Yard Auth, sandboxes, API keys). It is the merged entitlement of the active team's owners. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not.
+- **`team_permissions` decides every team feature** (projects, tiers, products, coupons, license keys, custom pages, services, Yard Auth, sandboxes, API keys). It is the merged entitlement of the active team's owners. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not.
 - `permissions` is the user's own entitlement, for account-level things like `create_teams`.
 - Booleans carry `granted`; limits also carry `limit` or `unlimited: true`. Gates are permission-based, not tied to a plan name. `plan` is a display label.
 - `team` is `null` (and `team_permissions` absent) when the user belongs to no team; every team command then fails with `NO_TEAM`.
@@ -69,7 +70,7 @@ Links the current directory to a project and writes `.yard/settings.json`. No gi
 | Mode | Invocation | Use |
 | --- | --- | --- |
 | Spec | `yard init --spec <file\|-> --json` | Create a new project from JSON. Agents use this. |
-| Link | `yard init --project <slug-or-uuid> --json` | Link to an existing project. A fresh directory also pulls the latest Production release whole (settings, landing page, service bundles); `--no-pull` skips that. |
+| Link | `yard init --project <slug-or-uuid> --json` | Link to an existing project. A fresh directory also pulls the latest Production release whole (settings, landing page, service bundles, product icons); `--no-pull` skips that. |
 | Interactive | `yard init` | Humans only. Driving it through stdin is a dead end. |
 
 Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json` defaults to no page); `--link-repo` / `--no-link-repo` (default: link when possible, otherwise note why and carry on; `--link-repo` makes that an error; `--no-link-repo` skips linking). Not logged in, the non-interactive modes fail with `not logged in. Run 'yard login' first`.
@@ -82,7 +83,8 @@ Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json
   "pricing_model": "one_time",  // "one_time" (default) | "subscription"
   "tiers": [
     {
-      "name": "Base",               // required
+      "key": "base",                // stable identity; optional (derived from the name), always set it
+      "name": "Base",               // required; display only
       "price_cents": 1900,          // 0 for free, else 300..1000000
       "is_default": true,           // exactly one default
       "seat_type": "single",        // "single" | "fixed_pack" | "per_seat" (seat-based is plan-gated)
@@ -105,7 +107,7 @@ Flags: `--json`; `--page` / `--no-page` (scaffold a landing page or not; `--json
 }
 ```
 
-How many tiers a plan allows is `max_pricing_tiers`. `free_trial` and `gift_enabled` exist only per tier; a project-level trial field is rejected with `unknown field`. The launch stage and an early-access discount are set in the dashboard.
+How many tiers a plan allows is `max_pricing_tiers`. A tier's `key` is up to 64 lowercase letters, digits, `-` and `_`, starting with a letter or digit ([tier keys](pricing-and-licensing.md#tier-keys)). `free_trial` and `gift_enabled` exist only per tier; a project-level trial field is rejected with `unknown field`. The launch stage and an early-access discount are set in the dashboard.
 
 `--json` output:
 
@@ -149,10 +151,10 @@ Slugs and UUIDs are interchangeable wherever `<slug-or-id>` is accepted.
 
 ### yard projects show \<slug-or-id\>
 
-One project in full, including `tiers[]` with `pricing_model`, `seat_type`, `features`, `volume_brackets` and the per-tier trial and gift fields. Use it to answer "does any tier offer a trial?":
+One project in full, including `tiers[]` with `key`, `pricing_model`, `seat_type`, `features`, `volume_brackets` and the per-tier trial and gift fields (products are listed by [`yard projects products`](#yard-projects-products)). Use it to answer "does any tier offer a trial?":
 
 ```sh
-yard projects show my-tool --json | jq '.tiers[] | select(.free_trial.enabled) | {id, name, days: .free_trial.days}'
+yard projects show my-tool --json | jq '.tiers[] | select(.free_trial.enabled) | {key, name, days: .free_trial.days}'
 ```
 
 ### yard projects edit [slug-or-id]
@@ -165,20 +167,35 @@ The server enforces the plan: a missing feature is `upgrade_required`, printed w
 
 ### yard projects tiers
 
-Add, change or remove one tier of a release's pricing without resending the list. With no `--release` they edit your open draft (or a new draft seeded from your newest published release), the same release `yard push` writes to, and the new pricing goes live with `yard releases publish`. `--release <tag|id>` edits a published release instead, live at once wherever it is served; on the release the project serves, subscribers on a subscription tier whose price changes get notice before it applies. Tiers match by name, case-insensitively (pricing has no tier ids). All accept `--json` (the release's tier list after the save). To set every tier at once, use the settings.json `pricing` block and `yard push`.
+Add, change or remove one tier of a release's pricing without resending the list. With no `--release` they edit your open draft (or a new draft seeded from your newest published release), the same release `yard push` writes to, and the new pricing goes live with `yard releases publish`. `--release <tag|id>` edits a published release instead, live at once wherever it is served; on the release the project serves, subscribers on a subscription tier whose price changes get notice before it applies. Tiers are addressed by **key** only (`yard projects show <slug> --json | jq -r '.tiers[].key'`); the name is display text. All accept `--json` (the release's tier list after the save). To set every tier at once, use the settings.json `pricing` block and `yard push`.
 
-- `yard projects tiers add <slug> --spec <file|->`: the spec is one entry of settings.json `pricing.tiers` (`name`, `price_cents`, `description`, `features` (max 20), `pricing_model`, `seat_type`, `seat_count`, `min_seats`, `max_seats`, `volume_brackets`, `yearly_discount_percent`, `free_trial`, `gift_enabled`, `is_default`); unknown fields are rejected. `is_default: true` demotes the current default, and a release's first tier is its default. Over `max_pricing_tiers` is `upgrade_required`.
-- `yard projects tiers edit <slug> <tier-name> --spec <file|->`: a partial spec; present fields replace, absent ones stay.
+- `yard projects tiers add <slug> --spec <file|->`: the spec is one entry of settings.json `pricing.tiers` (`key`, `name`, `price_cents`, `description`, `features` (max 20), `pricing_model`, `seat_type`, `seat_count`, `min_seats`, `max_seats`, `volume_brackets`, `yearly_discount_percent`, `free_trial`, `gift_enabled`, `is_default`); unknown fields are rejected. Without `key` the tier takes the key that name was last published with, else one derived from its name; set it anyway. `is_default: true` demotes the current default, and a release's first tier is its default. Over `max_pricing_tiers` is `upgrade_required`.
+- `yard projects tiers edit <slug> <tier-key> --spec <file|->`: a partial spec; present fields replace, absent ones stay. A new `name` keeps the key, and with it the tier's holders and subscribers; a new `key` makes it a different tier.
   ```sh
-  echo '{"free_trial": {"enabled": true, "days": 14}}' | yard projects tiers edit simple-note Base --spec -
+  echo '{"free_trial": {"enabled": true, "days": 14}}' | yard projects tiers edit simple-note base --spec -
   ```
-- `yard projects tiers rm <slug> <tier-name> [--yes] [--promote-default]`: drops the tier from the release. Existing purchases are unaffected and its subscribers keep their price. Refuses to remove the last tier, or the default without `--promote-default`. `--yes` is required without a TTY.
+- `yard projects tiers rm <slug> <tier-key> [--yes] [--promote-default]`: drops the tier from the release. Existing purchases are unaffected and its subscribers keep their price. Refuses to remove the last tier, the default without `--promote-default`, or a tier a product `requires` (drop the requirement first). `--yes` is required without a TTY.
+
+### yard projects products
+
+Add, change or remove one product of a release, matched by key; the same draft and `--release` rules as `projects tiers`. Products, requirements, icons and selling: [products.md](products.md).
+
+- `yard projects products <slug> [--release <tag|id>] [--json]`: the release's products (default: your open draft, else the newest published release). `--json` is an array of `{ key, name, description?, type, price_cents, yearly_discount_percent?, requires, icon? }`, also what every subcommand emits after its save.
+- `add <slug> --spec <file|-> [--icon <path>]`: the spec is one entry of the settings.json `products` list (`key`, `name`, `type`, `price_cents`, `description`, `yearly_discount_percent`, `requires`, `icon`); unknown fields are rejected. `key` may be omitted (derived from the name), but set it.
+  ```sh
+  echo '{"key":"gems","name":"500 Gems","type":"consumable","price_cents":499,"requires":["pro"]}' \
+    | yard projects products add my-game --spec - --icon art/gems.png --json
+  ```
+- `edit <slug> <product-key> [--spec <file|->] [--icon <path> | --remove-icon]`: a partial spec; present fields replace, absent ones stay.
+- `rm <slug> <product-key> [--yes]`: buyers keep what they bought. `--yes` is required without a TTY.
+
+Icons are exactly 256x256 PNG, JPEG or WebP, at most 1 MiB. More products than `max_products` is a 400 ("your plan supports up to N products").
 
 ---
 
 ## yard releases
 
-A release is a project-wide snapshot (landing page, pricing, download buttons, services, files). Concepts: [releases-and-updates.md](releases-and-updates.md). With no `--release`, commands that write target your open draft, or a new draft seeded from your newest published release; `--release` takes a tag or UUID.
+A release is a project-wide snapshot (landing page, pricing, products, download buttons, services, files). Concepts: [releases-and-updates.md](releases-and-updates.md). With no `--release`, commands that write target your open draft, or a new draft seeded from your newest published release; `--release` takes a tag or UUID.
 
 ### yard releases publish [tag]
 
@@ -253,7 +270,7 @@ Links GitHub repos to the team's projects; releases published on a linked repo s
 
 ## yard keys
 
-API keys belong to the active team, not to their creator: anyone on the team can use one and it survives its creator leaving. Check `yard team` before minting. Scopes and what they allow: [api-reference.md](api-reference.md#authentication).
+API keys belong to the active team, not to their creator: anyone on the team can use one and it survives its creator leaving. Check `yard team` before minting. Scopes and what they allow: [api-reference.md](api-reference.md#authentication); a server that reads and fulfills users' products needs `products:read` and `products:fulfill` ([products.md](products.md#delivering-consumables)).
 
 - `yard keys list [--json] [--sort created_at|name|last_used_at] [--direction asc|desc]`: name, prefix (`yard_xxxxxxx`), scopes, last used, created. The secret is never shown again.
 - `yard keys create [name] [--scopes <csv>] [--spec <file|->] [--json]`: the secret is printed once (`key` in `--json`). Without `--scopes` it prints the scope catalog. Up to 100 keys per team.
@@ -310,8 +327,8 @@ yard users --project my-tool --sort totalSpent --direction desc --json | jq -r '
 
 The team's sales. Ids are `order_xxxxxxxx` or the full UUID. Teams can't issue refunds from the CLI or the dashboard yet; Yard support (support@yard.sh) issues them. Sandbox (simulated) sales never appear here, in earnings or in payouts.
 
-- `list [--json] [--project <slug>] [--start <date>] [--end <date>] [--search <text>] [--type purchase|subscription|renewal|trial|trial_upgrade|gift] [--status completed|pending|failed|converted|refunded|refund_pending] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. With `--project`, `--sort` takes `date|amount|platformFee|teamEarnings|quantity|tierName|launchStage|userDisplayId|id`. The summary covers every sale in the date range (and only that project's with `--project`); `--search`, `--type` and `--status` narrow the rows and the total only. `TYPE` is `gift`, `trial`, `trial upgrade`, `renewal`, `subscription started` or `purchase`.
-- `show <order-id>`: tier, quantity, coupon, refund date, billing period, trial expiry.
+- `list [--json] [--project <slug>] [--start <date>] [--end <date>] [--search <text>] [--type purchase|subscription|renewal|trial|trial_upgrade|gift] [--status completed|pending|failed|converted|refunded|refund_pending] [--kind tier|product] [--sort date|amount|teamEarnings|projectName] [--direction] [--page] [--limit]`. `--search` matches an order id, a user, a project title, a tier, a product or a coupon code; `--kind product` keeps product sales only, `--kind tier` tier sales only. With `--project`, `--sort` takes `date|amount|platformFee|teamEarnings|quantity|tierName|launchStage|userDisplayId|id`. The summary covers every sale in the date range (and only that project's with `--project`); `--search`, `--type`, `--status` and `--kind` narrow the rows and the total only. `TYPE` is `gift`, `trial`, `trial upgrade`, `renewal`, `subscription started` or `purchase`.
+- `show <order-id>`: tier (or `product:` for a product sale, `product_name` in JSON), quantity, coupon, refund date, billing period, trial expiry.
 - `trial <order-id> --add-days N`: lengthen (`7`) or shorten (`-3`) a running trial, up to 365 either way. Days are added to the **current expiry, not today**. An expired trial whose new expiry is in the future becomes active again (`"reactivated": true`), unless its user has since started another trial on that project. A card-required trial's first charge moves with it: taking it to today or earlier ends the trial and charges the card now, and one already charged or with a plan change scheduled is a `409`. **The user on the trial is notified** (email and in-app) unless they turned off Transaction confirmations. Needs `.team_permissions.sell_projects.granted`. The trial length offered to new users is the tier's `free_trial.days`.
 
 ```sh
@@ -330,6 +347,7 @@ Every project command walks up from the cwd to the directory holding `.yard/sett
 ├── .yard/
 │   ├── settings.json
 │   ├── migrations/0001_init.sql   # default migrations.dir
+│   ├── products/gems.png          # default product icon path
 │   └── landing-page/index.html    # default landing_page.dir
 └── api/_service.js                # one directory per service
 ```
@@ -344,7 +362,8 @@ Every project command walks up from the cwd to the directory holding `.yard/sett
   "services": [{ "dir": "api", "name": "api", "url": "/api", "access": "authenticated", "database_access": true }],
   "landing_page": { "type": "custom", "dir": ".yard/landing-page" },
   "migrations": { "dir": ".yard/migrations" },
-  "pricing": { "tiers": [{ "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] },
+  "pricing": { "tiers": [{ "key": "base", "name": "Base", "price_cents": 1900, "is_default": true, "pricing_model": "one_time" }] },
+  "products": [{ "key": "gems", "name": "500 Gems", "type": "consumable", "price_cents": 499, "requires": ["base"], "icon": ".yard/products/gems.png" }],
   "downloads": { "buttons": [{ "condition": "ends_with", "value": ".dmg", "label": "Download for Mac" }] }
 }
 ```
@@ -354,9 +373,10 @@ Every project command walks up from the cwd to the directory holding `.yard/sett
 - `services`: see [service-and-database.md](service-and-database.md#service-settings).
 - `landing_page`: `type` `custom` serves the files in `dir`; `default` serves the dashboard-edited default page (files still upload, unserved). A block without `type` means `custom`; no block keeps whatever the release already has. A `custom` block with no files fails the push; custom pages are plan-gated.
 - `migrations.dir`: flat numbered `.sql` files, not inside a service directory. See [service-and-database.md](service-and-database.md#database).
-- `pricing.tiers` / `downloads.buttons`: when present, a push replaces the release's tiers or download buttons to match exactly. Shapes: [releases-and-updates.md](releases-and-updates.md#syncing-releases-from-github).
+- `pricing.tiers` / `downloads.buttons`: when present, a push replaces the release's tiers or download buttons to match exactly. Give every tier a `key`: without one a renamed tier gets a new key and becomes a different tier. Shapes: [releases-and-updates.md](releases-and-updates.md#syncing-releases-from-github).
+- `products`: when present (`[]` included), a push replaces the release's products to match exactly and uploads each declared `icon` (a path relative to the directory holding `.yard`) whose bytes changed; a product without `icon` loses its icon. Absent, products stay dashboard-managed. Fields: [products.md](products.md#the-products-block).
 
-A push uploads `settings.json` itself, which is how deploys learn each service's settings, so changing one is an edit plus a push. The server keeps each release's copy in step with dashboard edits, so `yard status` can show a config diff you did not make; `yard pull` brings it down (your `project_slug` is kept) and `yard pull --force` discards local changes. Older layouts are rejected; see [troubleshooting.md](troubleshooting.md#yardsettingsjson-uses-an-old-service-layout).
+A push uploads `settings.json` itself, which is how deploys learn each service's settings, so changing one is an edit plus a push. The server keeps each release's copy in step with dashboard edits, so `yard status` can show a config diff you did not make; `yard pull` brings it down (your `project_slug` is kept) along with product icons, and `yard pull --force` discards local changes. Older layouts are rejected; see [troubleshooting.md](troubleshooting.md#yardsettingsjson-uses-an-old-service-layout).
 
 **Common flags:** `--project <slug-or-uuid>`, `--dir <path>`, `--release <id|tag>` (default: your open draft, or a new draft seeded from the newest published release; required when several drafts are open; a published release is edited in place and is live on save if something serves it), `--json`, `--yes` (skip prompts: `push --prune`, pushing into a served release).
 
@@ -374,7 +394,7 @@ Scaffolds the landing-page directory in an existing project: pulls the draft's p
 
 ### yard status
 
-What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (removed only by `push --prune`). It also lists who serves that release and each one's deploy status. Nothing serves a draft, so after a push `serving` is empty; `yard sandbox list` covers every place regardless of release.
+What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (removed only by `push --prune`); `product_icons` also lists `missing` (declared in settings.json, absent locally, which fails a push). It also lists who serves that release and each one's deploy status. Nothing serves a draft, so after a push `serving` is empty; `yard sandbox list` covers every place regardless of release.
 
 ```json
 { "project": "my-slug", "release": "9f3e…", "version": "1.2.0", "draft": false,
@@ -388,7 +408,7 @@ A release's files grouped by bundle (`page`, `service`, …), each with `path`, 
 
 ### yard push
 
-Uploads every changed local file (landing page, each service, migrations, settings.json) into the draft; unchanged files are skipped. Every bundle is validated before anything uploads. `--prune` deletes release files missing locally (one confirmation unless `--yes` or `--json`). Prints a `Review:` URL; going live is `yard releases publish <tag>`. A `pricing` block is applied (invalid pricing is a 400 naming the field, before any upload). When the live deployment has a room class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
+Uploads every changed local file (landing page, each service, migrations, settings.json, product icons) into the draft; unchanged files are skipped. Every bundle is validated before anything uploads. `--prune` deletes release files missing locally (one confirmation unless `--yes` or `--json`). Prints a `Review:` URL; going live is `yard releases publish <tag>`. The `pricing` and `products` blocks are applied with settings.json, which uploads first (an invalid one is a 400 naming the field before any other file uploads); product icons upload next, and a declared icon missing locally fails the push before anything uploads. When the live deployment has a room class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
 
 ```json
 {
@@ -396,17 +416,18 @@ Uploads every changed local file (landing page, each service, migrations, settin
   "page": { "dir": "…", "uploaded": ["index.html"], "skipped": [], "deleted": [], "remote_only": [] },
   "services": { "api": { "dir": "…/api", "uploaded": ["_service.js"], "skipped": [], "deleted": [], "remote_only": [] } },
   "config": { "dir": "…/.yard", "uploaded": ["settings.json"], "skipped": [], "deleted": [], "remote_only": [] },
+  "product_icons": { "dir": "…", "uploaded": ["gems"], "skipped": [], "deleted": [], "remote_only": [] },
   "review_url": "https://dash.yard.sh/projects/my-slug/release?release=9f3e…",
   "live_url": null,
   "errors": []
 }
 ```
 
-A bundle the project lacks is absent. `live_url` is set once the project itself serves a release.
+A bundle the project lacks is absent; `product_icons` appears when settings.json has a `products` block and names files by product key. `live_url` is set once the project itself serves a release.
 
 ### yard pull
 
-Downloads a release (default: your draft) into the project: settings.json, the landing page, and each service into its directory (a missing service directory is not created; `yard init` in a fresh directory is the flow that does). Files already identical are skipped; `--force` overwrites. `--json`: per bundle `{ destination, written, skipped }`.
+Downloads a release (default: your draft) into the project: settings.json, the landing page, each product icon to the path settings.json gives it (default `.yard/products/<key>.<ext>`), and each service into its directory (a missing service directory is not created; `yard init` in a fresh directory is the flow that does). Files already identical are skipped; `--force` overwrites. `--json`: per bundle `{ destination, written, skipped }`.
 
 There is no publish flag on `push`. To discard draft changes, delete the draft in the dashboard and `yard pull --release <last-tag> --force`.
 
@@ -468,7 +489,7 @@ A service's code ships inside a release (`yard push`, then publish); these comma
 
 ## yard dev
 
-Serves the project locally the way Yard hosts it: the landing page at `http://localhost:9875/<slug>/`, each service under its path, identity headers from a chosen persona, secrets from `.yard/dev/secrets.env`, a local database with migrations applied, and a control panel at `/__yard/dev/`. No login needed. Flags: `--port`, `--dir`, `--project`, `--as <persona>`, `--root` (serve at `/`), `--open`, `--secrets-file`, `--reset-db`, `--reset-rooms`, `--allow-local-egress`, `--no-panel`, `--offline`, `--json` (one event per line). Full guide: [local-dev.md](local-dev.md).
+Serves the project locally the way Yard hosts it: the landing page at `http://localhost:9875/<slug>/`, each service under its path, identity headers from a chosen persona, secrets from `.yard/dev/secrets.env`, a local database with migrations applied, and a control panel at `/__yard/dev/`. No login needed. Flags: `--port`, `--dir`, `--project`, `--as <persona>` (`anonymous`, `signed-in`, `trial`, `user:<tier key>`, `buyer:<product key>`, `member`), `--root` (serve at `/`), `--open`, `--secrets-file`, `--reset-db`, `--reset-rooms`, `--allow-local-egress`, `--no-panel`, `--offline`, `--json` (one event per line). Full guide: [local-dev.md](local-dev.md).
 
 ---
 

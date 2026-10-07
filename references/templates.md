@@ -10,13 +10,13 @@ Put this in the template's README, with the repository URL URL-encoded in `repo`
 <a href="https://dash.yard.sh/projects?action=create&repo=https%3A%2F%2Fgithub.com%2Fowner%2Frepo"><img src="https://yard.sh/create-in-yard.png" width="200" alt="Create in Yard" /></a>
 ```
 
-The link opens the dashboard's create dialog on a preview of the repository (services, landing page, migrations, pricing). `repo` must be `https://github.com/<owner>/<repo>` (an optional `.git` or trailing slash is fine); anything else is ignored. The same URL can be pasted into the dialog's "Create from GitHub URL" field.
+The link opens the dashboard's create dialog on a preview of the repository (services, landing page, migrations, pricing, products). `repo` must be `https://github.com/<owner>/<repo>` (an optional `.git` or trailing slash is fine); anything else is ignored. The same URL can be pasted into the dialog's "Create from GitHub URL" field.
 
 ## What the repository needs
 
 - Public on GitHub, with at least one commit. Git submodules are not included.
-- `.yard/settings.json` at the root (at most 16 KiB), in the current layout (`"version": 8`). Nothing else is required: services, a landing page, migrations and pricing are all optional.
-- Every declared service directory holds its files and a `_service.js`. A `custom` landing page needs files in its directory, and a `migrations` block needs `.sql` files. Files under the default `.yard/landing-page/` and `.yard/migrations/` count even without a block.
+- `.yard/settings.json` at the root (at most 16 KiB), in the current layout (`"version": 8`). Nothing else is required: services, a landing page, migrations, pricing and products are all optional.
+- Every declared service directory holds its files and a `_service.js`. Every product `icon` the settings name exists in the repository (256x256 PNG, JPEG or WebP, at most 1 MiB). A `custom` landing page needs files in its directory, and a `migrations` block needs `.sql` files. Files under the default `.yard/landing-page/` and `.yard/migrations/` count even without a block.
 - The creating team's plan bundle limits (on Basic and Pro: landing page 60 files, 25 MiB each, 100 MiB total; service 600 files, 15 MiB each, 75 MiB total, `_service.js` at most 10 MiB; migrations any number of files, 3 MiB each, 15 MiB total).
 
 Everything is validated before anything is created, so a broken template creates nothing.
@@ -25,7 +25,8 @@ Everything is validated before anything is created, so a broken template creates
 
 - A new project owned by the user's active team, in `draft`. Its title comes from the repository name (made unique with ` (2)` and so on) and its description from the repository's; its slug is generated from the title.
 - `project_slug` in the template's settings.json is ignored. When the new owner runs `yard init --project <new-slug>` in a fresh directory, the pulled settings.json gets their slug.
-- Pricing comes from the `pricing` block, validated against the team's plan. Without one the project has no tiers (a landing page that isn't for sale yet).
+- Pricing comes from the `pricing` block, validated against the team's plan. Without one the project has no tiers (a landing page that isn't for sale yet). Give each tier a `key`.
+- Products come from the `products` block, with their icons, validated against the team's plan (`max_products`) and against the template's own tiers: products need a `pricing` block, and every `requires` key must be one of its tier keys ([products.md](products.md)).
 - Services, the landing page, migrations and download buttons become release `1.0.0`, published to the `Production` channel and deployed.
 - Secrets are not carried (settings.json has none): the owner sets them with `yard service secrets set`, which redeploys the services with them.
 - The project is not linked to the template repository.
