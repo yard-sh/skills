@@ -138,6 +138,7 @@ Tiers and products are addressed by key, never by name ([tier keys](pricing-and-
 - **`requires "Pro", which is not a valid tier key`**: `requires` holds tier keys (lowercase slugs), not names.
 - **`requires the tier "team", which this release does not have`**: add that tier to the release, or drop it from `requires`.
 - **`has been published as a one-time product and cannot become a consumable product`**: a published key keeps its type for good. Sell the new type under a new key.
+- **`the tier "pro" has been published, so its key is fixed`** from `yard projects tiers edit` (or the product equivalent from `products edit`): a new key would be a different tier, so `add` one under the new key and `rm` the old. Holders keep the old one.
 - **`the tier "pro" is required by product "gems"`** from `yard projects tiers rm`, a push or the dashboard: remove the tier from every product's `requires` first (`yard projects products edit`).
 - **"products aren't included in your plan"** / **"your plan supports up to N products"**: the team's `max_products`.
 - **`product icons declared in … not found locally`** from `yard push`: an `icon` path in settings.json has no file. Fix the path, or `yard pull` to bring the release's icons down. Nothing was uploaded.

@@ -64,7 +64,7 @@ Management scopes act on the team's account, its release files and its users; ke
 
 | Scope | What it allows |
 |-------|----------------|
-| `projects:read` | List and read the team's projects, including drafts and pricing history |
+| `projects:read` | List and read the team's projects, including drafts, pricing history and published tier and product keys |
 | `projects:write` | Create, update and delete projects, and change pricing and page content |
 | `releases:read` | List public channels and their releases, and download release files |
 | `releases:write` | Create, edit, publish and archive releases, manage channels, and read draft contents |

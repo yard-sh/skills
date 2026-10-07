@@ -14,7 +14,7 @@ Plan gate: `yard me --json` → `.team_permissions.max_products` (100 per projec
 | `consumable` | Once per purchase, 1-99 at a time | Whatever your app delivers. Bought again and again; each purchase waits for your app to [fulfill it](#delivering-consumables). |
 | `subscription` | `price_cents` monthly, or yearly with optional `yearly_discount_percent` | The product while the subscription runs, renewing on its own schedule, separate from any tier subscription. |
 
-Every product has a **key** (`gems`, `cloud-sync`): checkout, holdings and webhooks name it, so a product can be renamed freely. Same grammar as tier keys: up to 64 lowercase letters, digits, `-` and `_`, starting with a letter or digit, unique within a release. Treat it as permanent: a different key is a different product, and the dashboard locks a published product's key. Once a release carrying a key is published, the key keeps that type for good: giving it another type, even in a later release, is refused ("has been published as a one-time product and cannot become a consumable product").
+Every product has a **key** (`gems`, `cloud-sync`): checkout, holdings and webhooks name it, so a product can be renamed freely. Same grammar as tier keys: up to 64 lowercase letters, digits, `-` and `_`, starting with a letter or digit, unique within a release. Treat it as permanent: a different key is a different product, so the dashboard and `yard projects products edit` refuse to change a published product's key (`GET /v1/projects/{id}/products/keys` lists them). Once a release carrying a key is published, the key keeps that type for good: giving it another type, even in a later release, is refused ("has been published as a one-time product and cannot become a consumable product").
 
 ---
 
@@ -83,7 +83,7 @@ yard releases publish v1.3.0                                   # the draft goes 
 
 - `add`, `edit` and `rm` edit your open draft (or a new draft seeded from the newest published release), the release `yard push` writes to; `--release <tag|id>` edits a published release, live at once wherever it is served. Every subcommand takes `--release` and `--json` (the release's product list after the save).
 - `add <slug> --spec <file|-> [--icon <path>]`: one settings.json entry (unknown fields rejected; `icon` in the spec works like `--icon`). `key` may be omitted (derived from the name), but write it.
-- `edit <slug> <product-key> [--spec <file|->] [--icon <path> | --remove-icon]`: a partial spec; present fields replace, absent ones stay.
+- `edit <slug> <product-key> [--spec <file|->] [--icon <path> | --remove-icon]`: a partial spec; present fields replace, absent ones stay. A published product's `key` can't change: `add` one under the new key and `rm` the old.
 - `rm <slug> <product-key> [--yes]`: buyers keep what they bought. `--yes` is required without a TTY.
 
 Over HTTP: `PUT /v1/projects/{id}/products?release=<release id>` replaces the whole set (`projects:write`; send back an existing `icon` object to keep it), and `PUT` / `DELETE /v1/projects/{id}/products/{key}/icon?release=` upload (multipart field `image`) or remove one icon (`releases:write`). Icon changes record no product revision.
