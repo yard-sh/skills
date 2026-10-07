@@ -202,7 +202,7 @@ Purchase status is **not** in the token, because it changes underneath a token's
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/v1/yard-auth/userinfo` | `Authorization: Bearer <access token>` | The person behind the token and their standing on the project the token was issued for |
-| `GET` | `/v1/yard-auth/products` | `Authorization: Bearer <access token>` | Their products: `{ "tier_keys": [...], "products": [...] }`, for the project itself (sandbox purchases are reachable only from a sandbox's hosted pages) |
+| `GET` | `/v1/yard-auth/products` | `Authorization: Bearer <access token>` | Their products: `{ "authenticated": true, "tier_keys": [...], "products": [...] }`, for the project itself (sandbox purchases are reachable only from a sandbox's hosted pages) |
 | `POST` | `/v1/yard-auth/purchases/{transaction_id}/fulfill` | `Authorization: Bearer <access token>` | Mark one of their consumable purchases delivered after the app granted it |
 
 ```json

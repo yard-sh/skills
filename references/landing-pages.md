@@ -195,7 +195,7 @@ if (state?.is_subscription) {
 }
 ```
 
-On a custom domain, browsers with strict third-party cookie blocking (Safari and some privacy modes) resolve `signed_in: false` for a signed-in visitor; default to the Buy button. Pages on `<username>.yard.sh` are not affected. `null` means Yard couldn't answer (no reply within 8 s, or a draft or private project viewed by its team); treat it as signed out.
+On a custom domain, browsers with strict third-party cookie blocking (Safari and some privacy modes) resolve `signed_in: false` for a signed-in visitor; default to the Buy button. Pages on `<username>.yard.sh` are not affected. `null` means Yard couldn't answer (it couldn't look the visitor up right now, no reply within 8 s, or a draft or private project viewed by its team); treat it as signed out.
 
 ---
 

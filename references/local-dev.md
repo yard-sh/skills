@@ -80,7 +80,7 @@ Ways to choose the persona:
 
 Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `users` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
 
-`__yard/products` answers for the persona: a `user:*` persona holds its tier and no products, a `buyer:*` holds its one product, `trial` and `member` hold neither. A consumable's buyer has one unfulfilled purchase (quantity 1); `POST __yard/purchases/{transaction_id}/fulfill` fulfills it as hosted, and it stays fulfilled (unlisted) until `yard dev` restarts.
+`__yard/products` answers for the persona: a `user:*` persona holds its tier and no products, a `buyer:*` holds its one product, `trial` and `member` hold neither. A consumable's buyer has one unfulfilled purchase (quantity 1); `POST __yard/purchases/{transaction_id}/fulfill` fulfills it as hosted, and it stays fulfilled (unlisted) until `yard dev` restarts. Persona purchases are always paid and never refunded, and nothing simulates an outage, so locally fulfill never answers its `409`s and neither endpoint answers `503`.
 
 ## Secrets
 

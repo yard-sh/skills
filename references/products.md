@@ -148,9 +148,9 @@ Every way of reading it returns the same shape:
 
 | Where the code runs | How it reads them |
 | --- | --- |
-| A hosted service's pages or the landing page (browser) | `GET __yard/products` (relative URL, like `__yard/auth/me`). Always 200: `{"authenticated": true, "tier_keys": [...], "products": [...]}`, or `{"authenticated": false, "tier_keys": [], "products": []}` |
+| A hosted service's pages or the landing page (browser) | `GET __yard/products` (relative URL, like `__yard/auth/me`). `200` signed in or out: `{"authenticated": true, "tier_keys": [...], "products": [...]}`, or `{"authenticated": false, "tier_keys": [], "products": []}`. `503` `products_unavailable` when Yard can't look them up right now: retry, don't read it as holding nothing |
 | A custom landing page's script | `window.yard.ownership()` → `.tier_keys`, `.products` (empty when signed out) |
-| An app outside the project, with a Yard Auth access token | `GET https://api.yard.sh/v1/yard-auth/products` → `{tier_keys, products}`, for the project itself only ([api-reference.md](api-reference.md#yard-auth-for-external-apps)) |
+| An app outside the project, with a Yard Auth access token | `GET https://api.yard.sh/v1/yard-auth/products` → `{authenticated: true, tier_keys, products}`, for the project itself only ([api-reference.md](api-reference.md#yard-auth-for-external-apps)) |
 | A server: the team's, or a service's `_service.js` | `GET https://api.yard.sh/v1/projects/{id}/users/{user}/products[?sandbox=<name>]` with an API key holding `products:read`. `{user}` is `user_` plus the first 8 characters of the user id, or their email; adds a `user` object |
 
 The `__yard/*` endpoints are answered by the edge for the visitor's browser session, before your code runs; the edge strips that session before a request reaches `_service.js`, so server code reads holdings through the API. On the team API, `404` means the user never bought from the project, and `409` means two buyers share those 8 characters (pass the email).
@@ -186,6 +186,7 @@ Errors are `{"error": "…", "error_code": "…"}`:
 | `400` `not_consumable` | Only consumables are fulfilled |
 | `409` `purchase_not_paid` | The payment hasn't completed yet; try again later |
 | `409` `purchase_refunded` | Refunded first: don't deliver it (take back a grant you already made) |
+| `503` `fulfillment_unavailable` | Page and token routes: Yard couldn't record it right now; retry, which is safe |
 
 A purchase still unfulfilled **3 days** after it was bought is refunded automatically, sandbox purchases included: the buyer and the team are emailed, it leaves the lists, and `product.refunded` fires with `refund_reason: "unfulfilled"`. When a purchase you already fulfilled is refunded, `product.refunded` fires without that reason, and taking back what you delivered is up to you.
 
