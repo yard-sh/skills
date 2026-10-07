@@ -93,7 +93,7 @@ Over HTTP: `PUT /v1/projects/{id}/products?release=<release id>` replaces the wh
 ## Selling
 
 - **The project page** has a **Products** tab, where signed-in holders of a qualifying tier buy each product.
-- **A custom landing page** reads `window.yard.project.products` and starts checkout with `data-action="checkout" data-product="<key>"` (plus `data-quantity` for a consumable, `data-interval` for a subscription) or `window.yard.checkout({ product, quantity, interval })`. See [landing-pages.md](landing-pages.md#data-action-checkout-and-trial-buttons).
+- **A custom landing page** reads `window.yard.project.products` and starts checkout with `data-action="checkout" data-product="<key>"` (plus `data-quantity` for a consumable, `data-interval` for a subscription) or `window.yard.checkout({ product, quantity, interval })`. `data-return-to` or `returnTo` brings the buyer back to the page afterwards. See [landing-pages.md](landing-pages.md#data-action-checkout-and-trial-buttons).
 - **Anything else** (an app, a service's own page, an email) links to checkout.
 
 Each entry of `window.yard.project.products` (the public project JSON; empty when nothing is on sale): `key`, `name`, `description?`, `type`, `price_cents`, `yearly_discount_percent?`, `yearly_price_cents?` (subscriptions), `requires`, `icon_url?`.
@@ -113,13 +113,13 @@ Each entry of `window.yard.project.products` (the public project JSON; empty whe
 
 `return_to` must be on the project's own sites, or checkout shows **Invalid Checkout Link**: `https://<team>.yard.sh/<slug>/…`, an active custom domain over `https`, or the origin of a Yard Auth redirect URI (such as `http://localhost:3000`). On the way back checkout adds `yard_product` (the key), `yard_purchase` (the `transaction_id`; omitted on cancel) and `yard_status` (`succeeded`, `processing` (still confirming; check again before delivering) or `canceled`). They are a hint to refresh, never proof of payment: read the holdings or wait for `product.purchased` before delivering.
 
-`data-action` and `window.yard.checkout()` never send `return_to` or `for`. To come back to the page, build the link yourself:
+On a custom landing page, `embed.js` sets both: `data-return-to` (bare: this page) or `window.yard.checkout({ product, returnTo, for })`, with `returnTo` resolved against the page. The page the buyer comes back to finds the outcome in `window.yard.purchase` (`{ product, status, purchase_id }`, taken off the URL), and after `succeeded`, `ownership()` waits up to 10 s for the holding ([landing-pages.md](landing-pages.md#javascript-api-windowyard)):
 
 ```js
-const url = new URL(window.yard.checkoutURL({ product: "gems", quantity: 2 }));
-url.searchParams.set("return_to", location.href);
-location.href = url.href;
+window.yard.checkout({ product: "gems", quantity: 2, returnTo: location.href });
 ```
+
+Under `yard dev` the page is on `http://localhost:<port>`, which is refused as a `return_to` unless it is a Yard Auth redirect URI origin.
 
 Checkout refuses a buyer who doesn't hold a required tier, a `one_time` product they already own, a `subscription` product they already subscribe to, and any product while the project is in pre-order. Products are always sold at full price plus tax: coupons, gifts, free trials, affiliate credit, seats and launch-stage discounts apply to tiers only.
 

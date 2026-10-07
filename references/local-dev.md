@@ -126,7 +126,7 @@ Open landing page tabs reload themselves after each restart (a small helper is i
 - The 50 ms CPU budget per request is not enforced locally.
 - Outbound requests to private networks and localhost are blocked as hosted, by address class only (`--allow-local-egress` lifts it).
 - Personas replace Yard Auth; nothing touches the Yard account, and no consent screen appears.
-- `embed.js`, the ownership bridge and `__yard/products` are answered locally; checkout and trial links still go to Yard (logged in, the live project's real checkout, so test buying in a sandbox).
+- `embed.js`, the ownership bridge and `__yard/products` are answered locally; checkout and trial links still go to Yard (logged in, the live project's real checkout, so test buying in a sandbox). A product checkout's `returnTo` to the local page is refused unless `http://localhost:<port>` is one of the project's Yard Auth redirect URIs.
 - Persona purchases are simulated: no webhooks fire, an unfulfilled consumable is never refunded, and the team API (`https://api.yard.sh/v1/projects/{id}/…/products`, `…/fulfill`) still reaches Yard, where personas don't exist.
 - No sandboxes, draft gating, dashboard metrics or `yard service logs` for local runs; use the panel's logs.
 - `request.url` is `http://localhost:<port>/...`.

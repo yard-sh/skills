@@ -89,7 +89,7 @@ After inserting DOM yourself, call `window.yard.refresh()` to bind new nodes.
 <button data-action="checkout" data-tier-id="team" data-quantity="5" data-gift>Gift 5 seats</button>
 <button data-action="trial">Start free trial</button>                             <!-- default or first trial tier -->
 <button data-action="trial" data-tier-id="pro">Start Pro trial</button>
-<button data-action="checkout" data-product="gems" data-quantity="3">Buy 3 gem packs</button>
+<button data-action="checkout" data-product="gems" data-quantity="3" data-return-to>Buy 3 gem packs</button>
 ```
 
 | Attribute (`checkout`) | Meaning |
@@ -99,6 +99,7 @@ After inserting DOM yourself, call `window.yard.refresh()` to bind new nodes.
 | `data-quantity` | Seats for `fixed_pack` / `per_seat`; 1-99 of a consumable product |
 | `data-gift` | Present: start the gift flow |
 | `data-product` | A product key: buy that product instead of a tier (`data-tier-id` and `data-gift` are ignored). The buyer must be signed in and hold a required tier ([products.md](products.md#selling)) |
+| `data-return-to` | With `data-product`: where checkout brings the buyer back, a URL or a path relative to the page; bare, this page. Without it a product purchase ends on Yard's confirmation page |
 
 `data-action="trial"` takes only `data-tier-id`: a trial-enabled tier, or omit it for the default (or first trial-enabled) tier. A trial goes to Yard's trial flow (`https://yard.sh/trial/<username>/<slug>`): signed-in visitors start at once, signed-out ones confirm by email.
 
@@ -129,16 +130,26 @@ Invalid values are ignored, not rejected. `/trial/<username>/<slug>` takes `tier
 window.yard = {
   project,            // public project or null (above)
   checkoutBase,       // e.g. "https://pay.yard.sh"
-  checkout(opts),     // redirect to checkout: { tier?, interval?, quantity?, gift? } or { product, quantity?, interval? }
+  checkout(opts),     // redirect to checkout: { tier?, interval?, quantity?, gift? } or { product, quantity?, interval?, returnTo?, for? }
   trial(opts),        // redirect to the trial flow: { tier? }
   checkoutURL(opts),  // build the URL without redirecting
   trialURL(opts),
   ownership(),        // Promise<OwnershipState | null>, see User state
+  purchase,           // { product, status, purchase_id } after a product checkout's return, else null
   refresh(),          // re-run data-yard binding
 };
 ```
 
-`tier` is a tier key or id; `product` is a product key. Neither `checkout()` nor `data-action` sends `return_to` or `for`: to bring a product buyer back, add them to `checkoutURL({ product })` yourself ([products.md](products.md#checkout-links)).
+`tier` is a tier key or id; `product` is a product key. With `product` only, `returnTo` is where checkout brings the buyer back (resolved against the page, so `''` is this page; it must be on the project's own sites) and `for` the Yard user id the purchase is for ([products.md](products.md#checkout-links)). Tier checkouts don't come back.
+
+**Coming back.** The returned page has `yard_product`, `yard_status` (`succeeded`, `processing` or `canceled`) and `yard_purchase` (omitted on cancel) on its URL. `embed.js` removes them from the address bar, so a reload doesn't replay them, and keeps them in `window.yard.purchase`. After `succeeded`, `ownership()` waits up to 10 s for the product to appear in `products` (a subscription can be confirmed a moment after the buyer is back). It is a cue to refresh the UI, never proof of payment.
+
+```js
+window.yard.checkout({ product: "gems", quantity: 3, returnTo: location.href });
+
+// on load
+if (window.yard.purchase?.status === "succeeded") showThanks(window.yard.purchase.product);
+```
 
 ```js
 for (const tier of window.yard.project.tiers) {
