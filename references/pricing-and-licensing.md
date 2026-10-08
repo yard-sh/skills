@@ -96,7 +96,7 @@ A simulated purchase:
 - mints license keys by the usual rules, identical to real ones except for the sandbox they belong to;
 - starts subscriptions that renew on schedule and trials that convert (the one-trial-per-user rule applies per sandbox);
 - records coupon redemptions and gifts, without using up the real coupon's `current_uses`;
-- buys products too: a consumable bought in a sandbox is listed and fulfilled there (`__yard/products` and `__yard/purchases/…/fulfill` on the sandbox's pages, or the API with `?sandbox=<name>`), and refunded after 3 days unfulfilled like a real one ([products.md](products.md#delivering-consumables)).
+- buys products too: a consumable bought in a sandbox is listed and fulfilled there (`__yard/products` and `__yard/fulfillments/…` on the sandbox's pages, or the API with `?sandbox=<name>`), and refunded after 3 days unfulfilled like a real one ([products.md](products.md#delivering-consumables)).
 
 Payout setup is not required in a sandbox.
 

@@ -33,7 +33,7 @@ The parameter travels in the query string on `GET`s and on the subscription-mana
 | `GET /v1/projects/{username}/{slug}/subscription` | query string |
 | `POST /v1/projects/{username}/{slug}/subscription/cancel` \| `/reactivate` \| `/change` | query string |
 | `POST /v1/subscription-intent` | JSON body (`"sandbox": "preview"`) |
-| `GET /v1/projects/{id}/users/{userDisplayId}/products`, `/purchases/unfulfilled`, `POST …/purchases/{transactionId}/fulfill` | query string |
+| `GET /v1/projects/{id}/users/{userDisplayId}/products`, `/fulfillments/pending`, `POST …/fulfillments/{transactionId}` | query string |
 | Your users' download and library endpoints | query string |
 
 An unknown sandbox is a `404` naming it. A **private** sandbox (the default) answers only members of the owning team and gives everyone else the same `404`; a **public** one answers anyone. Responses that resolve a sandbox are never cacheable.
@@ -94,7 +94,7 @@ The CLI and dashboard use a signed-in session, not an API key. Integrations must
 Authorization: Bearer {Yard Auth access token}
 ```
 
-A token your app obtained for one of its users from the project's own OpenID Connect issuer. It identifies **a user of one project**, never the team, and it reaches exactly three endpoints: `GET /v1/yard-auth/userinfo`, `GET /v1/yard-auth/products` and `POST /v1/yard-auth/purchases/{transaction_id}/fulfill`. See [Yard Auth for external apps](#yard-auth-for-external-apps).
+A token your app obtained for one of its users from the project's own OpenID Connect issuer. It identifies **a user of one project**, never the team, and it reaches exactly three endpoints: `GET /v1/yard-auth/userinfo`, `GET /v1/yard-auth/products` and `POST /v1/yard-auth/fulfillments/{transaction_id}`. See [Yard Auth for external apps](#yard-auth-for-external-apps).
 
 ---
 
@@ -147,8 +147,8 @@ Both look only where the request points: with no `sandbox`, at the project's own
 | Method | Path | Scope | Description |
 |---|---|---|---|
 | `GET` | `/v1/projects/{id}/users/{userDisplayId}/products` | `products:read` | One user's `tier_keys` and held `products`. `{userDisplayId}` is `user_` plus the first 8 characters of the user id, or the email; `404` if they never bought from the project, `409` if two buyers share the 8 characters |
-| `GET` | `/v1/projects/{id}/purchases/unfulfilled` | `products:read` | Every paid consumable purchase not yet fulfilled, oldest first, up to 1000 |
-| `POST` | `/v1/projects/{id}/purchases/{transactionId}/fulfill` | `products:fulfill` | Mark a consumable purchase delivered; idempotent |
+| `GET` | `/v1/projects/{id}/fulfillments/pending` | `products:read` | Every paid consumable purchase not yet fulfilled, oldest first. Paged by `after` (the last `transaction_id`) and `limit` (max 100); `has_more` says whether to read on |
+| `POST` | `/v1/projects/{id}/fulfillments/{transactionId}` | `products:fulfill` | Mark a consumable purchase delivered; idempotent |
 
 Product setup goes through the CLI ([cli-commands.md](cli-commands.md#yard-projects-products)); the HTTP equivalents are `PUT /v1/projects/{id}/products?release=<release id>` (`projects:write`, the whole set) and `PUT` / `DELETE /v1/projects/{id}/products/{key}/icon?release=<release id>` (`releases:write`).
 
@@ -203,7 +203,7 @@ Purchase status is **not** in the token, because it changes underneath a token's
 |---|---|---|---|
 | `GET` | `/v1/yard-auth/userinfo` | `Authorization: Bearer <access token>` | The person behind the token and their standing on the project the token was issued for |
 | `GET` | `/v1/yard-auth/products` | `Authorization: Bearer <access token>` | Their products: `{ "authenticated": true, "tier_keys": [...], "products": [...] }`, for the project itself (sandbox purchases are reachable only from a sandbox's hosted pages) |
-| `POST` | `/v1/yard-auth/purchases/{transaction_id}/fulfill` | `Authorization: Bearer <access token>` | Mark one of their consumable purchases delivered after the app granted it |
+| `POST` | `/v1/yard-auth/fulfillments/{transaction_id}` | `Authorization: Bearer <access token>` | Mark one of their consumable purchases delivered after the app granted it |
 
 ```json
 {
@@ -219,7 +219,7 @@ Purchase status is **not** in the token, because it changes underneath a token's
 
 `entitlement` is `none` \| `trial` \| `active` \| `owner`, resolved the same way as the edge header; `tier` (display name) and `tier_key` (stable key; gate features on it) are omitted when the entitlement carries no tier. Call it on every launch rather than caching the verdict for the token's lifetime.
 
-The products and fulfill endpoints answer exactly like the hosted `__yard/products` and `__yard/purchases/{transaction_id}/fulfill` ([products.md](products.md#what-someone-holds)), with the same `error_code`s. Like the update endpoints, all three answer any origin, so an Electron or Tauri app can call them directly.
+The products and fulfill endpoints answer exactly like the hosted `__yard/products` and `__yard/fulfillments/{transaction_id}` ([products.md](products.md#what-someone-holds)), with the same `error_code`s. Like the update endpoints, all three answer any origin, so an Electron or Tauri app can call them directly.
 
 **Consent and disconnecting.** The first sign-in to a project's app shows the person a consent screen naming the app and what it receives (email address, Yard account, purchase status). The answer is remembered until they disconnect the app on the security page of their Yard account ("Connected apps"), which also revokes the app's refresh tokens; the app's next refresh fails and it has to send the person through sign-in again.
 

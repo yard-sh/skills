@@ -161,14 +161,14 @@ The `__yard/*` endpoints are answered by the edge for the visitor's browser sess
 
 Yard can't hand over gems inside your game, so each consumable purchase waits, unfulfilled, until your app delivers it and says so:
 
-1. **Find what's waiting:** holdings with `status: "unfulfilled"`, the `product.purchased` webhook, or `GET /v1/projects/{id}/purchases/unfulfilled[?sandbox=<name>]` (`products:read`; every paid unfulfilled purchase, oldest first, up to 1000, each with `transaction_id`, `product_key`, `product_name`, `quantity`, `purchased_at`, `user`).
+1. **Find what's waiting:** holdings with `status: "unfulfilled"`, the `product.purchased` webhook, or `GET /v1/projects/{id}/fulfillments/pending[?sandbox=<name>]` (`products:read`; every paid unfulfilled purchase, oldest first, up to 100 a page via `limit`; while `has_more`, pass the last `transaction_id` as `after`; each with `transaction_id`, `product_key`, `product_name`, `quantity`, `purchased_at`, `user`).
 2. **Grant** `quantity` times the product, keyed on `transaction_id` so a retry never grants twice.
 3. **Fulfill** it by `transaction_id`:
-   - from a project page, as the signed-in visitor: `POST __yard/purchases/{transaction_id}/fulfill`
-   - with a Yard Auth access token: `POST https://api.yard.sh/v1/yard-auth/purchases/{transaction_id}/fulfill`
-   - from a server: `POST https://api.yard.sh/v1/projects/{id}/purchases/{transaction_id}/fulfill[?sandbox=<name>]` with `products:fulfill`
+   - from a project page, as the signed-in visitor: `POST __yard/fulfillments/{transaction_id}`
+   - with a Yard Auth access token: `POST https://api.yard.sh/v1/yard-auth/fulfillments/{transaction_id}`
+   - from a server: `POST https://api.yard.sh/v1/projects/{id}/fulfillments/{transaction_id}[?sandbox=<name>]` with `products:fulfill`
 
-Fulfill only after a grant your own trusted code made: a page calling `__yard/purchases/…` suits a game whose state lives in the player's client; when a service's database holds the balance, verify and fulfill from `_service.js` ([worked example](#worked-example-gem-packs-in-a-hosted-game)).
+Fulfill only after a grant your own trusted code made: a page calling `__yard/fulfillments/…` suits a game whose state lives in the player's client; when a service's database holds the balance, verify and fulfill from `_service.js` ([worked example](#worked-example-gem-packs-in-a-hosted-game)).
 
 `200` answers the purchase; fulfilling it again returns it unchanged (original `fulfilled_at`), so retrying is safe:
 
@@ -221,7 +221,7 @@ Fields: `event_id` (the same on every retry; deduplicate on it), `event`, `trans
 
 ## Sandboxes and local development
 
-- **Sandbox:** product checkout is simulated like the rest of a sandbox's commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). `__yard/products` and `__yard/purchases/…/fulfill` on a sandbox's pages read and fulfill that sandbox's purchases; the API-key routes take `?sandbox=<name>` (a service reads the name from `X-Yard-Sandbox`); the Yard Auth token routes see the project itself only; webhooks carry `sandbox`.
+- **Sandbox:** product checkout is simulated like the rest of a sandbox's commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). `__yard/products` and `__yard/fulfillments/…` on a sandbox's pages read and fulfill that sandbox's purchases; the API-key routes take `?sandbox=<name>` (a service reads the name from `X-Yard-Sandbox`); the Yard Auth token routes see the project itself only; webhooks carry `sandbox`.
 - **`yard dev`:** one `buyer:<product key>` persona per product some tier qualifies for, holding that product and the first tier that lets it be bought (`active`, with that tier's `X-Yard-Tier` and `X-Yard-Tier-Key`); `user:<tier key>` personas hold their tier and no products. A consumable's buyer has one unfulfilled purchase (quantity 1); fulfilling it locally answers like hosted and keeps it fulfilled until `yard dev` restarts. No webhooks fire and nothing is refunded after 3 days. Offline or logged out, products come from the settings.json block, without icons. See [local-dev.md](local-dev.md#personas-instead-of-sign-in).
 
 ---
@@ -287,7 +287,7 @@ async function redeem(request, env) {
     const { meta } = await env.DB.prepare(
       "INSERT INTO gem_grants (transaction_id, user_id, gems, granted_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT DO NOTHING",
     ).bind(p.transaction_id, userId, gems, Date.now()).run();
-    const done = await yardAPI(env, "POST", `/purchases/${p.transaction_id}/fulfill`, sandbox);
+    const done = await yardAPI(env, "POST", `/fulfillments/${p.transaction_id}`, sandbox);
     if (done.status === 409 && (await done.json()).error_code === "purchase_refunded") {
       await env.DB.prepare("DELETE FROM gem_grants WHERE transaction_id = ?1").bind(p.transaction_id).run();
       continue;

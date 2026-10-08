@@ -213,7 +213,7 @@ const me = await (await fetch("__yard/auth/me")).json();
 <a href="__yard/auth/logout?return=/">Sign out</a>
 ```
 
-`__yard/products` sits next to them and answers `{ authenticated, tier_keys, products }` for the same session; `POST __yard/purchases/{transaction_id}/fulfill` marks a consumable delivered ([products.md](products.md#delivering-consumables)).
+`__yard/products` sits next to them and answers `{ authenticated, tier_keys, products }` for the same session; `POST __yard/fulfillments/{transaction_id}` marks a consumable delivered ([products.md](products.md#delivering-consumables)).
 
 `return` is relative to the project root here (`return=/` is this page, `return=/app/` a service). Called under a service, it is relative to that service instead. Send writes to a service with relative `fetch("app/items", …)` calls and `Content-Type: application/json`; see [service-and-database.md](service-and-database.md#identity-yard-auth-never-your-own).
 
