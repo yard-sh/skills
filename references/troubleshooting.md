@@ -130,9 +130,9 @@ A GitHub repository is linked to one Yard project at a time. To work on the proj
 
 ## Tier and product errors
 
-Tiers and products are addressed by key, never by name ([tier keys](pricing-and-licensing.md#tier-keys), [products.md](products.md)). List the keys with `yard projects show <slug> --json | jq -r '.tiers[].key'` and `yard projects products <slug> --json | jq -r '.[].key'`.
+Tiers and products are addressed by key, never by name ([tier keys](pricing-and-licensing.md#tier-keys), [products.md](products.md)). List the keys with `yard projects tiers <slug> --json | jq -r '.[].key'` and `yard projects products <slug> --json | jq -r '.[].key'`.
 
-- **`no tier "Pro"`** from `yard projects tiers edit|rm`: pass the tier's key (`pro`), not its name.
+- **`no tier with the key "Pro"`** from `yard projects tiers edit|rm` (or `no product with the key` from `products edit|rm`): pass the tier's key (`pro`), not its name.
 - **"price must be at least $0.99"** / **"price cannot exceed $10,000.00"**: a product's `price_cents` is 99 to 1,000,000 (tiers start at $3.00).
 - **"products are sold on top of a pricing tier, so add a tier first"**: the release has products but no tiers. Add a tier in the same push or first.
 - **`requires "Pro", which is not a valid tier key`**: `requires` holds tier keys (lowercase slugs), not names.
