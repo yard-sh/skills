@@ -6,7 +6,7 @@ When this skill is installed, an agent gains awareness of:
 
 - The `yard` CLI (login, init, projects, releases, sandboxes, channels, service, dev, keys, etc.)
 - The `yard init --spec` and `yard releases publish --spec` JSON shapes for non-interactive use
-- The REST API endpoints for license validation, release downloads, subscriptions, the license-key update server, a user's products and their fulfillment, and Yard Auth for external apps
+- The REST API endpoints for license validation, release downloads, managing existing subscriptions, the license-key update server, a user's products and their fulfillment, and Yard Auth for external apps
 - Pricing model details (tiers and tier keys, seat types, volume brackets, Pro-only features)
 - Products sold on top of a tier (one-time add-ons and DLC, consumables, add-on subscriptions): setup, checkout links, reading what a user holds, consumable fulfillment and product webhooks
 - Sandboxes: optional copies of the project, release channels, and the simulated commerce a sandbox carries

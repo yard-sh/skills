@@ -1,6 +1,6 @@
 # Yard API Reference
 
-> **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing your users' subscriptions, reading and fulfilling the [products](products.md) they buy, and signing your users in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the team's own catalog (projects, pricing, products, releases, pages, services, coupons, users, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
+> **What this API is for.** Integrating Yard into shipped software: validating licenses, reading release metadata, managing your users' existing subscriptions, reading and fulfilling the [products](products.md) they buy, and signing your users in with [Yard Auth](#yard-auth-for-external-apps). An agent managing the team's own catalog (projects, pricing, products, releases, pages, services, coupons, users, sales) uses the **Yard CLI** instead; see [cli-commands.md](./cli-commands.md).
 >
 > Create an API key with the scopes you need at **https://dash.yard.sh/configure/api-keys?action=create**.
 
@@ -24,7 +24,7 @@ A team username is **not** the user's username (they share one namespace but rou
 
 A project has its own real data plus any number of **sandboxes**, each an optional copy with simulated commerce ([pricing-and-licensing.md](pricing-and-licensing.md#commerce-in-a-sandbox)). Everywhere, an **omitted or empty `sandbox` means the project itself**, the only place money is real; naming a sandbox selects it.
 
-The parameter travels in the query string on `GET`s and on the subscription-management `POST`s, and in the JSON body on the checkout endpoints:
+The parameter travels in the query string on `GET`s and on the subscription-management `POST`s:
 
 | Endpoint | Where `sandbox` goes |
 |---|---|
@@ -32,7 +32,6 @@ The parameter travels in the query string on `GET`s and on the subscription-mana
 | `GET /v1/projects/{username}/{slug}/public` | query string |
 | `GET /v1/projects/{username}/{slug}/subscription` | query string |
 | `POST /v1/projects/{username}/{slug}/subscription/cancel` \| `/reactivate` \| `/change` | query string |
-| `POST /v1/subscription-intent` | JSON body (`"sandbox": "preview"`) |
 | `GET /v1/projects/{id}/users/{userDisplayId}/products`, `/fulfillments/pending`, `POST …/fulfillments/{transactionId}` | query string |
 | Your users' download and library endpoints | query string |
 
@@ -60,7 +59,7 @@ Integration scopes are safe to ship inside the app your users run. Every install
 | `licenses:validate` | Validate a license key |
 | `licenses:activate` | Activate or deactivate a device against a license |
 
-Management scopes act on the team's account, its release files and its users; keep keys holding them on servers the team controls. That includes `releases:read` (downloads every file in a public channel without a purchase), the subscription scopes (act on any user named by email) and the product scopes (read and fulfill any user's purchases). An app lists channels, checks for updates and downloads with the user's license key instead ([License-Gated Endpoints](#license-gated-endpoints-no-auth-header)):
+Management scopes act on the team's account, its release files and its users; keep keys holding them on servers the team controls. That includes `releases:read` (downloads every file in a public channel without a purchase), the subscription scopes (act on the subscription of any user named by email) and the product scopes (read and fulfill any user's purchases). An app lists channels, checks for updates and downloads with the user's license key instead ([License-Gated Endpoints](#license-gated-endpoints-no-auth-header)):
 
 | Scope | What it allows |
 |-------|----------------|
@@ -76,7 +75,7 @@ Management scopes act on the team's account, its release files and its users; ke
 | `db:query` | Run SQL, including writes, against every database of the project (sensitive) |
 | `users:read` | List the people who bought your projects, with their license keys and subscriptions |
 | `subscriptions:read` | Read a user's project subscription status |
-| `subscriptions:write` | Create, cancel, reactivate or change a user's project subscription |
+| `subscriptions:write` | Cancel, reactivate or change a user's project subscription |
 | `transactions:read` | List and inspect sales |
 | `transactions:write` | Change the trial on a sale |
 | `products:read` | See which products a user holds, the tiers that let them buy more, and purchases waiting to be fulfilled |
@@ -132,9 +131,10 @@ Both look only where the request points: with no `sandbox`, at the project's own
 
 ### Subscriptions (a user's subscription, from the team's server)
 
+A subscription only starts at Yard's own checkout, when the user subscribes. These endpoints read and manage one that already exists.
+
 | Method | Path | Scope | Description |
 |---|---|---|---|
-| `POST` | `/v1/subscription-intent` | `subscriptions:write` | Create a subscription payment intent |
 | `GET` | `/v1/projects/{username}/{slug}/subscription` | `subscriptions:read` | Read a user's subscription status for a project |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/cancel` | `subscriptions:write` | Cancel a user's subscription |
 | `POST` | `/v1/projects/{username}/{slug}/subscription/reactivate` | `subscriptions:write` | Reactivate a cancelled subscription |

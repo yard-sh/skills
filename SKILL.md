@@ -30,7 +30,7 @@ Install: `curl -fsSL https://cli.yard.sh | sh` (Windows: `irm https://cli.yard.s
 
 ## Ground rules
 
-- **Manage with the CLI, integrate with the API.** Creating projects, pricing, products, releases, pages, services, coupons and reading users and sales is CLI work. The REST API is for shipped software: license validation, updates, subscriptions, reading and fulfilling a user's products, Yard Auth in external apps. Never create a project over HTTP.
+- **Manage with the CLI, integrate with the API.** Creating projects, pricing, products, releases, pages, services, coupons and reading users and sales is CLI work. The REST API is for shipped software: license validation, updates, managing existing subscriptions, reading and fulfilling a user's products, Yard Auth in external apps. Never create a project over HTTP.
 - **Non-interactive only.** Use `--json` (result on stdout, logs on stderr) and `--spec <file|->` (JSON input). Never pipe answers into a prompt; bare `yard init` is for humans.
 - **Teams own everything.** Projects, coupons, API keys and payouts belong to a team, and the CLI acts as the active team (`yard team --json` → `.active_team`), which is stored on the account and shared with the dashboard. Projects live under the team's username: `https://<team>.yard.sh/<slug>/`.
 - **Check entitlements, never assume them.** Read `yard me --json` → `.team_permissions` before proposing a feature (`.permissions` is the user's own and gates nothing on a project). Never quote a plan's features from memory.

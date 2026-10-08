@@ -78,7 +78,7 @@ Plan-gated and configured **per tier** (set at creation in `yard init --spec`, l
 
 - `free_trial.days`: 7-365, optional; a trial enabled without days runs 7.
 - `free_trial.requires_card` (default false): a subscription tier's trial collects a card at checkout and converts when it ends; `false` starts without a card. No effect on one-time tiers.
-- One-time tiers can be trialed as a guest (email confirmation). After expiry the trial user must purchase to keep access.
+- Starting a trial needs an account: a signed-out visitor signs up or signs in from the trial page (email confirmation) and the trial starts once they return. After expiry the trial user must purchase to keep access.
 - Trials are for tiers only. A trial (or a subscription still in its trial) doesn't count as holding the tier, so it never lets anyone buy a product.
 - To change one user's running trial: `yard transactions trial <order-id> --add-days N` (added to the current expiry, not today; a card-required trial's first charge moves with it; the user on the trial is emailed). See [cli-commands.md](cli-commands.md#yard-transactions).
 
