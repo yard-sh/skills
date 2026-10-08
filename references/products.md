@@ -195,7 +195,7 @@ A purchase still unfulfilled **3 days** after it was bought is refunded automati
 ## Subscription products
 
 - Renew on their own schedule, separate from the tier subscription, and appear in the buyer's Library alongside their tier. Buyers cancel and resume them on the project's **Products** tab in their Library.
-- Each paid renewal fires `product.renewed`; `product.canceled` fires when one ends.
+- Each paid renewal fires `product.renewed`. Setting one to end fires `product.ending`, resuming it `product.resumed`, a failed payment `product.past_due`, and `product.canceled` fires when it ends.
 - A price change on the release the project serves works like a tier's: current subscribers keep their price for 30 days, are emailed the date, then move to the new price.
 - Losing the required tier sets one to end at period end ([Requirements](#requirements)).
 
@@ -203,16 +203,19 @@ A purchase still unfulfilled **3 days** after it was bought is refunded automati
 
 ## Webhooks
 
-Webhooks are a Pro feature: one per project (dashboard **Configure** > **Webhooks**), receiving every event, each delivery signed in `X-Yard-Signature`. Product events never fire the tier events (`sale.completed`, `sale.refunded`, `subscription.canceled`); those carry the tier's `tier_key`.
+Webhooks are a Pro feature: one per project (dashboard **Configure** > **Webhooks**), receiving every event, each delivery signed in `X-Yard-Signature`. Every moment has one tier event and one product event, and a product never fires the tier one: `sale.completed`/`product.purchased`, `subscription.renewed`/`product.renewed`, `sale.refunded`/`product.refunded`, `subscription.ending`/`product.ending`, `subscription.resumed`/`product.resumed`, `subscription.past_due`/`product.past_due`, `subscription.canceled`/`product.canceled`. The tier events carry the tier's `tier_key`.
 
 | Event | Fires |
 | --- | --- |
 | `product.purchased` | A one-time product, every consumable purchase, a subscription product's first payment |
 | `product.renewed` | Each subscription product renewal whose payment goes through |
 | `product.refunded` | Once per transaction, at its first refund (full or partial). `refund_amount_cents` is the total refunded so far, tax included; `refund_reason` is `unfulfilled` for the 3-day automatic refund |
-| `product.canceled` | A subscription product ends: its period ran out after a cancel or a lost requirement, it was canceled immediately, or payment retries ran out. Not when it is merely set to end, or resumed |
+| `product.ending` | A subscription product is set to end at `period_end`: `cancel_reason` is `requested` (canceled by the subscriber or for them) or `requirement_lost` (the required tier lapsed) |
+| `product.resumed` | A subscription product set to end is no longer: the subscriber resumed it, or a lost requirement was met again. `period_end` is the next renewal |
+| `product.past_due` | A subscription product's payment failed and Stripe is retrying; it reads `active: false` until `product.renewed` or `product.canceled` |
+| `product.canceled` | A subscription product ends: its period ran out after a cancel or a lost requirement, it was canceled immediately, or payment retries ran out. `cancel_reason` is `requested`, `requirement_lost` or `payment_failed` |
 
-Fields: `event_id` (the same on every retry; deduplicate on it), `event`, `transaction_id` (not on `canceled`), `project_id`, `project_slug`, `sandbox` (simulated purchases only), `user_email`, `user_username`, `user_display_id` (the account UUID, the same value as `X-Yard-User-Id`), `product_id` (the product as sold, which changes between releases; tell products apart by `product_key`), `product_key`, `product_name`, `product_type`, `subscription_id` (subscriptions), `timestamp`. `purchased` and `renewed` add `quantity`, `amount_cents` (tax included) and `currency` (`usd`), plus `is_subscription: true` for a subscription; `refunded` adds `refund_amount_cents`, `refund_reason` and `currency`.
+Fields: `event_id` (the same on every retry; deduplicate on it), `event`, `transaction_id` (only on `purchased`, `renewed` and `refunded`), `project_id`, `project_slug`, `sandbox` (simulated purchases only), `user_email`, `user_username`, `user_display_id` (the account UUID, the same value as `X-Yard-User-Id`), `product_id` (the product as sold, which changes between releases; tell products apart by `product_key`), `product_key`, `product_name`, `product_type`, `subscription_id` (subscriptions), `timestamp`. `purchased` and `renewed` add `quantity`, `amount_cents` (tax included) and `currency` (`usd`), plus `is_subscription: true` for a subscription; `refunded` adds `refund_amount_cents`, `refund_reason` and `currency`; `ending` adds `period_end` and `cancel_reason`, `resumed` adds `period_end`, `canceled` adds `cancel_reason`.
 
 ---
 
