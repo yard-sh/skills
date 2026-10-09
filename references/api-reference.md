@@ -49,7 +49,7 @@ Authorization: Bearer yard_{key}
 
 API keys start with `yard_` and belong to a **team** (created with `yard keys create` or at https://dash.yard.sh/configure/api-keys?action=create); a key keeps working when the person who minted it leaves. Send it as `Authorization: Bearer yard_…`.
 
-**Scopes:** a key reaches exactly the endpoints its scopes allow. A listed endpoint whose scope the key lacks answers `403` `INSUFFICIENT_SCOPE`; an endpoint outside this reference answers `401` whatever the scopes. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
+**Scopes:** a key reaches exactly the endpoints its scopes allow. A listed endpoint whose scope the key lacks answers `403` with `insufficient_scope`; an endpoint outside this reference answers `401` whatever the scopes. Scopes do not imply one another; pick only what you use. `yard keys create` prints the catalog.
 
 Integration scopes are safe to ship inside the app your users run. Every install shares the key and its rate limit, so validate once at launch and keep the answer:
 
@@ -256,11 +256,13 @@ All errors return a JSON body:
 
 ```json
 {
-  "error": "Human-readable error message"
+  "error": "Human-readable error message",
+  "error_code": "insufficient_scope",
+  "error_id": "3f9a1c2e"
 }
 ```
 
-Some add a machine-readable `error_code` to branch on, such as `not_consumable`, `purchase_not_paid` and `purchase_refunded` from the fulfill endpoints and `yard_auth_unavailable` from the Yard Auth bearer endpoints.
+`error_code` is a lowercase code to branch on, present on the errors a client may handle on its own: `unauthorized`, `insufficient_scope`, `upgrade_required`, `no_team`, `rate_limited`, the plan limits such as `project_limit_reached` and `storage_limit_reached`, `not_consumable`, `purchase_not_paid` and `purchase_refunded` from the fulfill endpoints, and `yard_auth_unavailable` from the Yard Auth bearer endpoints. Never match on the `error` text. `error_id` identifies the request for support.
 
 Common HTTP status codes:
 - `400`: Bad request (validation error)

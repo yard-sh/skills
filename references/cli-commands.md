@@ -43,7 +43,7 @@ The signed-in user, the team they act as, and what each may do. `--json`:
 - **`team_permissions` decides every team feature** (projects, tiers, products, coupons, license keys, custom pages, services, Yard Auth, sandboxes, API keys). It is the merged entitlement of the active team's owners. A free user in a Pro team gets Pro features on that team's projects; a Pro user acting as a free team does not.
 - `permissions` is the user's own entitlement, for account-level things like `create_teams`.
 - Booleans carry `granted`; limits also carry `limit` or `unlimited: true`. Gates are permission-based, not tied to a plan name. `plan` is a display label.
-- `team` is `null` (and `team_permissions` absent) when the user belongs to no team; every team command then fails with `NO_TEAM`.
+- `team` is `null` (and `team_permissions` absent) when the user belongs to no team; every team command then fails with `no_team`.
 
 ---
 
@@ -57,9 +57,9 @@ Role:   owner
 Projects are published at https://yard.sh/@acme/<slug>
 ```
 
-`--json` emits `{ active_team_id, active_team, teams }`. The active team lives on the account, shared with the dashboard's team switcher, so it can change between commands; re-check it rather than trusting an earlier answer. Membership is `owner` or `admin`: both run the whole project surface, but payouts and billing (reads included) are owner-only and answer `403 NOT_TEAM_OWNER` to an admin.
+`--json` emits `{ active_team_id, active_team, teams }`. The active team lives on the account, shared with the dashboard's team switcher, so it can change between commands; re-check it rather than trusting an earlier answer. Membership is `owner` or `admin`: both run the whole project surface, but payouts and billing (reads included) are owner-only and answer `403` with `not_team_owner` to an admin.
 
-A team command run without a team answers `403` with `code: "NO_TEAM"` ("A team is required"). It is not a plan problem: set one up at https://yard.sh/finish, then run `yard team`.
+A team command run without a team answers `403` with `error_code: "no_team"` ("A team is required"). It is not a plan problem: set one up at https://yard.sh/finish, then run `yard team`.
 
 ---
 

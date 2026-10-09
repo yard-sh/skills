@@ -77,9 +77,9 @@ This runs the device sign-in again and saves a new session.
 
 ---
 
-## "A team is required" / `NO_TEAM` 403
+## "A team is required" / `no_team` 403
 
-Every team command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push`) acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `code: "NO_TEAM"`.
+Every team command (`yard init`, `yard projects`, `yard coupons`, `yard keys`, `yard push`) acts on a **team**, because teams own projects. An account that belongs to no team can authenticate fine and still fail all of them with a `403` carrying `error_code: "no_team"`.
 
 This is **not** a plan problem. Upgrading changes nothing, and any message suggesting an upgrade here is misleading.
 

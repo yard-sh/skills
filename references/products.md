@@ -177,7 +177,7 @@ Fulfill only after a grant your own trusted code made: a page calling `__yard/fu
   "purchased_at": "2026-03-05T09:30:00Z", "fulfilled": true, "fulfilled_at": "2026-03-05T09:30:04Z" }
 ```
 
-Errors are `{"error": "…", "error_code": "…"}`:
+Errors are `{"error": "…", "error_code": "…", "error_id": "…"}`:
 
 | Status | Meaning |
 | --- | --- |
