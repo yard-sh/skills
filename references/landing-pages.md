@@ -142,7 +142,7 @@ window.yard = {
 
 `tier` is a tier key or id; `product` is a product key. With `product` only, `returnTo` is where checkout brings the buyer back (resolved against the page, so `''` is this page; it must be on the project's own sites) and `for` the Yard user id the purchase is for ([products.md](products.md#checkout-links)). Tier checkouts don't come back.
 
-**Coming back.** The returned page has `yard_product`, `yard_status` (`succeeded`, `processing` or `canceled`) and `yard_purchase` (omitted on cancel) on its URL. `embed.js` removes them from the address bar, so a reload doesn't replay them, and keeps them in `window.yard.purchase`. After `succeeded`, `ownership()` waits up to 10 s for the product to appear in `products` (a subscription can be confirmed a moment after the buyer is back). It is a cue to refresh the UI, never proof of payment.
+**Coming back.** The returned page has `yard_product`, `yard_status` (`succeeded`, `processing` or `canceled`) and `yard_purchase` (omitted on cancel, and while a subscription's first payment is still processing) on its URL. `embed.js` removes them from the address bar, so a reload doesn't replay them, and keeps them in `window.yard.purchase`. A `succeeded` return is already recorded, so `ownership()` counts the product. It is a cue to refresh the UI, never proof of payment.
 
 ```js
 window.yard.checkout({ product: "gems", quantity: 3, returnTo: location.href });

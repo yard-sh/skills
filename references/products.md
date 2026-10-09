@@ -111,9 +111,9 @@ Each entry of `window.yard.project.products` (the public project JSON; empty whe
 | `for` | The Yard user id the purchase is for (`X-Yard-User-Id`, or `user_id` from Yard Auth); anyone else is asked to switch accounts instead of paying |
 | `sandbox` | Sandbox name: simulated checkout |
 
-`return_to` must be on the project's own sites, or checkout shows **Invalid Checkout Link**: `https://<team>.yard.sh/<slug>/…`, an active custom domain over `https`, or the origin of a Yard Auth redirect URI (such as `http://localhost:3000`). On the way back checkout adds `yard_product` (the key), `yard_purchase` (the `transaction_id`; omitted on cancel) and `yard_status` (`succeeded`, `processing` (still confirming; check again before delivering) or `canceled`). They are a hint to refresh, never proof of payment: read the holdings or wait for `product.purchased` before delivering.
+`return_to` must be on the project's own sites, or checkout shows **Invalid Checkout Link**: `https://<team>.yard.sh/<slug>/…`, an active custom domain over `https`, or the origin of a Yard Auth redirect URI (such as `http://localhost:3000`). On the way back checkout adds `yard_product` (the key), `yard_purchase` (the `transaction_id`; omitted on cancel, and while a subscription's first payment is still processing) and `yard_status` (`succeeded`, `processing` (still confirming; check again before delivering) or `canceled`). They are a hint to refresh, never proof of payment: read the holdings or wait for `product.purchased` before delivering.
 
-On a custom landing page, `embed.js` sets both: `data-return-to` (bare: this page) or `window.yard.checkout({ product, returnTo, for })`, with `returnTo` resolved against the page. The page the buyer comes back to finds the outcome in `window.yard.purchase` (`{ product, status, purchase_id }`, taken off the URL), and after `succeeded`, `ownership()` waits up to 10 s for the holding ([landing-pages.md](landing-pages.md#javascript-api-windowyard)):
+On a custom landing page, `embed.js` sets both: `data-return-to` (bare: this page) or `window.yard.checkout({ product, returnTo, for })`, with `returnTo` resolved against the page. The page the buyer comes back to finds the outcome in `window.yard.purchase` (`{ product, status, purchase_id }`, taken off the URL), and after `succeeded`, `ownership()` already counts the holding ([landing-pages.md](landing-pages.md#javascript-api-windowyard)):
 
 ```js
 window.yard.checkout({ product: "gems", quantity: 2, returnTo: location.href });
@@ -188,7 +188,7 @@ Errors are `{"error": "…", "error_code": "…"}`:
 | `409` `purchase_refunded` | Refunded first: don't deliver it (take back a grant you already made) |
 | `503` `fulfillment_unavailable` | Page and token routes: Yard couldn't record it right now; retry, which is safe |
 
-A purchase still unfulfilled **3 days** after it was bought is refunded automatically, sandbox purchases included: the buyer and the team are emailed, it leaves the lists, and `product.refunded` fires with `refund_reason: "unfulfilled"`. When a purchase you already fulfilled is refunded, `product.refunded` fires without that reason, and taking back what you delivered is up to you.
+A purchase still unfulfilled **3 days** after it was paid for is refunded automatically, sandbox purchases included: the buyer and the team are emailed, it leaves the lists, and `product.refunded` fires with `refund_reason: "unfulfilled"`. When a purchase you already fulfilled is refunded, `product.refunded` fires without that reason, and taking back what you delivered is up to you.
 
 ---
 
