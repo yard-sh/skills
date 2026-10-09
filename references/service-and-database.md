@@ -22,7 +22,7 @@ Route by path. There is no filesystem and no long-lived process: state belongs i
 
 A service sees its paths rooted at `/`, whatever its mount: with `"url": "/s"`, a visit to `/<slug>/s/abc` reaches `_service.js` as `/abc`. For each request:
 
-1. A path naming a file in the bundle (`/app.js`) is served directly; `_service.js` does not run.
+1. A path naming a file in the bundle (`/app.js`) is served directly; `_service.js` does not run. `_service.js` itself is never served, so `/_service.js` reaches the handler like any other path.
 2. `/` or a folder path (`/docs/`) whose `index.html` is in the bundle is served from that file directly.
 3. Everything else reaches `_service.js` with the path unchanged: `/<slug>/s/` arrives as `/`, `/<slug>/s/abc/` as `/abc/`.
 
@@ -69,8 +69,9 @@ The Yard edge signs visitors in and gives your code trusted headers:
 | `X-Yard-Tier` | Display **name** of the tier the visitor's purchase, subscription or trial is on. Sent with `trial` and `active`, one-tier projects included; omitted with `none` or `owner`. For display only |
 | `X-Yard-Tier-Key` | **Key** of that same tier (`pro`), sent exactly when `X-Yard-Tier` is. Gate tier features on it: a renamed tier keeps its key ([tier keys](pricing-and-licensing.md#tier-keys)) |
 | `X-Yard-Sandbox` | Sandbox name, or empty for the project itself |
+| `X-Yard-Guest-Id` | The visitor's guest id, sent signed in or out once their browser has one (`__yard/auth/guest` below). Key a guest's data by it |
 
-- Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No identity headers means an anonymous visitor (possible only on `public` services).
+- Headers arrive **whenever the visitor is signed in, whatever the access mode**, `public` included. No `X-Yard-User-Id` means an anonymous visitor (possible only on `public` services).
 - Clients cannot forge them: the edge strips incoming `X-Yard-*` headers.
 - Gate a tier feature with `request.headers.get("X-Yard-Tier-Key") === "pro"`, never with the name.
 - Products bought on top of a tier change none of these headers. A page reads the visitor's products from `__yard/products`; `_service.js` reads them through the API with a `products:read` key ([products.md](products.md#what-someone-holds)).
@@ -79,11 +80,12 @@ The Yard edge signs visitors in and gives your code trusted headers:
 
 ### `__yard/*` endpoints
 
-`__yard/auth/*`, `__yard/products` and `__yard/fulfillments/{transaction_id}` are answered by the edge, before your code runs. They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`), nowhere deeper. Call them with relative URLs from a page at that level; a page in a subfolder of the service goes up first (`../__yard/auth/me`), or its relative URL reaches the service's own code.
+`__yard/auth/*` (login, logout, me, guest), `__yard/products` and `__yard/fulfillments/{transaction_id}` are answered by the edge, before your code runs. They exist at the project root (`/<slug>/__yard/auth/…`, which is what a landing page reaches) and under every service (`/<slug>/<service>/__yard/auth/…`), nowhere deeper. Call them with relative URLs from a page at that level; a page in a subfolder of the service goes up first (`../__yard/auth/me`), or its relative URL reaches the service's own code.
 
 - `login?return=<path>` signs the visitor in (an existing Yard session passes silently) and sends them to `return`. **`return` is a path relative to where you called login**: under a service, `return=/` is the service's root; at the project root, `return=/` is the landing page. It must start with `/`; anything else, a full URL included, falls back to `/`. The first sign-in to a project by someone outside the owning team shows a consent screen (email; name, username and picture; Yard account and purchase status; staying signed in), remembered until the person disconnects the app under "Connected apps" on their Yard security page. Team members skip it.
 - `logout?return=<path>` ends the project session (the person stays signed in to Yard) and redirects with the same rule; without `return` it goes to `/` of where it was called.
 - `me` always answers 200: `{"authenticated": true, "user_id": "…", "email": "a@b.c", "entitlement": "active", "tier": "Pro", "tier_key": "pro"}` when signed in (`email` may be `""`, `tier` and `tier_key` are omitted when empty), exactly `{"authenticated": false, "entitlement": "none"}` otherwise. `authenticated: true` with `entitlement: "none"` is a signed-in visitor who hasn't bought.
+- `guest` gives signed-out visitors a stable identity without an account. `POST` issues the browser a guest id (or keeps its own) and extends it for 400 days, `GET` answers `{"guest": true|false}`, `DELETE` forgets it; each answers `{"guest": …}`, never the id. From then on every request from the project's own pages, WebSocket upgrades included, carries `X-Yard-Guest-Id`; another site's request arrives without it, and only the project's pages may issue or forget one (`403` `cross_origin` otherwise). Signing out keeps it. Once a guest signs in both `X-Yard-User-Id` and `X-Yard-Guest-Id` arrive: move the guest's rows to the user, then `DELETE` the guest id. Never put your own token in localStorage or a WebSocket URL instead.
 - `products` (GET) answers 200 signed in or out: `{"authenticated": true, "tier_keys": [...], "products": [...]}` for the visitor, `{"authenticated": false, "tier_keys": [], "products": []}` signed out. It answers `503` with `products_unavailable` when Yard can't look them up right now: retry, don't read it as holding nothing. `fulfillments/{transaction_id}` (POST) marks one of the visitor's consumable purchases delivered. Shapes and errors: [products.md](products.md#what-someone-holds). In a sandbox both act on that sandbox's purchases.
 
 A session covers the landing page, every service and every sandbox of one project, on one host: the `yard.sh` address and a custom domain each need their own sign-in. The session cookie is HttpOnly, Secure and SameSite=Lax. Every project under `yard.sh` counts as the same site as yours, so the edge honors the session only for requests from the project's own pages and for top-level navigations: a fetch, form post or WebSocket from any other page, another project's included, arrives signed out. Never change state on GET, since a link from elsewhere still arrives signed in.

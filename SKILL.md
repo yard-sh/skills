@@ -58,7 +58,7 @@ Then cover what the project type needs:
 ## Hosted services
 
 - `yard service init <name>` scaffolds a working bundle and records it under `services` in `.yard/settings.json`. The backend is one file, `_service.js`, exporting a fetch handler. No ports, no `listen()`, no Express: route by path and use relative URLs.
-- **Never build auth.** Yard Auth signs visitors in and gives the service trusted `X-Yard-*` headers; `"access": "users"` is a complete paywall with no code. Gate per-tier features on `X-Yard-Tier-Key` (the tier's stable key), never on the display name. Any access other than `public` needs `.team_permissions.yard_auth`.
+- **Never build auth.** Yard Auth signs visitors in and gives the service trusted `X-Yard-*` headers; `"access": "users"` is a complete paywall with no code. Gate per-tier features on `X-Yard-Tier-Key` (the tier's stable key), never on the display name. Signed-out visitors who need a stable identity (guest play) get one from `POST __yard/auth/guest` and arrive with `X-Yard-Guest-Id`; never mint your own token. Any access other than `public` needs `.team_permissions.yard_auth`.
 - **Loop:** `yard dev` (everything at `http://localhost:9875/<slug>/`) → `yard push` (into a draft release; nothing serves a draft) → `yard releases publish <tag>` (the go-live step: the release lands in the `Production` channel the project follows) → `yard sandbox list` (deploy status of the project and each sandbox). To try it first: `yard sandbox pin` (hold the storefront), publish, `yard sandbox pin <tag> --sandbox preview`, check it, then `yard sandbox unpin`.
 - **Realtime** (chat rooms, presence, multiplayer) belongs in rooms, not in a table: [rooms.md](references/rooms.md).
 

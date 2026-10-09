@@ -379,7 +379,7 @@ Every project command walks up from the cwd to the directory holding `.yard/sett
 
 A push uploads `settings.json` itself, which is how deploys learn each service's settings, so changing one is an edit plus a push. The server keeps each release's copy in step with dashboard edits, so `yard status` can show a config diff you did not make; `yard pull` brings it down (your `project_slug` is kept) along with product icons, and `yard pull --force` discards local changes. Older layouts are rejected; see [troubleshooting.md](troubleshooting.md#yardsettingsjson-uses-an-old-service-layout).
 
-**Common flags:** `--project <slug-or-uuid>`, `--dir <path>`, `--release <id|tag>` (default: your open draft, or a new draft seeded from the newest published release; required when several drafts are open; a published release is edited in place and is live on save if something serves it), `--json`, `--yes` (skip prompts: `push --prune`, pushing into a served release).
+**Common flags:** `--project <slug-or-uuid>`, `--dir <path>`, `--release <id|tag>` (default: your open draft, or a new draft seeded from the newest published release; required when several drafts are open; a published release is edited in place and is live on save if something serves it), `--json`, `--yes` (skip prompts: a push removing files missing locally, pushing into a served release).
 
 **Exit codes:** `0` success, `1` fatal (auth, network, validation), `2` partial (`push` only: some files uploaded, some failed; see `errors`).
 
@@ -395,7 +395,7 @@ Scaffolds the landing-page directory in an existing project: pulls the draft's p
 
 ### yard status
 
-What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (removed only by `push --prune`); `product_icons` also lists `missing` (declared in settings.json, absent locally, which fails a push). It also lists who serves that release and each one's deploy status. Nothing serves a draft, so after a push `serving` is empty; `yard sandbox list` covers every place regardless of release.
+What `yard push` would change, per bundle, without writing: `to_upload`, `unchanged`, `remote_only` (in the release, not local: the next push removes them unless `--keep`); `product_icons` also lists `missing` (declared in settings.json, absent locally, which fails a push). It also lists who serves that release and each one's deploy status. Nothing serves a draft, so after a push `serving` is empty; `yard sandbox list` covers every place regardless of release.
 
 ```json
 { "project": "my-slug", "release": "9f3e…", "version": "1.2.0", "draft": false,
@@ -409,7 +409,7 @@ A release's files grouped by bundle (`page`, `service`, …), each with `path`, 
 
 ### yard push
 
-Uploads every changed local file (landing page, each service, migrations, settings.json, product icons) into the draft; unchanged files are skipped. Every bundle is validated before anything uploads. `--prune` deletes release files missing locally (one confirmation unless `--yes` or `--json`). Prints a `Review:` URL; going live is `yard releases publish <tag>`. The `pricing` and `products` blocks are applied with settings.json, which uploads first (an invalid one is a 400 naming the field before any other file uploads); product icons upload next, and a declared icon missing locally fails the push before anything uploads. When the live deployment has a room class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
+Makes the draft match your files: uploads every changed local file (landing page, each service, migrations, settings.json, product icons), skips unchanged ones, and removes files the release holds that are missing locally, including files added in the dashboard or now matched by `ignore_files`. An interactive push lists the removals and asks once; `--yes` and `--json` skip the question, and without a terminal it refuses unless one is passed. `--keep` leaves those files in the release. A bundle whose directory is missing locally is left as it is, and a push that would remove the landing page's `index.html` stops and names the fix (restore it, or `--keep`). Every bundle is validated before anything uploads. Output is one line per bundle (`service api: 3 added, 2 changed, 1 removed, 60 unchanged`); `--verbose` lists the files. Prints a `Review:` URL; going live is `yard releases publish <tag>`. The `pricing` and `products` blocks are applied with settings.json, which uploads first (an invalid one is a 400 naming the field before any other file uploads); product icons upload next, and a declared icon missing locally fails the push before anything uploads. When the live deployment has a room class the local settings no longer declare, push warns `class Old will be deleted with all its data on deploy`.
 
 ```json
 {
@@ -478,7 +478,7 @@ A service's code ships inside a release (`yard push`, then publish); these comma
 
 - `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, a first migration in `.yard/migrations/` when none exists) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` class with a WebSocket client instead (no migration) and records `"rooms": [{"class": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
-- `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, and warns when a declared room class is not exported.
+- `yard service check`: validates every bundle like a deploy would (offline; plan size limits are also checked when logged in), lints root-absolute `href`/`src`/`fetch("/…")` URLs, warns when `_service.js` imports a file or package (it deploys as one module, so bundle them in), and warns when a declared room class is not exported.
 - `yard service secrets set KEY=VALUE… | list | rm <name>`: `env.<NAME>` values for the project or one sandbox, shared by every service there; each change **redeploys those services** right away. Names are UPPER_SNAKE (not `DB` or `ASSETS`), ≤32 per target, ≤4 KiB each. Write-only: `list` shows names and times.
 - `yard service logs [--service NAME] [--limit ≤500] [--since 2h]`: console output, uncaught exceptions and abnormal outcomes from the last 24 h, a few seconds behind. A fresh service returns an empty list.
 - `yard db query [sql] [--file PATH]` (`-` for stdin): SQL against the project's or a sandbox's database, rows as JSON. Up to 10 kB of SQL, 1000 rows.

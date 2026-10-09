@@ -78,6 +78,8 @@ Ways to choose the persona:
 - `POST /__yard/dev/api/persona` with `{"persona":"member","default":true}` (JSON, from the same origin) changes the default for everyone.
 - In a browser, `/<slug>/__yard/auth/login` (or `/<slug>/<service>/__yard/auth/login`) shows the picker; `__yard/auth/logout` clears it. Both honor `return` exactly as hosted.
 
+`__yard/auth/guest` works as hosted, whatever the persona: `POST` issues a guest id in the `yard_dev_guest` cookie and requests then carry `X-Yard-Guest-Id`; `DELETE` (or clearing the cookie) starts over as a new guest. Pair it with `anonymous` to test signed-out play, then a signed-in persona to test moving a guest's data to an account.
+
 Access gating applies exactly as hosted: `authenticated` redirects anonymous visitors to the picker, `users` sends `entitlement: none` visitors to the landing page, and `member` passes every gate.
 
 `__yard/products` answers for the persona: a `user:*` persona holds its tier and no products, a `buyer:*` holds its one product, `trial` and `member` hold neither. A consumable's buyer has one unfulfilled purchase (quantity 1); `POST __yard/fulfillments/{transaction_id}` fulfills it as hosted, and it stays fulfilled (unlisted) until `yard dev` restarts. Persona purchases are always paid and never refunded, and nothing simulates an outage, so locally fulfill never answers its `409`s and neither endpoint answers `503`.

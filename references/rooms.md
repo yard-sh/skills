@@ -195,10 +195,13 @@ connect();
   Keep an attachment to a few hundred bytes; anything larger goes in storage.
 - **Identity** arrives on the upgrade request like any request: `X-Yard-User-Id`,
   `X-Yard-Email`, `X-Yard-Entitlement`, `X-Yard-Tier`, `X-Yard-Tier-Key`,
-  `X-Yard-Sandbox`. Read them in the room's `fetch` before accepting, and gate
-  per-tier features on `X-Yard-Tier-Key`, not the display name. A socket
-  opened from another origin (another project's page included) arrives signed
-  out, with no `X-Yard-User-Id`. The service's `access` setting gates the upgrade like
+  `X-Yard-Sandbox`, and `X-Yard-Guest-Id` once the page has given the browser
+  a guest id with `POST __yard/auth/guest` (signed-out play, see
+  [service-and-database.md](service-and-database.md#__yard-endpoints)). Read
+  them in the room's `fetch` before accepting, key a guest's state by
+  `X-Yard-Guest-Id`, and gate per-tier features on `X-Yard-Tier-Key`, not the
+  display name. A socket opened from another origin (another project's page
+  included) arrives signed out, with no `X-Yard-User-Id` or `X-Yard-Guest-Id`. The service's `access` setting gates the upgrade like
   any other request, so `"access": "users"` keeps visitors who haven't
   bought out of every room with no code.
 - **Every session ends after 24 hours.** Yard closes the connection with code
@@ -279,6 +282,14 @@ dashboard.
   something. An idle room with connections held costs no compute, which is
   why connections must be accepted with `acceptWebSocket`, not kept awake
   with listeners.
+- **Recurring alarms add up.** A room that re-arms its alarm every N ms
+  costs 86,400,000 / N requests a day while it runs: every 250 ms is about
+  345,600 a day, so one room looping all month uses about ten times the
+  monthly allowance.
+  Run a loop (ticks, timers, polling, flushing) only while it has work, e.g.
+  re-arm from `alarm()` only while `ctx.getWebSockets().length > 0` and start
+  it again from `fetch()`; use the longest interval that works, and react to
+  messages instead of polling where you can.
 - Storage is the total across every room, in the project and its sandboxes.
 - Rows read and written are shown on the Usage page but are not billed.
 
