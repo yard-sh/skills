@@ -119,7 +119,7 @@ The terminal request log shows the same: `GET /widget/api/abc/ -> service:api /a
 
 ## Reload and validation
 
-Every service directory, the landing page directory, `.yard/migrations`, `.yard/settings.json` and the secrets file are watched. A save re-validates with the same rules as `yard push` (file limits, extensions, `_service.js` present, mount and name rules). A validation error is printed (`validation_error` in JSON mode) and the last good version keeps serving. Changes to code, assets, settings or secrets restart the runtime in well under a second; static files are served fresh from disk.
+Every service directory, the landing page directory, `.yard/migrations`, `.yard/settings.json` and the secrets file are watched, including a directory created after `yard dev` starts. Other files in `.yard/dev` (the database, build output, stored rooms) are not. A save re-validates with the same rules as `yard push` (file limits, extensions, `_service.js` present, mount and name rules). A validation error is printed (`validation_error` in JSON mode) and the last good version keeps serving. Changes to code, assets, settings or secrets restart the runtime in well under a second; static files are served fresh from disk.
 
 Open landing page tabs reload themselves after each restart (a small helper is injected into landing page HTML; HTML served by a service is not touched). A validation error or failed restart does not reload, so the tab keeps the last good page.
 
