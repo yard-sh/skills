@@ -410,7 +410,7 @@ A push uploads `settings.json` itself, which is how deploys learn each service's
 **Limits, checked before any upload.** File counts and sizes come from the team's plan (`team_permissions` `page_max_*`, `service_max_*`, `migrations_max_*` in GET /v1/me); the numbers below are Basic's and Pro's.
 
 - Landing page: ≤60 files, ≤25 MiB each, ≤100 MiB total; `.html .css .js .json .svg .png .jpg .jpeg .webp .gif .woff2 .mp4 .webm .vtt`; letters, digits and `._-`, at most one subdirectory, no dotfiles; `index.html` required to publish.
-- Service: ≤600 files, ≤15 MiB each, ≤75 MiB total, `_service.js` ≤10 MiB on every plan, ≤7 nested folders, paths ≤200 characters; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dot-files, dot-folders and `node_modules/` (any depth) and bundle-root `README.md`, `wrangler.toml`, `yard.json` and `settings.json` are skipped; `ignore_files` doesn't apply.
+- Service: ≤600 files, ≤15 MiB each, ≤75 MiB total, `_service.js` ≤10 MiB on every plan, ≤7 nested folders, paths ≤200 characters; the landing page types except `.mp4 .webm .vtt`, plus `.mjs .woff .ttf .otf .txt .md .ico .map .wasm .webmanifest`; `_service.js` required; `.sql` rejected (migrations are project-level); dot-files, dot-folders and `node_modules/` (any depth) are skipped; `ignore_files` doesn't apply.
 - Migrations: any number of files, ≤3 MiB each, ≤15 MiB total, no subdirectories.
 
 ### yard init --page
@@ -474,7 +474,7 @@ What serves:
 
 A pin outranks a rollback, which outranks the channel. A bad release is live → `rollback` (the fix takes over when published). Hold one release through later publishes → `pin`.
 
-- `list`: the project, then each sandbox, with what serves and why (`1.3.0 (pinned)`, `(rolled back)`, `(<channel>)`, `(no channel)`, `-`), release count, channel, visibility, deploy status (blank when up to date). `stale`: the release changed and a redeploy starts shortly. `updating`: deploying. `failed`: still serving the previous version, with the error; it is retried automatically, but a failure that persists is in the bundle, so fix it and push. JSON: `{ "project": {...}, "sandboxes": [...] }`, each with `slug`, `visibility`, `channel`, `pinned_release_id` (when pinned), `serving_release`, `releases`, `deploy_status` (`up_to_date`, `stale`, `updating`, `failed`), `deploy_error` (when failed), `page_url`.
+- `list`: the project, then each sandbox, with what serves and why (`1.3.0 (pinned)`, `(rolled back)`, `(<channel>)`, `(no channel)`, `-`), release count, channel, visibility, deploy status (blank when up to date). `stale`: the release changed and a redeploy starts shortly. `updating`: deploying. `failed`: still serving the previous version, with the error; it is retried automatically, but a failure that persists is in the bundle, so fix it and push. JSON: `{ "project": {...}, "sandboxes": [...] }`, each with `slug`, `visibility`, `channel`, `pinned_release_id` (when pinned), `serving_release`, `releases`, `deploy_status` (`up_to_date`, `stale`, `updating`, `failed`), `deploy_error` (when failed), `page_url`, and `services` (`[{ name, url }]`, what it has deployed and where each is served).
 - `create <name>`: 2-60 letters, digits and hyphens, starting with a letter. Private, serving nothing until it follows a channel or is pinned.
 - `rename <name> <new-name>`: keeps releases, files, secrets and database; the URL changes.
 - `visibility <public|private>`: `private` (a sandbox's default) admits only the owning team; `public` lets anyone with the URL in. Without `--sandbox` it sets the project itself (that is how a project goes private). A draft project still serves nothing publicly.
@@ -498,9 +498,9 @@ yard sandbox list --json | jq '[.project] + .sandboxes | .[] | {slug, serving: .
 
 ---
 
-## yard service, yard db, yard migrate
+## yard service, yard db
 
-A service's code ships inside a release (`yard push`, then publish); these commands cover everything around it. Contract: [service-and-database.md](service-and-database.md). Commands that reach the project (`service open`, `service logs`, `service secrets`, `db`) take `--project`, `--dir`, `--sandbox <name>` (omitted = the project itself) and `--json`; `service init`, `service check` and `migrate` work on the local directory and take `--dir` and `--json`.
+A service's code ships inside a release (`yard push`, then publish); these commands cover everything around it. Contract: [service-and-database.md](service-and-database.md). Commands that reach the project (`service open`, `service logs`, `service secrets`, `db`) take `--project`, `--dir`, `--sandbox <name>` (omitted = the project itself) and `--json`; `service init` and `service check` work on the local directory and take `--dir` and `--json`.
 
 - `yard service init <name> [--service-dir DIR] [--url PATH] [--realtime]`: scaffolds a working service (notes API, vanilla frontend, and its migration in `.yard/migrations/`, numbered after the highest one there, e.g. `0002_init.sql`, unless an identical file is already present; a migrations folder push would refuse stops it before anything is written) and records `{"dir", "name", "url": "/<name>", "access": "authenticated", "database_access": true}` under `services`. `--realtime` scaffolds a broadcast `Room` class with a WebSocket client instead (no migration) and records `"rooms": [{"type": "Room", "binding": "ROOMS"}]`. A workflow `README.md` is written at the top of the working directory if absent. Run it once per service.
 - `yard service open [--service NAME]`: prints and opens the service URL (`{ sandbox, service, url, deployed }`). A private sandbox's URL is team-only.
@@ -510,7 +510,6 @@ A service's code ships inside a release (`yard push`, then publish); these comma
 - `yard db query [sql] [--file PATH]` (`-` for stdin): SQL against the project's or a sandbox's database, rows as JSON. Up to 10 kB of SQL, 1000 rows.
 - `yard db migrations list`: applied migrations merged with local files still pending (`{ sandbox, database, migrations: [{ name, applied, applied_at, release_tag, local }] }`, `applied_at` in RFC 3339). With no database yet, `database` is false and every file is pending; an unknown `--sandbox` is an error.
 - `yard db migrations mark-applied <file>`: records a migration as applied without running it; the repair step after fixing a file whose earlier statements already ran.
-- `yard migrate [--dir PATH] [--json]`: upgrades an older `.yard/settings.json` layout (folds per-directory service settings files onto their entries, renames `database` to `database_access`, renames each room's `class` to `type`, stamps `"version": 9`). A services entry still carrying `objects` stops it with the parser's error; rename that key to `rooms` by hand. Idempotent. Unrelated to database migrations.
 
 ---
 

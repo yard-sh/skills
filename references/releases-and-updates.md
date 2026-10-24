@@ -86,7 +86,7 @@ Trials use the same `free_trial` object as everywhere else. Array order is displ
 
 - Pricing is validated against the team's plan; subscribers get the standard 30-day notice when a sync changes their tier's price (subscribers follow the tier's `key`, so a tier synced under a new key is a new tier). Products are validated against the plan (`max_products`) and the release's tiers. An empty `tiers` takes the project off sale (existing purchases keep resolving).
 - `downloads.buttons`: `condition` is `contains`, `starts_with`, `ends_with` or `has_extension` (case-insensitive), `value` 1-255 chars, `label` 1-50 chars, at most 10. A rule matching no file triggers a warning email.
-- Tags are immutable, so a settings.json change lands with the **next** release (or a Re-sync after moving the tag). A tag with a retired settings layout fails with an error naming the fix (`yard migrate`, commit, tag again).
+- Tags are immutable, so a settings.json change lands with the **next** release (or a Re-sync after moving the tag). A tag with a retired settings layout fails with an error naming the fix (edit the file, commit, tag again).
 - A synced release changed in Yard (dashboard, CLI, API or an agent) is skipped by automatic syncs, new assets included; each skip is a warning in its **Sync Logs**. Release Settings > Danger zone > **Re-sync** (confirm with **Overwrite and Re-sync**) restores the GitHub-managed parts. Deleting it on GitHub still archives it.
 - Dashboard edits to pricing, products, download buttons or services regenerate every release's settings.json, so `yard status` shows them as a config diff and `yard pull` retrieves them.
 

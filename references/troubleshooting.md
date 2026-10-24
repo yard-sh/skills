@@ -207,34 +207,34 @@ its entry in the `services` list of `.yard/settings.json`. Five retired
 layouts are rejected rather than upgraded, because reading them would have to
 guess values the developer chose:
 
+Each error names the edit that fixes it. Make it by hand, set `"version": 9`,
+and run the command again.
+
 **Services entries without a `"name"` (v5)** - the settings lived in each
-directory's own `settings.json`. Run `yard migrate`: it folds every
-per-directory settings file onto its entry, deletes those files, and stamps
-`"version": 9`. Or move the fields by hand and delete the files.
+directory's own `settings.json`. Move `name`, `url`, `access` and
+`database_access` from each directory's file onto its entry, then delete
+those files: a leftover one would now upload as part of the service.
 
 **A services entry carrying `database` (v6)** - the flag was renamed to
 `database_access`, because it only binds `env.DB`; the release's migrations
-are what create the database. Run `yard migrate`: it renames the key on every
-entry and stamps `"version": 9`. Or rename it by hand and set `"version": 9`.
+are what create the database. Rename the key.
 
 **A services entry carrying `objects` (v7)** - the list of room types was
-renamed to `rooms` in version 8. `yard migrate` does not rewrite it and
-stops with the same error: rename the key to `rooms` by hand, then run
-`yard migrate` for the v8 change below. The room types and their bindings
-are unchanged, so the next deploy keeps every room and its data.
+renamed to `rooms` in version 8. Rename the key to `rooms`, then make the v8
+change below. The room types and their bindings are unchanged, so the next
+deploy keeps every room and its data.
 
 **A room entry carrying `class` (v8)** - each entry of a service's `rooms`
 names its room type under `type` since version 9. The parser rejects the old
 key:
 
 ```
-services[0] rooms[0] uses the retired "class" key; it is "type" since version 9. Rename it and set "version": 9, or run `yard migrate`
+services[0] rooms[0] uses the retired "class" key; it is "type" since version 9. Rename it and set "version": 9
 ```
 
-Run `yard migrate`: it renames `class` to `type` on every room entry and
-stamps `"version": 9`. Or rename it by hand and set `"version": 9`. The value
-is still the name of the class `_service.js` exports, so the next deploy
-keeps every room and its data.
+Rename `class` to `type` on every room entry. The value is still the name of
+the class `_service.js` exports, so the next deploy keeps every room and its
+data.
 
 **A top-level `"service"` (or `"app"`) block (v4 and older)** - convert by
 hand:
@@ -251,6 +251,6 @@ you.
 Tag content is immutable. A tag whose `.yard/settings.json` still uses the
 retired v5 layout, the retired v6 `database` key, the retired v7 `objects`
 key or the retired v8 room `class` key, fails the sync with an error naming
-the fix; the release on Yard keeps serving as it was. Run `yard migrate` in
-the repo (or rename `objects` to `rooms` by hand), commit, and publish the
-next tag - or force-move the tag and use the dashboard's Re-sync.
+the fix; the release on Yard keeps serving as it was. Make the edit in the
+repo as described above, commit, and publish the next tag - or force-move the
+tag and use the dashboard's Re-sync.
